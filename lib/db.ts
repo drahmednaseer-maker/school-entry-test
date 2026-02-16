@@ -50,7 +50,7 @@ export function getDb(): any {
   }
 
   if (!db) {
-    const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
+    const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'data/school.db');
     try {
       const dbDir = path.dirname(dbPath);
       if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
