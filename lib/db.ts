@@ -19,15 +19,15 @@ export function getDb() {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
-      db = new Database(dbPath, { verbose: (msg) => console.log(`[SQL] ${msg}`) });
+      db = new Database(dbPath);
       db.pragma('journal_mode = WAL');
       console.log(`[DB] Connection successful. Initializing tables...`);
 
       // Use a transaction for the entire initialization
       db.transaction(() => {
         initDb(db!);
-        console.log(`[DB] Database initialization complete.`);
       })();
+      console.log(`[DB] Database initialization complete.`);
     } catch (error: any) {
       console.error(`[DB] CRITICAL ERROR during initialization:`, error);
       // During build phase, we might not have access to the volume.
