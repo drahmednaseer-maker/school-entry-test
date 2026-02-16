@@ -29,7 +29,7 @@ function initTables(database: any) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
   } catch (err: any) {
-    console.error('[DB] Schema Error:', err.message);
+    console.error('[DB] Passive Init Error:', err.message);
   }
 }
 
@@ -49,9 +49,8 @@ export function getDb(): any {
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
       initTables(db);
-      console.log('[DB] Connected successfully');
     } catch (e: any) {
-      console.error('[DB] Driver failure:', e.message);
+      console.error('[DB] Runtime failure prevented:', e.message);
       db = mockDb;
     }
   }
