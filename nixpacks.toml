@@ -1,6 +1,0 @@
-[variables]
-    NODE_ENV = 'production'
-    HOSTNAME = '0.0.0.0'
-
-[start]
-    cmd = 'npm run start'
