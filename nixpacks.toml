@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["nodejs", "python3", "gcc", "gnumake"]
+
+[phases.build]
+cmds = ["npm install", "npm run build"]
+
+[variables]
+NODE_ENV = "production"
+HOSTNAME = "0.0.0.0"
+
+[start]
+cmd = "npm run start"
