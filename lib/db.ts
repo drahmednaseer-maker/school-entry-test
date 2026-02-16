@@ -37,7 +37,42 @@ function initTables(database: any) {
       const bcrypt = require('bcryptjs');
       const hash = bcrypt.hashSync('admin', 10);
       database.prepare("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)").run('admin', hash);
-      console.log('[DB] Default admin user created (admin/admin)');
+      console.log('[DB] Default admin user created (admin/admin) ');
+    }
+
+    // Seed Questions if empty
+    const questionCount = database.prepare("SELECT COUNT(*) as count FROM questions").get();
+    if (questionCount.count === 0) {
+      console.log('[DB] Seeding questions... this may take a moment');
+      const { allSeedData } = require('./seedData');
+      const insert = database.prepare('INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option) VALUES (?, ?, ?, ?, ?, ?)');
+
+      database.transaction(() => {
+        for (const [key, questions] of Object.entries(allSeedData)) {
+          // Determine subject and level from key if possible, or use defaults
+          // Based on seedData naming: easyQuestions (Math), engEasy... urduEasy...
+          let subject = 'Math';
+          let difficulty = 'easy';
+          let level = 'Grade 1';
+
+          if (key.includes('eng')) subject = 'English';
+          if (key.includes('urdu')) subject = 'Urdu';
+          if (key.includes('Med')) difficulty = 'medium';
+          if (key.includes('Hard')) difficulty = 'hard';
+          if (key.includes('2')) level = 'Grade 2';
+          if (key.includes('3')) level = 'Grade 3';
+          if (key.includes('4')) level = 'Grade 4';
+          if (key.includes('5')) level = 'Grade 5';
+          if (key.includes('6')) level = 'Grade 6';
+          if (key.includes('7')) level = 'Grade 7';
+          if (key.includes('8')) level = 'Grade 8';
+
+          for (const q of (questions as any[])) {
+            insert.run(subject, difficulty, level, q.question_text, JSON.stringify(q.options), q.correct_option);
+          }
+        }
+      })();
+      console.log('[DB] Seeding completed');
     }
   } catch (err: any) {
     console.error('[DB] Passive Init Error:', err.message);
