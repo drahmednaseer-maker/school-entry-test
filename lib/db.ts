@@ -1,8 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 
-let dbInstance: any = null;
-let initialized = false;
+let db: any = null;
 
 // Build-safe mock
 const mockDb = {
@@ -17,10 +16,7 @@ const mockDb = {
   transaction: (fn: any) => fn,
 };
 
-function ensureInitialized(database: any) {
-  if (initialized) return;
-  console.log('[DB] Running lazy schema initialization...');
-
+function initTables(database: any) {
   try {
     database.exec(`
       CREATE TABLE IF NOT EXISTS questions (
@@ -73,10 +69,8 @@ function ensureInitialized(database: any) {
     if (settingsCount.count === 0) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
-    initialized = true;
-    console.log('[DB] Schema verified.');
   } catch (err: any) {
-    console.error('[DB] Schema error:', err.message);
+    console.error('[DB] Initialization error:', err.message);
   }
 }
 
@@ -86,45 +80,27 @@ export function getDb(): any {
     return mockDb as any;
   }
 
-  if (!dbInstance) {
-    // 2. Resolve absolute path
+  if (!db) {
     const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
 
     try {
-      console.log(`[DB] Connecting to: ${dbPath}`);
-
+      console.log(`[DB] Connecting to singleton: ${dbPath}`);
       const dbDir = path.dirname(dbPath);
       if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
-      // VITAL: Use require for native module
       const Database = require('better-sqlite3');
-      const innerDb = new Database(dbPath, { timeout: 10000 });
-      innerDb.pragma('journal_mode = WAL');
-      innerDb.pragma('busy_timeout = 10000');
+      db = new Database(dbPath, { timeout: 10000 });
+      db.pragma('journal_mode = WAL');
+      db.pragma('busy_timeout = 10000');
 
-      // 3. Robust Proxy Wrapper
-      // This ensures that even if getDb is called multiple times,
-      // the initialization check ALWAYS happens before any method call.
-      dbInstance = new Proxy(innerDb, {
-        get(target, prop) {
-          const value = target[prop];
-          if (typeof value === 'function') {
-            ensureInitialized(target);
-            return value.bind(target);
-          }
-          return value;
-        }
-      });
-
-      console.log(`[DB] Connection successful.`);
+      initTables(db);
     } catch (error: any) {
-      console.error(`[DB] Failed to load native driver:`, error.message);
-      // Last-ditch fallback
-      dbInstance = mockDb;
+      console.error(`[DB] Critical Error:`, error.message);
+      db = mockDb;
     }
   }
 
-  return dbInstance;
+  return db;
 }
