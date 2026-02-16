@@ -21,6 +21,7 @@ export function getDb() {
 
       db = new Database(dbPath);
       db.pragma('journal_mode = WAL');
+      db.pragma('busy_timeout = 10000');
       console.log(`[DB] Connection successful. Initializing tables...`);
 
       // Use a transaction for the entire initialization
