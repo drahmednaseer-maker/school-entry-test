@@ -8,16 +8,32 @@ let db: Database.Database | undefined;
 export function getDb() {
   if (!db) {
     const dbPath = process.env.DATABASE_URL || 'school.db';
+    console.log(`[DB] Initializing database at: ${dbPath}`);
+    console.log(`[DB] Environment: ${process.env.NODE_ENV}`);
 
-    // Ensure the directory exists (important for Railway Volumes)
-    const dbDir = path.dirname(dbPath);
-    if (dbDir !== '.' && !fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
+    try {
+      // Ensure the directory exists (important for Railway Volumes)
+      const dbDir = path.dirname(dbPath);
+      if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+        console.log(`[DB] Creating directory: ${dbDir}`);
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+
+      db = new Database(dbPath, { verbose: (msg) => console.log(`[SQL] ${msg}`) });
+      db.pragma('journal_mode = WAL');
+      console.log(`[DB] Connection successful. Initializing tables...`);
+      initDb(db);
+      console.log(`[DB] Database initialization complete.`);
+    } catch (error: any) {
+      console.error(`[DB] CRITICAL ERROR during initialization:`, error);
+      // During build phase, we might not have access to the volume.
+      // We don't want to crash the build if we don't strictly need the DB.
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        console.warn(`[DB] Build phase detected. Proceeding without active DB connection.`);
+        return {} as any; // Return dummy object to avoid total crash
+      }
+      throw error;
     }
-
-    db = new Database(dbPath, { verbose: console.log });
-    db.pragma('journal_mode = WAL');
-    initDb(db);
   }
   return db;
 }
