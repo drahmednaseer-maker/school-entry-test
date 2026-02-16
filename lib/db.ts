@@ -26,15 +26,12 @@ export function getDb(): Database.Database {
   }
 
   if (!db) {
-    // 2. Determine path. Always prefer an environment variable in production.
-    // On Railway, 'school.db' in the root is fine for ephemeral testing, 
-    // or /app/data/school.db if a volume is mounted.
-    const dbPath = process.env.DATABASE_URL || 'school.db';
+    // 2. Determine path. Professional default for Docker environments.
+    const dbPath = process.env.DATABASE_URL || '/app/data/school.db';
 
     try {
-      console.log(`[DB] Initializing database: ${path.resolve(dbPath)}`);
+      console.log(`[DB] Initializing database at: ${dbPath}`);
 
-      // Ensure directory exists if path is specified
       const dbDir = path.dirname(dbPath);
       if (dbDir !== '.' && !fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
@@ -45,13 +42,11 @@ export function getDb(): Database.Database {
       db.pragma('busy_timeout = 10000');
 
       initTables(db);
-      console.log(`[DB] Database ready.`);
     } catch (error: any) {
-      console.error(`[DB] Initialization error:`, error.message);
-      // Recovery mode: In-memory store to keep the app booting
+      console.error(`[DB] Error:`, error.message);
+      // Fallback only to keep the app booting for health checks
       db = new Database(':memory:');
       initTables(db);
-      console.warn(`[DB] Fallback: Using in-memory database.`);
     }
   }
   return db;

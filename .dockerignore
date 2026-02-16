@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.gitignore
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+Dockerfile
+railway.json
+nixpacks.toml
+server.js
+README.md
