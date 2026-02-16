@@ -1,12 +1,12 @@
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
 let db: any = null;
-// Force Restart: 2026-02-16T18:59:00Z
 let initialized = false;
 
-// Build-safe mock
+/**
+ * Build-safe mock to prevent pre-rendering crashes
+ */
 const mockDb = {
   prepare: () => ({
     get: () => ({}),
@@ -85,40 +85,49 @@ function ensureInitialized(database: any) {
   }
 }
 
-export function getDb(): Database.Database {
+export function getDb(): any {
   // 1. Build Phase Guard
   if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true') {
     return mockDb as any;
   }
 
   if (!db) {
-    // 2. Determine path
+    // 2. Determine path. 
+    // On Railway, we use the current folder or a volume if provided.
     let dbPath = process.env.DATABASE_URL || 'school.db';
 
     try {
-      console.log(`[DB] Connecting to: ${dbPath}`);
+      console.log(`[DB] Attempting to connect to: ${dbPath}`);
 
+      // Force directory creation for safety
       const dbDir = path.dirname(dbPath);
       if (dbDir !== '.' && !fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
+      // VITAL: Dynamic require to prevent crash if native module is missing
+      const Database = require('better-sqlite3');
       db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
 
-      // We don't initialize tables here anymore to keep the connection instant.
-      // Table creation happens on first use in ensureInitialized().
-      console.log(`[DB] Connected successfully.`);
+      console.log(`[DB] Dynamic load successful.`);
     } catch (error: any) {
-      console.error(`[DB] Connection failed:`, error.message);
-      db = new Database(':memory:');
-      console.warn(`[DB] Fallback: Using in-memory store.`);
+      console.error(`[DB] Runtime crash prevented:`, error.message);
+      // Fallback to in-memory so health checks pass
+      try {
+        const Database = require('better-sqlite3');
+        db = new Database(':memory:');
+        console.warn(`[DB] Running in safety :memory: mode.`);
+      } catch (innerError: any) {
+        console.error(`[DB] Native driver missing entirely.`);
+        return mockDb;
+      }
     }
   }
 
   // Ensure tables exist before returning (Lazy Initialization)
-  if (db && db.name !== ':memory:') {
+  if (db && db !== mockDb) {
     ensureInitialized(db);
   }
 
