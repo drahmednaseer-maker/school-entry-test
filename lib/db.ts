@@ -1,0 +1,4555 @@
+import Database from 'better-sqlite3';
+import path from 'path';
+
+let db: Database.Database | undefined;
+
+export function getDb() {
+  if (!db) {
+    const dbPath = process.env.DATABASE_URL || 'school.db';
+    db = new Database(dbPath, { verbose: console.log });
+    db.pragma('journal_mode = WAL');
+    initDb(db);
+  }
+  return db;
+}
+
+function initDb(db: Database.Database) {
+  // Questions Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject TEXT CHECK(subject IN ('English', 'Urdu', 'Math')) NOT NULL,
+      difficulty TEXT CHECK(difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
+      class_level TEXT,
+      question_text TEXT NOT NULL,
+      options TEXT NOT NULL, -- JSON array of strings
+      correct_option INTEGER NOT NULL, -- Index of correct option
+      image_path TEXT
+    )
+  `);
+
+  // Ensure missing columns exist (for robustness against old schemas)
+  const questionCols = db.pragma("table_info(questions)") as any[];
+  if (!questionCols.find(c => c.name === 'class_level')) {
+    db.exec("ALTER TABLE questions ADD COLUMN class_level TEXT");
+  }
+  if (!questionCols.find(c => c.name === 'image_path')) {
+    db.exec("ALTER TABLE questions ADD COLUMN image_path TEXT");
+  }
+
+  // Students Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS students (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      access_code TEXT UNIQUE NOT NULL,
+      name TEXT,
+      father_name TEXT,
+      class_level TEXT,
+      status TEXT CHECK(status IN ('pending', 'started', 'completed')) DEFAULT 'pending',
+      score INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migration: Ensure father_name exists
+  const studentCols = db.pragma("table_info(students)") as any[];
+  if (!studentCols.find(c => c.name === 'father_name')) {
+    db.exec("ALTER TABLE students ADD COLUMN father_name TEXT");
+  }
+
+  // Test Sessions Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS test_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      question_ids TEXT NOT NULL, -- JSON array of question IDs
+      answers TEXT, -- JSON object { question_id: selected_option_index }
+      start_time DATETIME,
+      end_time DATETIME,
+      FOREIGN KEY (student_id) REFERENCES students(id)
+    )
+  `);
+
+  // Admin Users Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL
+    )
+  `);
+
+  // Settings Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1), -- Only one row
+      school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy',
+      easy_percent INTEGER NOT NULL DEFAULT 40,
+      medium_percent INTEGER NOT NULL DEFAULT 40,
+      hard_percent INTEGER NOT NULL DEFAULT 20,
+      english_questions INTEGER NOT NULL DEFAULT 10,
+      urdu_questions INTEGER NOT NULL DEFAULT 10,
+      math_questions INTEGER NOT NULL DEFAULT 10
+    )
+  `);
+
+  // Migration: Ensure new columns exist for dynamic composition
+  const settingsCols = db.pragma("table_info(settings)") as any[];
+  if (!settingsCols.find(c => c.name === 'english_questions')) {
+    db.exec("ALTER TABLE settings ADD COLUMN english_questions INTEGER NOT NULL DEFAULT 10");
+  }
+  if (!settingsCols.find(c => c.name === 'urdu_questions')) {
+    db.exec("ALTER TABLE settings ADD COLUMN urdu_questions INTEGER NOT NULL DEFAULT 10");
+  }
+  if (!settingsCols.find(c => c.name === 'math_questions')) {
+    db.exec("ALTER TABLE settings ADD COLUMN math_questions INTEGER NOT NULL DEFAULT 10");
+  }
+
+  // Initialize Settings
+  const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings").get() as { count: number };
+  if (settingsCount.count === 0) {
+    db.prepare("INSERT INTO settings (id, school_name, easy_percent, medium_percent, hard_percent, english_questions, urdu_questions, math_questions) VALUES (1, 'Mardan Youth''s Academy', 40, 40, 20, 10, 10, 10)").run();
+  }
+
+  // Performance Indexes
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_questions_lookup ON questions (subject, class_level, difficulty);
+    CREATE INDEX IF NOT EXISTS idx_students_access ON students (access_code);
+    CREATE INDEX IF NOT EXISTS idx_test_sessions_student ON test_sessions (student_id);
+  `);
+
+  seedQuestions(db);
+}
+
+function seedQuestions(db: Database.Database) {
+  // --- EASY QUESTIONS ---
+  const easyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 1' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (easyCount.count < 40) {
+    console.log("Seeding Grade 1 Easy Math questions...");
+    const easyQuestions = [
+      { question_text: "Ali has 3 apples. He gets 2 more. How many apples does he have now?", options: ["4", "5", "6", "3"], correct_option: 1 },
+      { question_text: "Which number is greater?", options: ["7", "5", "2", "1"], correct_option: 0 },
+      { question_text: "What comes after 9?", options: ["8", "10", "11", "7"], correct_option: 1 },
+      { question_text: "Which number is smaller?", options: ["4", "2", "6", "9"], correct_option: 1 },
+      { question_text: "5 – 2 = ?", options: ["4", "2", "3", "1"], correct_option: 2 },
+      { question_text: "How many sides does a triangle have?", options: ["4", "3", "5", "2"], correct_option: 1 },
+      { question_text: "Which shape is round?", options: ["Square", "Triangle", "Circle", "Rectangle"], correct_option: 2 },
+      { question_text: "What is 6 + 1?", options: ["7", "6", "8", "5"], correct_option: 0 },
+      { question_text: "If you have 10 candies and eat 1, how many left?", options: ["8", "9", "10", "7"], correct_option: 1 },
+      { question_text: "Which number comes before 5?", options: ["6", "3", "4", "2"], correct_option: 2 },
+      { question_text: "Which is an even number?", options: ["3", "5", "8", "7"], correct_option: 2 },
+      { question_text: "Count: 🍎🍎🍎🍎", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "7 – 3 = ?", options: ["3", "5", "4", "2"], correct_option: 2 },
+      { question_text: "Which is longer?", options: ["Pencil", "Eraser", "Coin", "Button"], correct_option: 1 },
+      { question_text: "10 is made of:", options: ["5 + 5", "4 + 4", "3 + 3", "2 + 2"], correct_option: 0 },
+      { question_text: "Which number is between 4 and 6?", options: ["3", "7", "5", "8"], correct_option: 2 },
+      { question_text: "What is double of 2?", options: ["2", "3", "4", "5"], correct_option: 2 },
+      { question_text: "Which is a rectangle?", options: ["Ball", "Book", "Wheel", "Coin"], correct_option: 1 },
+      { question_text: "8 + 0 = ?", options: ["0", "8", "10", "7"], correct_option: 1 },
+      { question_text: "How many tens in 10?", options: ["2", "1", "5", "10"], correct_option: 1 },
+      { question_text: "9 is greater than:", options: ["10", "11", "8", "12"], correct_option: 2 },
+      { question_text: "4 + 4 = ?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which is heavier?", options: ["Feather", "Stone", "Leaf", "Paper"], correct_option: 1 },
+      { question_text: "6 – 6 = ?", options: ["0", "6", "1", "2"], correct_option: 0 },
+      { question_text: "Which shape has 4 equal sides?", options: ["Triangle", "Square", "Circle", "Oval"], correct_option: 1 },
+      { question_text: "3 + 5 = ?", options: ["7", "6", "8", "9"], correct_option: 2 },
+      { question_text: "Which number is odd?", options: ["4", "6", "9", "2"], correct_option: 2 },
+      { question_text: "Count backwards: 5, 4, __?", options: ["3", "6", "2", "1"], correct_option: 0 },
+      { question_text: "Half of 4 is:", options: ["1", "2", "3", "4"], correct_option: 1 },
+      { question_text: "Which is shorter?", options: ["Rope", "Thread", "Stick", "Pole"], correct_option: 1 },
+      { question_text: "2 + 6 = ?", options: ["9", "7", "8", "6"], correct_option: 2 },
+      { question_text: "Which is a solid shape?", options: ["Cube", "Square", "Circle", "Line"], correct_option: 0 },
+      { question_text: "1 more than 7 is:", options: ["6", "8", "9", "5"], correct_option: 1 },
+      { question_text: "Which is smallest?", options: ["2", "5", "7", "9"], correct_option: 0 },
+      { question_text: "5 + 3 = ?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "What comes next: 2, 4, 6, __?", options: ["7", "8", "9", "10"], correct_option: 1 },
+      { question_text: "7 + 2 = ?", options: ["10", "8", "9", "11"], correct_option: 2 },
+      { question_text: "Which number shows nothing?", options: ["1", "2", "0", "3"], correct_option: 2 },
+      { question_text: "9 – 4 = ?", options: ["4", "5", "6", "3"], correct_option: 1 },
+      { question_text: "How many fingers on one hand?", options: ["4", "5", "6", "10"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of easyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- MEDIUM QUESTIONS ---
+  const mediumCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 1' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (mediumCount.count < 40) {
+    console.log("Seeding Grade 1 Medium Math questions...");
+    const mediumQuestions = [
+      { question_text: "Which number makes the equation true? 4 + __ = 9", options: ["3", "4", "5", "6"], correct_option: 2 },
+      { question_text: "Sara has 8 balloons. 3 fly away. How many are left?", options: ["4", "5", "6", "3"], correct_option: 1 },
+      { question_text: "Which number is equal to 10?", options: ["6 + 3", "5 + 5", "4 + 4", "7 + 1"], correct_option: 1 },
+      { question_text: "What comes between 11 and 13?", options: ["10", "12", "14", "15"], correct_option: 1 },
+      { question_text: "Which sign makes the sentence correct? 6 __ 4", options: ["<", ">", "=", "+"], correct_option: 1 },
+      { question_text: "Ali has 5 pencils. He buys 5 more. How many pencils does he have?", options: ["9", "10", "11", "8"], correct_option: 1 },
+      { question_text: "What is the missing number? __ + 2 = 7", options: ["3", "4", "5", "6"], correct_option: 2 },
+      { question_text: "Which number is 2 less than 9?", options: ["6", "7", "8", "5"], correct_option: 1 },
+      { question_text: "If you arrange numbers from smallest to largest, which comes first? 7, 2, 9, 5", options: ["5", "7", "2", "9"], correct_option: 2 },
+      { question_text: "What is 10 – 3?", options: ["6", "7", "8", "5"], correct_option: 1 },
+      { question_text: "Which object is lighter?", options: ["School bag", "Book", "Balloon", "Desk"], correct_option: 2 },
+      { question_text: "Which number has 1 ten and 2 ones?", options: ["21", "11", "12", "22"], correct_option: 2 },
+      { question_text: "What is double of 4?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "If a shape has 4 sides but not all equal, it is a:", options: ["Triangle", "Square", "Rectangle", "Circle"], correct_option: 2 },
+      { question_text: "What number is missing? 5, 7, __, 11", options: ["8", "9", "10", "12"], correct_option: 1 },
+      { question_text: "Which is the greatest number?", options: ["14", "9", "18", "11"], correct_option: 2 },
+      { question_text: "6 + 4 – 3 = ?", options: ["7", "6", "8", "9"], correct_option: 0 },
+      { question_text: "If you share 6 candies equally between 2 children, how many does each get?", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "Which pair makes 9?", options: ["3 and 5", "4 and 5", "2 and 6", "1 and 7"], correct_option: 1 },
+      { question_text: "What is half of 8?", options: ["3", "5", "4", "6"], correct_option: 2 },
+      { question_text: "Which number comes just before 20?", options: ["18", "19", "17", "21"], correct_option: 1 },
+      { question_text: "If you count by 2s: 2, 4, 6, 8, __?", options: ["9", "10", "12", "11"], correct_option: 1 },
+      { question_text: "Which number is not even?", options: ["6", "8", "11", "14"], correct_option: 2 },
+      { question_text: "9 + 6 = ?", options: ["14", "15", "16", "13"], correct_option: 1 },
+      { question_text: "Which time shows morning?", options: ["Sun rising", "Moon in sky", "Stars shining", "Dark sky"], correct_option: 0 },
+      { question_text: "If there are 12 students and 2 leave, how many remain?", options: ["9", "8", "10", "7"], correct_option: 2 },
+      { question_text: "Which number is 1 more than 15?", options: ["14", "16", "17", "18"], correct_option: 1 },
+      { question_text: "Which group has more?", options: ["13", "17", "12", "14"], correct_option: 1 },
+      { question_text: "What is the missing number? 10, 9, 8, __, 6", options: ["7", "5", "4", "9"], correct_option: 0 },
+      { question_text: "Which shape can roll?", options: ["Square", "Triangle", "Circle", "Rectangle"], correct_option: 2 },
+      { question_text: "5 + 5 + 5 = ?", options: ["10", "12", "15", "20"], correct_option: 2 },
+      { question_text: "Which number sentence is true?", options: ["8 < 3", "4 > 6", "9 = 9", "5 > 8"], correct_option: 2 },
+      { question_text: "What is 13 – 5?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which number is between 16 and 18?", options: ["15", "17", "19", "20"], correct_option: 1 },
+      { question_text: "Ali has 2 tens. How many ones is that?", options: ["10", "20", "2", "12"], correct_option: 1 },
+      { question_text: "Which number is equal to 7 + 7?", options: ["12", "13", "14", "15"], correct_option: 2 },
+      { question_text: "If today is Monday, what comes next?", options: ["Sunday", "Tuesday", "Friday", "Saturday"], correct_option: 1 },
+      { question_text: "Which is the smallest number?", options: ["19", "16", "13", "11"], correct_option: 3 },
+      { question_text: "3 groups of 2 make:", options: ["5", "6", "7", "4"], correct_option: 1 },
+      { question_text: "If 18 is made of 1 ten and how many ones?", options: ["6", "7", "8", "9"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of mediumQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- HARD QUESTIONS ---
+  const hardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 1' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (hardCount.count < 40) {
+    console.log("Seeding Grade 1 Hard Math questions...");
+    const hardQuestions = [
+      { question_text: "Ali has 9 marbles. He gives 3 to Ahmed and then buys 4 more. How many marbles does he have now?", options: ["9", "10", "8", "11"], correct_option: 1 },
+      { question_text: "Which number makes the sentence true? __ + 5 = 14", options: ["8", "9", "10", "7"], correct_option: 1 },
+      { question_text: "Which number is 2 tens and 3 ones?", options: ["23", "32", "20", "13"], correct_option: 0 },
+      { question_text: "If 16 is decreased by 7, then increased by 2, what is the answer?", options: ["10", "11", "9", "12"], correct_option: 1 },
+      { question_text: "Which group shows the greatest number?", options: ["18", "21", "19", "20"], correct_option: 1 },
+      { question_text: "There are 12 birds on a tree. 5 fly away and 3 come back. How many birds are on the tree now?", options: ["10", "9", "8", "11"], correct_option: 0 },
+      { question_text: "Which number is exactly in the middle of 14 and 16?", options: ["13", "15", "17", "14"], correct_option: 1 },
+      { question_text: "What is the missing number? 4, 8, 12, __, 20", options: ["14", "15", "16", "18"], correct_option: 2 },
+      { question_text: "If 3 children each have 4 candies, how many candies are there in total?", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "Which number sentence is correct?", options: ["15 < 12", "17 > 19", "18 = 18", "14 > 16"], correct_option: 2 },
+      { question_text: "Sara has 20 rupees. She buys a pencil for 7 rupees. How much money is left?", options: ["12", "13", "14", "15"], correct_option: 1 },
+      { question_text: "Which number is 5 more than 13?", options: ["17", "18", "16", "19"], correct_option: 1 },
+      { question_text: "What is 10 + 9 – 4?", options: ["14", "15", "16", "13"], correct_option: 1 },
+      { question_text: "Which shape has 4 sides and can also roll if turned on its edge?", options: ["Square", "Rectangle", "Cube", "Cylinder"], correct_option: 3 },
+      { question_text: "If a number is greater than 11 but less than 13, what is the number?", options: ["10", "12", "13", "14"], correct_option: 1 },
+      { question_text: "There are 2 tens and 6 ones. What number is it?", options: ["62", "16", "26", "22"], correct_option: 2 },
+      { question_text: "Which number makes this true? 9 + __ = 17", options: ["7", "8", "6", "9"], correct_option: 1 },
+      { question_text: "Ali counts: 5, 10, 15, __, 25", options: ["18", "20", "22", "30"], correct_option: 1 },
+      { question_text: "If you divide 8 apples equally between 4 children, how many does each get?", options: ["1", "2", "3", "4"], correct_option: 1 },
+      { question_text: "Which number is closest to 20?", options: ["18", "19", "16", "15"], correct_option: 1 },
+      { question_text: "There are 14 students. 6 are girls. How many are boys?", options: ["7", "8", "9", "6"], correct_option: 1 },
+      { question_text: "Which number completes the pattern? 2, 5, 8, 11, __", options: ["12", "13", "14", "15"], correct_option: 2 },
+      { question_text: "What is double of 9?", options: ["16", "17", "18", "19"], correct_option: 2 },
+      { question_text: "If you have 3 tens, how many ones is that?", options: ["13", "30", "3", "33"], correct_option: 1 },
+      { question_text: "Which is the smallest even number greater than 15?", options: ["16", "17", "18", "14"], correct_option: 0 },
+      { question_text: "7 + 6 – 5 = ?", options: ["7", "8", "9", "6"], correct_option: 1 },
+      { question_text: "Which number is missing? 20, 18, 16, __, 12", options: ["13", "15", "14", "11"], correct_option: 2 },
+      { question_text: "If today is Wednesday, what day comes after tomorrow?", options: ["Thursday", "Friday", "Saturday", "Sunday"], correct_option: 1 },
+      { question_text: "A box has 15 mangoes. 5 are taken out and 2 more are added. How many mangoes are now in the box?", options: ["11", "12", "13", "10"], correct_option: 1 },
+      { question_text: "Which number has the greatest value?", options: ["29", "19", "27", "30"], correct_option: 3 },
+      { question_text: "If you skip count by 3: 3, 6, 9, __, 15", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "Which number is exactly halfway between 8 and 12?", options: ["9", "10", "11", "12"], correct_option: 1 },
+      { question_text: "There are 4 baskets. Each basket has 5 oranges. How many oranges in total?", options: ["18", "20", "15", "25"], correct_option: 1 },
+      { question_text: "Which number makes this correct? 18 – __ = 10", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "What is 14 + 5?", options: ["18", "19", "20", "17"], correct_option: 1 },
+      { question_text: "Which is greater than 25 but less than 28?", options: ["26", "29", "30", "24"], correct_option: 0 },
+      { question_text: "If you have 10 fingers and hide 4, how many are still showing?", options: ["5", "6", "7", "4"], correct_option: 1 },
+      { question_text: "What number is 1 less than 30?", options: ["28", "29", "27", "31"], correct_option: 1 },
+      { question_text: "6 children stand in 2 equal rows. How many in each row?", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "Which number is 10 more than 9?", options: ["18", "19", "20", "21"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of hardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- ENGLISH EASY QUESTIONS ---
+  const engEasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 1' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (engEasyCount.count < 40) {
+    console.log("Seeding Grade 1 Easy English questions...");
+    const engEasyQuestions = [
+      { question_text: "Which word begins with the same sound as ball?", options: ["Cat", "Boy", "Sun", "Dog"], correct_option: 1 },
+      { question_text: "Choose the picture word that rhymes with cat.", options: ["Hat", "Dog", "Sun", "Pen"], correct_option: 0 },
+      { question_text: "Which word has the short /a/ sound?", options: ["Apple", "Ice", "Orange", "Umbrella"], correct_option: 0 },
+      { question_text: "Which word is a naming word?", options: ["Run", "Jump", "Table", "Sit"], correct_option: 2 },
+      { question_text: "Choose the action word.", options: ["Chair", "Book", "Write", "Pencil"], correct_option: 2 },
+      { question_text: "Which sentence is correct?", options: ["i am ali", "I am Ali.", "i Am ali", "I am ali"], correct_option: 1 },
+      { question_text: "Which word completes the sentence? This is ___ apple.", options: ["a", "an", "the", "is"], correct_option: 1 },
+      { question_text: "Which letter comes after M?", options: ["L", "N", "O", "K"], correct_option: 1 },
+      { question_text: "Which word shows one?", options: ["Cats", "Dogs", "Boy", "Books"], correct_option: 2 },
+      { question_text: "Choose the correct plural of cat.", options: ["Cats", "Cat", "Cates", "Catz"], correct_option: 0 },
+      { question_text: "Which word rhymes with sun?", options: ["Fun", "Sit", "Pen", "Cup"], correct_option: 0 },
+      { question_text: "Which word has 3 letters?", options: ["Dog", "Book", "Apple", "Chair"], correct_option: 0 },
+      { question_text: "Choose the correct word: She ___ running.", options: ["is", "are", "am", "be"], correct_option: 0 },
+      { question_text: "Which word begins with /t/ sound?", options: ["Top", "Mop", "Cap", "Sun"], correct_option: 0 },
+      { question_text: "Which is a question sentence?", options: ["I have a ball.", "Do you have a ball?", "I have ball", "You have ball"], correct_option: 1 },
+      { question_text: "Which word shows more than one?", options: ["Boy", "Girl", "Apples", "Pen"], correct_option: 2 },
+      { question_text: "Choose the correct word. This is ___ book.", options: ["my", "me", "I", "am"], correct_option: 0 },
+      { question_text: "Which word has the ending sound /k/?", options: ["Duck", "Dog", "Pen", "Sun"], correct_option: 0 },
+      { question_text: "Which letter is a vowel?", options: ["B", "C", "E", "T"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["She is happy.", "She happy is.", "Is she happy", "She happy."], correct_option: 0 },
+      { question_text: "Which word matches the picture of something we read?", options: ["Book", "Ball", "Hat", "Cup"], correct_option: 0 },
+      { question_text: "Which word begins with a capital letter?", options: ["ali", "school", "pakistan", "Ahmed"], correct_option: 3 },
+      { question_text: "Choose the opposite of big.", options: ["Tall", "Small", "Fat", "Long"], correct_option: 1 },
+      { question_text: "Which word is an action?", options: ["Play", "Table", "Bag", "Door"], correct_option: 0 },
+      { question_text: "Which word has the same ending sound as dog?", options: ["Log", "Cat", "Pen", "Sun"], correct_option: 0 },
+      { question_text: "Choose the correct word. I ___ a student.", options: ["am", "is", "are", "be"], correct_option: 0 },
+      { question_text: "Which sentence ends correctly?", options: ["I like mango", "I like mango.", "I like mango,", "I like mango?"], correct_option: 1 },
+      { question_text: "Which word shows a place?", options: ["School", "Run", "Eat", "Jump"], correct_option: 0 },
+      { question_text: "Which word has 4 letters?", options: ["Book", "Sun", "I", "Pen"], correct_option: 0 },
+      { question_text: "Choose the correct word. They ___ playing.", options: ["is", "am", "are", "be"], correct_option: 2 },
+      { question_text: "Which word begins with a vowel sound?", options: ["Apple", "Ball", "Cat", "Dog"], correct_option: 0 },
+      { question_text: "Choose the correct pronoun. Ali is my friend. ___ is kind.", options: ["He", "She", "It", "They"], correct_option: 0 },
+      { question_text: "Which word rhymes with pen?", options: ["Ten", "Sun", "Dog", "Hat"], correct_option: 0 },
+      { question_text: "Which is a complete sentence?", options: ["The red ball.", "The red ball is big.", "Red ball.", "Ball red."], correct_option: 1 },
+      { question_text: "Choose the correct word. This is ___ umbrella.", options: ["a", "an", "the", "is"], correct_option: 1 },
+      { question_text: "Which word shows an animal?", options: ["Tiger", "Chair", "Table", "Bag"], correct_option: 0 },
+      { question_text: "Which letter comes before F?", options: ["E", "G", "D", "H"], correct_option: 0 },
+      { question_text: "Which word tells about color?", options: ["Blue", "Run", "Jump", "Play"], correct_option: 0 },
+      { question_text: "Choose the correct word. The cat is ___ the table.", options: ["on", "run", "big", "eat"], correct_option: 0 },
+      { question_text: "Which word has the middle sound /a/?", options: ["Map", "Me", "Ice", "Up"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of engEasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- ENGLISH MEDIUM QUESTIONS ---
+  const engMedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 1' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (engMedCount.count < 40) {
+    console.log("Seeding Grade 1 Medium English questions...");
+    const engMedQuestions = [
+      { question_text: "Choose the word made by blending the sounds: /c/ /a/ /t/", options: ["Cot", "Cat", "Cut", "Cap"], correct_option: 1 },
+      { question_text: "Which word has the long /a/ sound?", options: ["Hat", "Man", "Cake", "Bag"], correct_option: 2 },
+      { question_text: "Choose the correct word to complete the sentence: The dog is ___ fast.", options: ["run", "runs", "running", "ran"], correct_option: 2 },
+      { question_text: "Which sentence is in correct order?", options: ["playing are boys The", "The boys are playing.", "Boys the are playing", "Are boys the playing"], correct_option: 1 },
+      { question_text: "Choose the correct punctuation. What is your name__", options: [".", "!", "?", ","], correct_option: 2 },
+      { question_text: "Which word has the same beginning sound as fish?", options: ["Fan", "Sun", "Top", "Ball"], correct_option: 0 },
+      { question_text: "Choose the correct word: These are ___ books.", options: ["this", "that", "those", "my"], correct_option: 3 },
+      { question_text: "Which word is an action word?", options: ["Sleep", "Bed", "Pillow", "Room"], correct_option: 0 },
+      { question_text: "Which sentence is correct?", options: ["She are my sister.", "She is my sister.", "She am my sister.", "She be my sister."], correct_option: 1 },
+      { question_text: "Choose the correct plural: One box – Two ___", options: ["Boxs", "Boxes", "Box", "Boxies"], correct_option: 1 },
+      { question_text: "Which word rhymes with ball?", options: ["Tall", "Bell", "Bull", "Bill"], correct_option: 0 },
+      { question_text: "Choose the correct word: The sun is ___ in the sky.", options: ["shining", "shine", "shines", "shone"], correct_option: 0 },
+      { question_text: "Which word shows a person?", options: ["Teacher", "School", "Table", "Bag"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["we are friends.", "We are friends.", "We Are friends.", "we Are Friends."], correct_option: 1 },
+      { question_text: "Which word has 2 syllables?", options: ["Cat", "Book", "Tiger", "Pen"], correct_option: 2 },
+      { question_text: "Choose the correct word: I have ___ orange.", options: ["a", "an", "the", "is"], correct_option: 1 },
+      { question_text: "Which word is opposite of hot?", options: ["Warm", "Cool", "Cold", "Big"], correct_option: 2 },
+      { question_text: "Which word has the ending sound /sh/?", options: ["Fish", "Sit", "Cup", "Dog"], correct_option: 0 },
+      { question_text: "Choose the correct word: They ___ going to school.", options: ["is", "am", "are", "be"], correct_option: 2 },
+      { question_text: "Which word completes the sentence? The bird can ___ .", options: ["fly", "flying", "flew", "flies"], correct_option: 0 },
+      { question_text: "Read the sentence: Ali has a red ball. What color is the ball?", options: ["Blue", "Red", "Green", "Yellow"], correct_option: 1 },
+      { question_text: "Which word begins with a consonant blend?", options: ["Stop", "Apple", "Ice", "Up"], correct_option: 0 },
+      { question_text: "Choose the correct pronoun. Sara is my friend. ___ is kind.", options: ["He", "She", "It", "They"], correct_option: 1 },
+      { question_text: "Which sentence shows past action?", options: ["I play.", "I am playing.", "I played.", "I plays."], correct_option: 2 },
+      { question_text: "Choose the correct word: The cat is ___ the chair.", options: ["under", "run", "big", "eat"], correct_option: 0 },
+      { question_text: "Which word is a describing word?", options: ["Happy", "Run", "School", "Jump"], correct_option: 0 },
+      { question_text: "Choose the correct spelling.", options: ["Frend", "Friend", "Freind", "Frind"], correct_option: 1 },
+      { question_text: "Which word completes the sentence? This is ___ house.", options: ["our", "us", "we", "am"], correct_option: 0 },
+      { question_text: "Which word has a long /e/ sound?", options: ["Bed", "Red", "Tree", "Hen"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["The dog bark.", "The dog barks.", "The dog barking.", "Dog the barks."], correct_option: 1 },
+      { question_text: "Which word tells about time?", options: ["Yesterday", "Chair", "Blue", "Run"], correct_option: 0 },
+      { question_text: "Choose the correct word: There ___ five apples.", options: ["is", "am", "are", "be"], correct_option: 2 },
+      { question_text: "Which word has the vowel digraph ee?", options: ["See", "Sit", "Sun", "Hat"], correct_option: 0 },
+      { question_text: "Read the sentence: The boy is eating an apple. What is the boy eating?", options: ["Banana", "Apple", "Mango", "Bread"], correct_option: 1 },
+      { question_text: "Choose the correct word. The girl ___ happy.", options: ["are", "is", "am", "be"], correct_option: 1 },
+      { question_text: "Which word shows more than one person?", options: ["Boy", "Girl", "Children", "Man"], correct_option: 2 },
+      { question_text: "Choose the correct word. The baby is ___ .", options: ["cry", "crying", "cried", "tries"], correct_option: 1 },
+      { question_text: "Which sentence is a command?", options: ["Please sit down.", "I sit down.", "You are sitting.", "Sit is down."], correct_option: 0 },
+      { question_text: "Which word begins with the same sound as chair?", options: ["Chop", "Sun", "Top", "Fan"], correct_option: 0 },
+      { question_text: "Read the sentence: The sun is bright. What does “bright” mean?", options: ["Dark", "Shiny", "Cold", "Small"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of engMedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- ENGLISH HARD QUESTIONS ---
+  const engHardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 1' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (engHardCount.count < 40) {
+    console.log("Seeding Grade 1 Hard English questions...");
+    const engHardQuestions = [
+      { question_text: "Choose the correct sentence.", options: ["The cat are sleeping.", "The cat is sleeping.", "The cat am sleeping.", "The cat sleeping is."], correct_option: 1 },
+      { question_text: "Which word has the same vowel sound as train?", options: ["Hat", "Rain", "Pen", "Sit"], correct_option: 1 },
+      { question_text: "Choose the correct word: The children ___ playing in the park.", options: ["is", "am", "are", "be"], correct_option: 2 },
+      { question_text: "Rearrange to make a correct sentence: milk / drinks / She", options: ["Milk she drinks.", "She milk drinks.", "She drinks milk.", "Drinks she milk."], correct_option: 2 },
+      { question_text: "Choose the correct punctuation. Wow__ That is beautiful.", options: [".", "?", "!", ","], correct_option: 2 },
+      { question_text: "Which word is a compound word?", options: ["Football", "Ball", "Foot", "Kick"], correct_option: 0 },
+      { question_text: "Read the sentence: Ahmed has two blue balloons. How many balloons does Ahmed have?", options: ["One", "Two", "Three", "Four"], correct_option: 1 },
+      { question_text: "Choose the correct word: This book belongs to Ali. It is ___ book.", options: ["his", "her", "my", "their"], correct_option: 0 },
+      { question_text: "Which word has a silent letter?", options: ["Knife", "Cat", "Sun", "Hat"], correct_option: 0 },
+      { question_text: "Choose the correct spelling.", options: ["Becaus", "Because", "Becase", "Becoz"], correct_option: 1 },
+      { question_text: "Read the sentence: The baby is crying because she is hungry. Why is the baby crying?", options: ["She is tired.", "She is hungry.", "She is playing.", "She is happy."], correct_option: 1 },
+      { question_text: "Which word shows future action?", options: ["Play", "Played", "Will play", "Playing"], correct_option: 2 },
+      { question_text: "Choose the correct word: The boys ___ finished their work.", options: ["has", "have", "is", "am"], correct_option: 1 },
+      { question_text: "Which word has a consonant digraph?", options: ["Ship", "Sit", "Sun", "Hat"], correct_option: 0 },
+      { question_text: "Choose the opposite of early.", options: ["Fast", "Late", "Soon", "Quick"], correct_option: 1 },
+      { question_text: "Which sentence is a question?", options: ["She is happy.", "Is she happy?", "She is happy!", "She happy."], correct_option: 1 },
+      { question_text: "Read the passage: Ali has a pet cat. The cat likes milk. What does the cat like?", options: ["Water", "Milk", "Bread", "Rice"], correct_option: 1 },
+      { question_text: "Choose the correct word: There ___ a bird in the tree.", options: ["are", "am", "is", "be"], correct_option: 2 },
+      { question_text: "Which word has the same ending sound as light?", options: ["Night", "Let", "Lot", "Late"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["They was happy.", "They were happy.", "They is happy.", "They am happy."], correct_option: 1 },
+      { question_text: "Read the sentence: The sun is shining brightly. What does “brightly” tell us?", options: ["When it shines", "Where it shines", "How it shines", "Why it shines"], correct_option: 2 },
+      { question_text: "Which word completes the sentence? She is taller ___ her sister.", options: ["then", "than", "that", "them"], correct_option: 1 },
+      { question_text: "Choose the correct possessive word. This is the ___ bag. (Sara)", options: ["Saras", "Sara's", "Sara", "Sarras"], correct_option: 1 },
+      { question_text: "Which word is an adjective?", options: ["Quickly", "Happy", "Run", "Eat"], correct_option: 1 },
+      { question_text: "Rearrange in correct order: park / went / We / the / to", options: ["We went to the park.", "Went we park to the.", "Park we went to the.", "We park to the went."], correct_option: 0 },
+      { question_text: "Read the sentence: The boy ran quickly. Which word tells how he ran?", options: ["Boy", "Ran", "Quickly", "The"], correct_option: 2 },
+      { question_text: "Which word has the long /i/ sound?", options: ["Sit", "Bike", "Pin", "Tip"], correct_option: 1 },
+      { question_text: "Choose the correct word: The dog ___ loudly at night.", options: ["bark", "barks", "barking", "barked"], correct_option: 1 },
+      { question_text: "Read the sentence: It is raining, so we stayed inside. Why did we stay inside?", options: ["It was sunny.", "It was raining.", "It was cold.", "It was night."], correct_option: 1 },
+      { question_text: "Which word is a synonym of happy?", options: ["Sad", "Glad", "Angry", "Tired"], correct_option: 1 },
+      { question_text: "Choose the correct word: I ___ my homework yesterday.", options: ["do", "did", "does", "doing"], correct_option: 1 },
+      { question_text: "Which sentence is correct?", options: ["The apples is red.", "The apples are red.", "The apple are red.", "The apples am red."], correct_option: 1 },
+      { question_text: "Read the short passage: Sara planted a seed. She watered it every day. Soon, a plant grew. What helped the plant grow?", options: ["Sun", "Water", "Wind", "Soil"], correct_option: 1 },
+      { question_text: "Which word contains a vowel digraph?", options: ["Boat", "Bat", "Bit", "But"], correct_option: 0 },
+      { question_text: "Choose the correct comparative form. This book is ___ than that one.", options: ["big", "bigger", "biggest", "more big"], correct_option: 1 },
+      { question_text: "Which word tells about number?", options: ["Five", "Blue", "Fast", "Run"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["He don't like milk.", "He doesn't like milk.", "He not like milk.", "He isn't like milk."], correct_option: 1 },
+      { question_text: "Read the sentence: The baby is asleep. What does “asleep” mean?", options: ["Playing", "Sleeping", "Crying", "Eating"], correct_option: 1 },
+      { question_text: "Which word completes the sentence? The birds are flying ___ the sky.", options: ["in", "on", "at", "under"], correct_option: 0 },
+      { question_text: "Read the passage: Bilal forgot his umbrella. It started to rain. He got wet. Why did Bilal get wet?", options: ["He was playing.", "He forgot his umbrella.", "He was running.", "He was happy."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of engHardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- URDU EASY QUESTIONS ---
+  const urduEasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 1' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urduEasyCount.count < 40) {
+    console.log("Seeding Grade 1 Easy Urdu questions...");
+    const urduEasyQuestions = [
+      { question_text: "کون سا لفظ \"ب\" کی آواز سے شروع ہوتا ہے؟", options: ["سیب", "بلی", "ٹوپی", "درخت"], correct_option: 1 },
+      { question_text: "\"کتاب\" کس قسم کا لفظ ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "کون سا لفظ \"گھر\" کے ساتھ ہم قافیہ ہے؟", options: ["در", "سیب", "بکری", "پانی"], correct_option: 0 },
+      { question_text: "درست جملہ کون سا ہے؟", options: ["علی اسکول جاتا ہے۔", "علی جاتا اسکول ہے۔", "اسکول علی جاتا ہے۔", "جاتا علی اسکول ہے۔"], correct_option: 0 },
+      { question_text: "\"دوڑنا\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "کون سا حرف \"الف\" کے بعد آتا ہے؟", options: ["ب", "پ", "ت", "ث"], correct_option: 0 },
+      { question_text: "\"ایک لڑکا\" میں \"ایک\" کیا ہے؟", options: ["رنگ", "تعداد", "جگہ", "کام"], correct_option: 1 },
+      { question_text: "کون سا لفظ جانور ہے؟", options: ["کرسی", "بلی", "کتاب", "دروازہ"], correct_option: 1 },
+      { question_text: "\"سیب\" کی جمع کیا ہے؟", options: ["سیبیں", "سیبوں", "سیب", "سیباں"], correct_option: 2 },
+      { question_text: "کون سا لفظ \"م\" سے شروع ہوتا ہے؟", options: ["مکان", "درخت", "پانی", "جوتا"], correct_option: 0 },
+      { question_text: "درست املا کون سا ہے؟", options: ["کتاب", "کطاب", "کتاب", "کطاب"], correct_option: 0 },
+      { question_text: "\"لال گیند\" میں \"لال\" کیا ہے؟", options: ["رنگ", "جگہ", "کام", "نام"], correct_option: 0 },
+      { question_text: "کون سا لفظ پھل ہے؟", options: ["آم", "بکری", "کرسی", "لڑکا"], correct_option: 0 },
+      { question_text: "\"میں کھیلتا ہوں۔\" میں فعل کون سا ہے؟", options: ["میں", "کھیلتا", "ہوں", "کھیلتا ہوں"], correct_option: 1 },
+      { question_text: "کون سا حرف \"ت\" کے بعد آتا ہے؟", options: ["ب", "پ", "ث", "ج"], correct_option: 2 },
+      { question_text: "کون سا لفظ \"چ\" کی آواز سے شروع ہوتا ہے؟", options: ["چمچ", "قلم", "درخت", "بلی"], correct_option: 0 },
+      { question_text: "درست جملہ کون سا ہے؟", options: ["وہ پانی پیتا ہے۔", "وہ پیتا پانی ہے۔", "پانی وہ پیتا ہے۔", "پیتا وہ پانی ہے۔"], correct_option: 0 },
+      { question_text: "\"دو کتابیں\" میں \"دو\" کیا ظاہر کرتا ہے؟", options: ["رنگ", "تعداد", "جگہ", "کام"], correct_option: 1 },
+      { question_text: "کون سا لفظ \"سورج\" کے معنی کے قریب ہے؟", options: ["چاند", "روشنی", "رات", "بادل"], correct_option: 1 },
+      { question_text: "کون سا لفظ لڑکی کے لیے درست ہے؟", options: ["وہ گیا。", "وہ گئی۔", "وہ گئے۔", "وہ جاتا۔"], correct_option: 1 },
+      { question_text: "\"پانی\" کس چیز کا نام ہے؟", options: ["جانور", "چیز", "رنگ", "کھیل"], correct_option: 1 },
+      { question_text: "کون سا لفظ جگہ ظاہر کرتا ہے؟", options: ["اسکول", "کھیل", "دوڑ", "کتاب"], correct_option: 0 },
+      { question_text: "\"گائے\" کیا ہے؟", options: ["پرندہ", "جانور", "پھل", "جگہ"], correct_option: 1 },
+      { question_text: "درست جمع کون سی ہے؟ ایک بچہ – دو ___", options: ["بچے", "بچیاں", "بچی", "بچگان"], correct_option: 0 },
+      { question_text: "\"سبز درخت\" میں \"سبز\" کیا ہے؟", options: ["رنگ", "جگہ", "کام", "نام"], correct_option: 0 },
+      { question_text: "کون سا لفظ \"د\" سے شروع ہوتا ہے؟", options: ["درخت", "بلی", "قلم", "آم"], correct_option: 0 },
+      { question_text: "درست جملہ کون سا ہے؟", options: ["ہم کھیلتے ہیں۔", "ہم ہے کھیلتے۔", "کھیلتے ہم ہے۔", "ہیں ہم کھیلتے۔"], correct_option: 0 },
+      { question_text: "\"چڑیا\" کیا ہے؟", options: ["جانور", "پرندہ", "پھل", "چیز"], correct_option: 1 },
+      { question_text: "کون سا لفظ ہم قافیہ ہے \"بات\" کے ساتھ؟", options: ["رات", "سیب", "قلم", "گھر"], correct_option: 0 },
+      { question_text: "\"میں پانی پیتا ہوں۔\" میں \"میں\" کیا ہے؟", options: ["ضمیر", "فعل", "اسم", "صفت"], correct_option: 0 },
+      { question_text: "کون سا لفظ کھانے کی چیز ہے؟", options: ["روٹی", "کتاب", "قلم", "کرسی"], correct_option: 0 },
+      { question_text: "\"پھول\" کس چیز کا نام ہے؟", options: ["رنگ", "چیز", "کام", "جگہ"], correct_option: 1 },
+      { question_text: "کون سا حرف \"ک\" کے بعد آتا ہے؟", options: ["گ", "ل", "م", "ن"], correct_option: 0 },
+      { question_text: "درست جملہ کون سا ہے؟", options: ["بلی دودھ پیتی ہے۔", "بلی ہے پیتی دودھ۔", "دودھ بلی پیتی ہے۔", "پیتی بلی دودھ ہے۔"], correct_option: 0 },
+      { question_text: "\"تیز گاڑی\" میں \"تیز\" کیا ہے؟", options: ["رنگ", "صفت", "جگہ", "کام"], correct_option: 1 },
+      { question_text: "کون سا لفظ \"ہ\" سے شروع ہوتا ہے؟", options: ["ہاتھی", "درخت", "سیب", "بلی"], correct_option: 0 },
+      { question_text: "\"کتابیں\" کیا ہے؟", options: ["واحد", "جمع", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "کون سا لفظ آواز سے ملتا ہے \"کام\"؟", options: ["نام", "سیب", "گھر", "پانی"], correct_option: 0 },
+      { question_text: "\"استاد\" کس کے لیے استعمال ہوتا ہے؟", options: ["جانور", "چیز", "انسان", "جگہ"], correct_option: 2 },
+      { question_text: "کون سا لفظ مکمل جملہ ہے؟", options: ["علی", "کھیلتا", "علی کھیلتا ہے۔", "کھیل"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urduEasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- URDU MEDIUM QUESTIONS ---
+  const urduMedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 1' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urduMedCount.count < 40) {
+    console.log("Seeding Grade 1 Medium Urdu questions...");
+    const urduMedQuestions = [
+      { question_text: "درست جملہ منتخب کریں۔", options: ["علی اسکول جاتا ہیں۔", "علی اسکول جاتا ہے۔", "علی جاتا اسکول ہے۔", "اسکول علی جاتا ہے۔"], correct_option: 1 },
+      { question_text: "\"لڑکی\" کی جمع کیا ہے؟", options: ["لڑکیاں", "لڑکے", "لڑکیوں", "لڑکی"], correct_option: 0 },
+      { question_text: "درست لفظ منتخب کریں: وہ پانی ___ رہا ہے۔", options: ["پینا", "پیتا", "پیا", "پئیں"], correct_option: 1 },
+      { question_text: "الفاظ کو درست ترتیب دیں: کھیت / میں / کسان / کام / کرتا / ہے", options: ["کسان کام کھیت میں کرتا ہے۔", "کسان کھیت میں کام کرتا ہے۔", "کھیت کسان میں کام کرتا ہے۔", "کام کرتا ہے کسان کھیت میں۔"], correct_option: 1 },
+      { question_text: "\"بڑا درخت\" میں \"بڑا\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں۔", options: ["سکول", "اسکول", "اسقول", "اسکولل"], correct_option: 1 },
+      { question_text: "\"کتاب میز پر ہے۔\" میں \"میز\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 1 },
+      { question_text: "\"وہ کھیل رہی ہے۔\" یہ جملہ کس کے لیے درست ہے؟", options: ["لڑکا", "لڑکی", "لڑکے", "بچے"], correct_option: 1 },
+      { question_text: "\"تیز\" کا الٹ کیا ہے؟", options: ["آہستہ", "بڑا", "چھوٹا", "اونچا"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم کتاب پڑھتا ہیں۔", "ہم کتاب پڑھتے ہیں۔", "ہم پڑھتے کتاب ہیں۔", "کتاب ہم پڑھتے ہیں۔"], correct_option: 1 },
+      { question_text: "\"گھوڑا\" کس جنس کا لفظ ہے؟", options: ["مذکر", "مؤنث", "جمع", "صفت"], correct_option: 0 },
+      { question_text: "\"استاد پڑھا رہا ہے۔\" میں فعل کون سا ہے؟", options: ["استاد", "پڑھا رہا ہے", "رہا", "ہے"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: ایک قلم – دو ___", options: ["قلم", "قلمیں", "قلموں", "قلمہ"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: سورج ___ رہا ہے۔", options: ["چمک", "چمکتا", "چمکی", "چمکنا"], correct_option: 0 },
+      { question_text: "\"صاف کپڑے\" میں \"صاف\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "درست لفظ منتخب کریں: وہ اسکول ___ گئی۔", options: ["گیا", "گئی", "گئے", "جاتا"], correct_option: 1 },
+      { question_text: "الفاظ کو درست ترتیب دیں: پھول / باغ / میں / کھلے", options: ["باغ میں پھول کھلے۔", "پھول باغ کھلے میں۔", "میں باغ پھول کھلے۔", "کھلے باغ میں پھول۔"], correct_option: 0 },
+      { question_text: "\"کتابیں\" کس عدد کو ظاہر کرتا ہے؟", options: ["واحد", "جمع", "مذکر", "مؤنث"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: اونچا — ؟", options: ["لمبا", "نیچا", "بڑا", "موٹا"], correct_option: 1 },
+      { question_text: "\"علی نے دودھ پیا۔\" میں \"علی\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہے ہیں۔", "بچے کھیل رہا ہے۔", "بچے کھیل رہی ہے۔", "کھیل رہے بچے ہے۔"], correct_option: 0 },
+      { question_text: "\"سبز پتہ\" میں \"پتہ\" کیا ہے؟", options: ["صفت", "اسم", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: میں روزانہ اسکول ___ ہوں۔", options: ["جاتا", "جاتی", "گئے", "گئی"], correct_option: 0 },
+      { question_text: "\"پھول خوشبو دیتے ہیں۔\" اس جملے میں کیا بتایا جا رہا ہے؟", options: ["کام", "رنگ", "جگہ", "تعداد"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["بچہ", "بچھہ", "بچھا", "بچھا"], correct_option: 0 },
+      { question_text: "\"وہ کتاب پڑھ رہی ہے۔\" یہ جملہ کس کے لیے درست ہے؟", options: ["لڑکا", "لڑکی", "لڑکے", "بچے"], correct_option: 1 },
+      { question_text: "\"دروازہ کھولو۔\" یہ جملہ کس قسم کا ہے؟", options: ["سوالیہ", "امری", "خبریہ", "تعجبیہ"], correct_option: 1 },
+      { question_text: "درست لفظ منتخب کریں: ہم باغ میں ___ رہے ہیں۔", options: ["کھیل", "کھیلتا", "کھیلتی", "کھیلا"], correct_option: 0 },
+      { question_text: "\"چھوٹا\" کا متضاد کیا ہے؟", options: ["لمبا", "بڑا", "نیچا", "موٹا"], correct_option: 1 },
+      { question_text: "\"گائیں\" کس کی جمع ہے؟", options: ["گائے", "گاہ", "گایا", "گائیںا"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ پانی پیتے ہیں۔", "وہ پانی پیتی ہے۔", "وہ پانی پیتا ہیں۔", "پانی وہ پیتی ہے۔"], correct_option: 1 },
+      { question_text: "\"میٹھا آم\" میں \"آم\" کیا ہے؟", options: ["صفت", "اسم", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "الفاظ کو ترتیب دیں: ہم / کتاب / پڑھتے / ہیں", options: ["ہم کتاب پڑھتے ہیں۔", "کتاب ہم پڑھتے ہیں۔", "پڑھتے ہم کتاب ہیں۔", "ہیں ہم کتاب پڑھتے۔"], correct_option: 0 },
+      { question_text: "\"چمکتا ہوا سورج\" میں سورج کی کیا بات بتائی گئی ہے؟", options: ["رنگ", "کام", "جگہ", "تعداد"], correct_option: 1 },
+      { question_text: "درست لفظ منتخب کریں: عائشہ پانی ___ رہی ہے۔", options: ["پیتا", "پیتی", "پیتے", "پیا"], correct_option: 1 },
+      { question_text: "\"ہاتھ\" کس کا نام ہے؟", options: ["جگہ", "جسم کا حصہ", "جانور", "کھیل"], correct_option: 1 },
+      { question_text: "\"میں نے کتاب پڑھی۔\" یہ کس زمانے کا جملہ ہے؟", options: ["حال", "ماضی", "مستقبل", "سوالیہ"], correct_option: 1 },
+      { question_text: "درست متبادل منتخب کریں: سرد — ؟", options: ["گرم", "ٹھنڈا", "برف", "پانی"], correct_option: 0 },
+      { question_text: "\"استاد ہمیں پڑھاتے ہیں۔\" میں \"ہمیں\" کیا ہے؟", options: ["ضمیر", "اسم", "صفت", "فعل"], correct_option: 0 },
+      { question_text: "مختصر عبارت پڑھیں: علی روزانہ صبح اٹھتا ہے۔ وہ اسکول جاتا ہے۔ علی کب اٹھتا ہے؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urduMedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- URDU HARD QUESTIONS ---
+  const urduHardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 1' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urduHardCount.count < 40) {
+    console.log("Seeding Grade 1 Hard Urdu questions...");
+    const urduHardQuestions = [
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہی ہیں۔", "بچے کھیل رہے ہیں۔", "بچے کھیلتا ہے۔"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: وہ کل اسکول ___ گا۔", options: ["جائے", "جائے گا", "گیا", "جاتی"], correct_option: 1 },
+      { question_text: "\"لڑکا دوڑ رہا ہے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["ماضی", "حال", "مستقبل", "سوالیہ"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: اندھیرا — ؟", options: ["سایہ", "روشنی", "رات", "بادل"], correct_option: 1 },
+      { question_text: "الفاظ کو درست ترتیب دیں: روز / ہم / دعا / کرتے / ہیں", options: ["ہم روز دعا کرتے ہیں۔", "روز ہم کرتے دعا ہیں۔", "دعا ہم روز کرتے ہیں۔", "کرتے ہم روز دعا ہیں۔"], correct_option: 0 },
+      { question_text: "\"گلاب خوشبودار ہے۔\" اس جملے میں صفت کون سی ہے؟", options: ["گلاب", "خوشبودار", "ہے", "خوشبو"], correct_option: 1 },
+      { question_text: "درست لفظ منتخب کریں: علی اور احمد اسکول ___ ہیں۔", options: ["جاتا", "جاتی", "جاتے", "گیا"], correct_option: 2 },
+      { question_text: "مختصر عبارت پڑھیں: سارا نے بیج بویا۔ اس نے اسے پانی دیا۔ کچھ دن بعد پودا اگ آیا۔ پودا کیوں اگا؟", options: ["ہوا کی وجہ سے", "پانی کی وجہ سے", "مٹی کی وجہ سے", "سورج کی وجہ سے"], correct_option: 1 },
+      { question_text: "\"کتابیں میز پر ہیں۔\" میں فعل کون سا ہے؟", options: ["کتابیں", "میز", "پر", "ہیں"], correct_option: 3 },
+      { question_text: "درست املا منتخب کریں۔", options: ["مہنت", "محنت", "مہنٹ", "مہنتت"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: ہم کل پارک ___ جائیں گے۔", options: ["کو", "میں", "سے", "پر"], correct_option: 0 },
+      { question_text: "\"بچی رو رہی تھی۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال", "ماضی", "مستقبل", "امری"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھتی ہیں۔", "وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتے ہے۔", "کتاب وہ پڑھتی ہے۔"], correct_option: 1 },
+      { question_text: "\"تیز ہوا چل رہی ہے۔\" اس جملے میں کیا بتایا گیا ہے؟", options: ["رنگ", "کام", "جگہ", "تعداد"], correct_option: 1 },
+      { question_text: "درست متبادل منتخب کریں: خوش — ؟", options: ["اداس", "ہنستا", "کھیلتا", "دوڑتا"], correct_option: 0 },
+      { question_text: "الفاظ کو ترتیب دیں: کہانی / سنائی / دادی / نے", options: ["دادی نے کہانی سنائی۔", " کہانی دادی سنائی نے۔", "نے دادی کہانی سنائی۔", "سنائی کہانی دادی نے۔"], correct_option: 0 },
+      { question_text: "\"وہ ہمیں بلاتا ہے۔\" میں \"ہمیں\" کیا ہے؟", options: ["اسم", "ضمیر", "صفت", "فعل"], correct_option: 1 },
+      { question_text: "مختصر عبارت پڑھیں: احمد نے درخت لگایا۔ وہ روز اسے پانی دیتا ہے۔ درخت بڑا ہو گیا۔ درخت بڑا کیوں ہوا؟", options: ["کھیلنے سے", "پانی دینے سے", "بیٹھنے سے", "سونے سے"], correct_option: 1 },
+      { question_text: "درست لفظ منتخب کریں: وہ اپنی امی کے ساتھ بازار ___۔", options: ["گیا", "گئی", "گئے", "جاتا"], correct_option: 0 },
+      { question_text: "\"چھوٹے بچے کھیل رہے ہیں۔\" میں \"چھوٹے\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["میں نے سیب کھایا۔", "میں نے سیب کھاتی。", "سیب میں نے کھایا ہے۔", "کھایا میں نے سیب۔"], correct_option: 0 },
+      { question_text: "\"استاد نے سبق پڑھایا۔\" اس جملے میں کام کس نے کیا؟", options: ["سبق", "استاد", "نے", "پڑھایا"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: اگر بارش ہوگی تو ہم گھر ___۔", options: ["رہیں گے", "رھتا", "رہا", "رہے"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: گرم — ؟", options: ["سرد", "آگ", "پانی", "برف"], correct_option: 0 },
+      { question_text: "\"بچے کہانی سن رہے تھے۔\" یہ کس زمانے کا جملہ ہے؟", options: ["حال", "ماضی", "مستقبل", "سوالیہ"], correct_option: 1 },
+      { question_text: "درست لفظ منتخب کریں: یہ کتاب ___ ہے۔ (میرا)", options: ["میرا", "میری", "میرے", "میروں"], correct_option: 1 },
+      { question_text: "الفاظ کو ترتیب دیں: کھانا / ہم / کھا / رہے / ہیں", options: ["ہم کھانا کھا رہے ہیں۔", "کھا ہم کھانا رہے ہیں۔", "کھانا ہم رہے کھا ہیں۔", "ہم رہے کھا کھانا ہیں۔"], correct_option: 0 },
+      { question_text: "\"سفید بادل آسمان پر ہیں۔\" اس جملے میں جگہ کون سی ہے؟", options: ["بادل", "سفید", "آسمان", "ہیں"], correct_option: 2 },
+      { question_text: "مختصر عبارت پڑھیں: بلال نے گیند زور سے پھینکی۔ گیند دیوار سے ٹکرائی۔ گیند کہاں ٹکرائی؟", options: ["زمین سے", "درخت سے", "دیوار سے", "کھڑکی سے"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں۔", options: ["دوست", "دوسٹ", "دوست", "دووست"], correct_option: 0 }, // User had duplicate correct 'دوست' in list, but I will pick 0 or 2. I'll pick 0.
+      { question_text: "\"میں کل اسکول جاؤں گا۔\" یہ کس زمانے کا جملہ ہے؟", options: ["حال", "ماضی", "مستقبل", "امری"], correct_option: 2 },
+      { question_text: "درست لفظ منتخب کریں: وہ اپنی بہن کے ساتھ کھیل ___ ہے۔", options: ["رہا", "رہی", "رہے", "گیا"], correct_option: 0 },
+      { question_text: "\"لمبا درخت\" میں \"لمبا\" کس کی صفت ہے؟", options: ["درخت", "لمبا", "ہے", "جگہ"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ بازار گئی تھی۔", "وہ بازار گیا تھی۔", "بازار وہ گئی تھی۔", "وہ بازار جاتے تھی۔"], correct_option: 0 },
+      { question_text: "متن پڑھیں: علی نے محنت کی۔ وہ امتحان میں کامیاب ہوا۔ علی کامیاب کیوں ہوا؟", options: ["کھیلنے کی وجہ سے", "محنت کی وجہ سے", "سونے کی وجہ سے", "بھاگنے کی وجہ سے"], correct_option: 1 },
+      { question_text: "درست لفظ منتخب کریں: ہم سب دوست ہیں اور ہم ایک دوسرے کی ___ کرتے ہیں۔", options: ["مدد", "کھیل", "کتاب", "آواز"], correct_option: 0 },
+      { question_text: "\"نیلا آسمان صاف ہے۔\" اس جملے میں کتنی صفات ہیں؟", options: ["ایک", "دو", "تین", "چار"], correct_option: 1 },
+      { question_text: "درست متبادل منتخب کریں: تیز — ؟", options: ["سست", "اونچا", "لمبا", "بڑا"], correct_option: 0 },
+      { question_text: "\"عائشہ نے کہانی پڑھی۔\" میں فعل کون سا ہے؟", options: ["عائشہ", "کھانی", "پڑھی", "نے"], correct_option: 2 },
+      { question_text: "مختصر عبارت پڑھیں: صبح سورج نکلا۔ پرندے چہکنے لگے۔ بچے اسکول گئے۔ یہ سب کب ہوا؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urduHardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 1'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 1', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 ENGLISH EASY QUESTIONS ---
+  const eng2EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 2' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng2EasyCount.count < 40) {
+    console.log("Seeding Grade 2 Easy English questions...");
+    const eng2EasyQuestions = [
+      { question_text: "Choose the correct plural form of “box.”", options: ["boxs", "boxes", "boxies", "boxing"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She go to school.", "She goes to school.", "She going school.", "She gone school."], correct_option: 1 },
+      { question_text: "Identify the noun in the sentence: “The cat is sleeping.”", options: ["sleeping", "is", "cat", "the"], correct_option: 2 },
+      { question_text: "Choose the correct opposite of “big.”", options: ["tall", "small", "long", "fat"], correct_option: 1 },
+      { question_text: "Fill in the blank: This is ___ apple.", options: ["a", "an", "the", "two"], correct_option: 1 },
+      { question_text: "Choose the action word (verb).", options: ["happy", "run", "red", "tall"], correct_option: 1 },
+      { question_text: "Choose the correct pronoun. Ali is my friend. ___ is very kind.", options: ["He", "She", "It", "They"], correct_option: 0 },
+      { question_text: "Choose the correct question word. ___ is your name?", options: ["When", "Where", "What", "Why"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["The boys is playing.", "The boys are playing.", "The boys am playing.", "The boys playing."], correct_option: 1 },
+      { question_text: "Identify the adjective in the sentence: “She has a red bag.”", options: ["bag", "red", "has", "she"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “child.”", options: ["childs", "children", "childrens", "childes"], correct_option: 1 },
+      { question_text: "Fill in the blank: They ___ playing in the park.", options: ["is", "are", "am", "be"], correct_option: 1 },
+      { question_text: "Choose the correct preposition. The book is ___ the table.", options: ["in", "on", "under", "at"], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “hot.”", options: ["warm", "cold", "dry", "big"], correct_option: 1 },
+      { question_text: "Identify the verb in the sentence: “The baby cries loudly.”", options: ["baby", "loudly", "cries", "the"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["I has a pencil.", "I have a pencil.", "I having pencil.", "I hading pencil."], correct_option: 1 },
+      { question_text: "Fill in the blank: She is sitting ___ the chair.", options: ["in", "on", "at", "from"], correct_option: 1 },
+      { question_text: "Choose the correct word. A dog is an ___.", options: ["animal", "fruit", "color", "number"], correct_option: 0 },
+      { question_text: "Choose the correct question word. ___ are you going?", options: ["Who", "Where", "What", "How"], correct_option: 1 },
+      { question_text: "Identify the plural noun.", options: ["book", "pen", "chairs", "desk"], correct_option: 2 },
+      { question_text: "Choose the correct pronoun. Sara and I are friends. ___ go to school together.", options: ["We", "They", "He", "She"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["He eat rice.", "He eats rice.", "He eating rice.", "He eaten rice."], correct_option: 1 },
+      { question_text: "Fill in the blank: There are ___ students in the class.", options: ["many", "much", "is", "am"], correct_option: 0 },
+      { question_text: "Choose the correct opposite of “happy.”", options: ["sad", "tall", "bright", "fast"], correct_option: 0 },
+      { question_text: "Identify the correct punctuation.", options: ["where are you going", "Where are you going?", "Where are you going.", "where are you going?"], correct_option: 1 },
+      { question_text: "Choose the correct word. A ___ gives us milk.", options: ["cow", "hen", "cat", "dog"], correct_option: 0 },
+      { question_text: "Fill in the blank: This is ___ my book.", options: ["not", "no", "none", "never"], correct_option: 0 },
+      { question_text: "Choose the correct verb. Birds ___ in the sky.", options: ["fly", "swim", "crawl", "walk"], correct_option: 0 },
+      { question_text: "Identify the adjective. “The tall tree is green.”", options: ["tree", "tall", "is", "the"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “baby.”", options: ["babys", "babies", "babyes", "babyes"], correct_option: 1 },
+      { question_text: "Fill in the blank: I ___ reading a story.", options: ["am", "is", "are", "be"], correct_option: 0 },
+      { question_text: "Choose the correct preposition. The ball is ___ the box.", options: ["under", "on", "at", "to"], correct_option: 0 },
+      { question_text: "Choose the correct question word. ___ is your teacher?", options: ["Who", "What", "Where", "When"], correct_option: 0 },
+      { question_text: "Identify the verb. “The teacher writes on the board.”", options: ["teacher", "board", "writes", "the"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["They was late.", "They were late.", "They is late.", "They be late."], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “fast.”", options: ["slow", "tall", "hot", "short"], correct_option: 0 },
+      { question_text: "Fill in the blank: There is ___ orange on the table.", options: ["a", "an", "the", "two"], correct_option: 1 },
+      { question_text: "Identify the noun. “The sun shines brightly.”", options: ["shines", "brightly", "sun", "the"], correct_option: 2 },
+      { question_text: "Choose the correct pronoun. This is my book. It is ___.", options: ["mine", "my", "me", "I"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["We are going to market.", "We are going to the market.", "We going market.", "We goes to market."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng2EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 ENGLISH MEDIUM QUESTIONS ---
+  const eng2MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 2' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng2MedCount.count < 40) {
+    console.log("Seeding Grade 2 Medium English questions...");
+    const eng2MedQuestions = [
+      { question_text: "Choose the correct sentence.", options: ["The girl have a doll.", "The girl has a doll.", "The girl having a doll.", "The girl hading a doll."], correct_option: 1 },
+      { question_text: "Fill in the blank with the correct verb. The boys ___ football every day.", options: ["plays", "play", "playing", "played"], correct_option: 1 },
+      { question_text: "Choose the correct past tense of “go.”", options: ["goed", "gone", "went", "going"], correct_option: 2 },
+      { question_text: "Identify the adjective. “The happy child is laughing.”", options: ["child", "laughing", "happy", "is"], correct_option: 2 },
+      { question_text: "Choose the correct pronoun. This is Ali. ___ is my cousin.", options: ["She", "He", "They", "We"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She were absent yesterday.", "She was absent yesterday.", "She is absent yesterday.", "She be absent yesterday."], correct_option: 1 },
+      { question_text: "Fill in the blank. We ___ our homework last night.", options: ["finish", "finished", "finishing", "finishes"], correct_option: 1 },
+      { question_text: "Choose the correct preposition. The cat is hiding ___ the bed.", options: ["in", "under", "on", "over"], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “early.”", options: ["late", "fast", "slow", "soon"], correct_option: 0 },
+      { question_text: "Identify the verb in the sentence. “Birds build nests.”", options: ["birds", "build", "nests", "the"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["I am eat rice.", "I am eating rice.", "I eating rice.", "I eats rice."], correct_option: 1 },
+      { question_text: "Fill in the blank. There ___ many stars in the sky.", options: ["is", "are", "am", "be"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “leaf.”", options: ["leafs", "leaves", "leafes", "leavs"], correct_option: 1 },
+      { question_text: "Choose the correct question word. ___ did you come late?", options: ["Why", "Where", "Who", "What"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["They is playing.", "They are playing.", "They am playing.", "They plays playing."], correct_option: 1 },
+      { question_text: "Read the sentence and answer: “Ali opened his umbrella because it was raining.” Why did Ali open his umbrella?", options: ["It was sunny", "It was raining", "It was windy", "It was hot"], correct_option: 1 },
+      { question_text: "Fill in the blank with correct helping verb. She ___ watching TV.", options: ["is", "are", "am", "were"], correct_option: 0 },
+      { question_text: "Choose the correct possessive form. This is ___ bag. (belonging to Sara)", options: ["Sara", "Saras", "Sara’s", "Saras’"], correct_option: 2 },
+      { question_text: "Choose the correct word. The sun ___ in the east.", options: ["rise", "rises", "rising", "rose"], correct_option: 1 },
+      { question_text: "Identify the noun. “The teacher gave homework.”", options: ["gave", "homework", "teacher", "the"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["He don’t like milk.", "He doesn’t like milk.", "He not like milk.", "He didn’t likes milk."], correct_option: 1 },
+      { question_text: "Fill in the blank. We are going ___ the zoo tomorrow.", options: ["at", "to", "in", "on"], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “clean.”", options: ["dirty", "neat", "fresh", "soft"], correct_option: 0 },
+      { question_text: "Choose the correct punctuation.", options: ["Wow that is amazing", "Wow! That is amazing!", "Wow, that is amazing", "wow that is amazing"], correct_option: 1 },
+      { question_text: "Read and answer: “Fatima planted a seed. She watered it daily. After some days, a plant grew.” What helped the seed grow?", options: ["Sunlight only", "Watering daily", "Wind", "Soil only"], correct_option: 1 },
+      { question_text: "Choose the correct verb. My mother ___ dinner every evening.", options: ["cook", "cooks", "cooking", "cooked"], correct_option: 1 },
+      { question_text: "Fill in the blank. The dog wagged ___ tail.", options: ["its", "it’s", "his", "her"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["There is two apples.", "There are two apples.", "There are two apple.", "There is two apple."], correct_option: 1 },
+      { question_text: "Choose the correct conjunction. I was tired, ___ I went to sleep early.", options: ["but", "so", "because", "and"], correct_option: 1 },
+      { question_text: "Identify the adjective. “She wore a beautiful dress.”", options: ["wore", "beautiful", "dress", "she"], correct_option: 1 },
+      { question_text: "Choose the correct form. He ___ to school yesterday.", options: ["goes", "went", "going", "go"], correct_option: 1 },
+      { question_text: "Fill in the blank. This book is ___ than that one.", options: ["big", "bigger", "biggest", "more big"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["I seen a bird.", "I saw a bird.", "I seeing a bird.", "I sees a bird."], correct_option: 1 },
+      { question_text: "Read and answer: “The lights went out. The room became dark.” Why did the room become dark?", options: ["The sun set", "The lights went out", "It was morning", "It was cloudy"], correct_option: 1 },
+      { question_text: "Choose the correct pronoun. This is my pencil. That one is ___.", options: ["yours", "your", "you", "yours’"], correct_option: 0 },
+      { question_text: "Choose the correct word. A baby ___ when it is hungry.", options: ["cries", "fly", "run", "laugh"], correct_option: 0 },
+      { question_text: "Fill in the blank. We ___ happy yesterday.", options: ["are", "were", "is", "am"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She can sings.", "She can sing.", "She can singing.", "She can to sing."], correct_option: 1 },
+      { question_text: "Choose the correct question form.", options: ["Where you are going?", "Where are you going?", "Where going you are?", "You are going where?"], correct_option: 1 },
+      { question_text: "Read and answer: “Bilal studied hard for his test. He got good marks.” What can we learn from this?", options: ["Studying helps us succeed.", "Tests are easy.", "Bilal is lucky.", "Marks are not important."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng2MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 ENGLISH HARD QUESTIONS ---
+  const eng2HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 2' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng2HardCount.count < 40) {
+    console.log("Seeding Grade 2 Hard English questions...");
+    const eng2HardQuestions = [
+      { question_text: "Choose the correct sentence.", options: ["Each boys have a book.", "Each boy has a book.", "Each boy have a book.", "Each boys has a book."], correct_option: 1 },
+      { question_text: "Identify the error. “She don’t like apples.”", options: ["She", "don’t", "like", "apples"], correct_option: 1 },
+      { question_text: "Choose the correct form. If it ___ tomorrow, we will stay home.", options: ["rain", "rains", "raining", "rained"], correct_option: 1 },
+      { question_text: "Read and answer: “Ahmed forgot his lunch. He felt hungry at school.” Why did Ahmed feel hungry?", options: ["He woke up late", "He forgot his lunch", "He ran fast", "He was tired"], correct_option: 1 },
+      { question_text: "Choose the correct comparative form. This road is ___ than that one.", options: ["narrow", "narrower", "narrowest", "more narrow"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["There were much water in the glass.", "There was much water in the glass.", "There are much water.", "There be much water."], correct_option: 1 },
+      { question_text: "Arrange the sentences in correct order. 1. She put it in a pot. 2. She watered it daily. 3. She planted a seed. 4. A plant grew.", options: ["3,1,2,4", "1,3,2,4", "3,2,1,4", "1,2,3,4"], correct_option: 0 },
+      { question_text: "Choose the correct pronoun. Everyone must bring ___ own book.", options: ["his", "their", "our", "your"], correct_option: 0 },
+      { question_text: "Identify the adjective. “The clever boy solved the problem.”", options: ["solved", "problem", "clever", "boy"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["She has finished her work.", "She have finished her work.", "She finisheds her work.", "She finishing her work."], correct_option: 0 },
+      { question_text: "Read and answer: “The sky became dark and strong winds started blowing.” What is likely to happen next?", options: ["It will snow", "It may rain", "It will be sunny", "It is morning"], correct_option: 1 },
+      { question_text: "Choose the correct past tense sentence.", options: ["They are playing outside.", "They were playing outside.", "They plays outside.", "They play outside yesterday."], correct_option: 1 },
+      { question_text: "Choose the correct word. He was tired, ___ he continued working.", options: ["but", "so", "because", "and"], correct_option: 0 },
+      { question_text: "Identify the adverb. “She sang beautifully.”", options: ["sang", "beautifully", "she", "the"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The news are interesting.", "The news is interesting.", "The news were interesting.", "The news be interesting."], correct_option: 1 },
+      { question_text: "Read and answer: “Ali practiced daily for the race. He won first prize.” What is the main reason Ali won?", options: ["He was lucky", "He practiced daily", "Others were slow", "The race was short"], correct_option: 1 },
+      { question_text: "Choose the correct form. She ___ already completed her homework.", options: ["has", "have", "is", "was"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["I didn’t went to school.", "I didn’t go to school.", "I didn’t goes to school.", "I not go to school."], correct_option: 1 },
+      { question_text: "Identify the correct punctuation.", options: ["My favorite colors are red blue and green", "My favorite colors are red, blue, and green.", "My favorite colors are red blue, and green", "My favorite colors are red blue and green."], correct_option: 1 },
+      { question_text: "Choose the correct meaning of “brave.”", options: ["afraid", "fearless", "lazy", "weak"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["He is more taller than me.", "He is taller than me.", "He is tallest than me.", "He taller than me."], correct_option: 1 },
+      { question_text: "Read and answer: “The glass fell from the table and broke.” What caused the glass to break?", options: ["It was old", "It fell from the table", "It was dirty", "It was heavy"], correct_option: 1 },
+      { question_text: "Choose the correct form. If she studies hard, she ___ pass the exam.", options: ["will", "would", "can", "did"], correct_option: 0 },
+      { question_text: "Identify the error. “The dogs barks loudly.”", options: ["dogs", "barks", "loudly", "the"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["There is many students in the hall.", "There are many students in the hall.", "There was many students.", "There be many students."], correct_option: 1 },
+      { question_text: "Choose the correct conjunction. He was hungry, ___ he ate an apple.", options: ["so", "but", "because", "although"], correct_option: 0 },
+      { question_text: "Identify the correct possessive form. This is the ___ playground. (belonging to children)", options: ["childrens", "children’s", "childrens’", "children"], correct_option: 1 },
+      { question_text: "Choose the correct indirect meaning. “The classroom was silent.”", options: ["Students were shouting", "No one was speaking", "It was empty", "It was small"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She can to drive.", "She can drive.", "She can drives.", "She can driving."], correct_option: 1 },
+      { question_text: "Choose the correct antonym of “generous.”", options: ["kind", "selfish", "helpful", "honest"], correct_option: 1 },
+      { question_text: "Read and answer: “The ice cream melted in the sun.” Why did it melt?", options: ["It was sweet", "It was cold", "The sun was hot", "It was tasty"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["Neither of the boys were present.", "Neither of the boys was present.", "Neither of the boys are present.", "Neither boys was present."], correct_option: 1 },
+      { question_text: "Choose the correct verb form. She enjoys ___ storybooks.", options: ["read", "reading", "reads", "to read"], correct_option: 1 },
+      { question_text: "Identify the correct question form.", options: ["Why you didn’t come?", "Why didn’t you come?", "Why you not come?", "Why didn’t came you?"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["He is the best player in the team.", "He is best player in the team.", "He is the more best player.", "He is bestest player."], correct_option: 0 },
+      { question_text: "Read and answer: “After finishing her homework, Sara went outside to play.” What did Sara do first?", options: ["Played outside", "Finished her homework", "Went to school", "Ate dinner"], correct_option: 1 },
+      { question_text: "Choose the correct form. The train ___ before we reached the station.", options: ["leaves", "left", "leaving", "leave"], correct_option: 1 },
+      { question_text: "Identify the sentence with correct tense consistency.", options: ["He was eating when I call him.", "He was eating when I called him.", "He eats when I called him.", "He eating when I called him."], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["This is the most tallest building.", "This is the tallest building.", "This is tallest building.", "This is more tallest building."], correct_option: 1 },
+      { question_text: "Read and answer: “Zain studied carefully and checked his answers twice. He made no mistakes.” What helped Zain avoid mistakes?", options: ["Luck", "Studying carefully and checking twice", "Easy questions", "Guessing"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng2HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 MATH EASY QUESTIONS ---
+  const math2EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 2' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math2EasyCount.count < 40) {
+    console.log("Seeding Grade 2 Easy Math questions...");
+    const math2EasyQuestions = [
+      { question_text: "What is the place value of 5 in 253?", options: ["5", "50", "500", "25"], correct_option: 1 },
+      { question_text: "Which number is the greatest?", options: ["145", "154", "451", "415"], correct_option: 2 },
+      { question_text: "342 is made of:", options: ["3 tens, 4 hundreds, 2 ones", "3 hundreds, 4 tens, 2 ones", "3 hundreds, 2 tens, 4 ones", "4 hundreds, 3 tens, 2 ones"], correct_option: 1 },
+      { question_text: "200 + 30 + 4 = ?", options: ["234", "243", "324", "204"], correct_option: 0 },
+      { question_text: "45 + 12 = ?", options: ["56", "57", "58", "67"], correct_option: 1 },
+      { question_text: "78 − 20 = ?", options: ["48", "58", "68", "38"], correct_option: 1 },
+      { question_text: "Which number comes just before 600?", options: ["601", "599", "590", "610"], correct_option: 1 },
+      { question_text: "What is 100 more than 245?", options: ["345", "255", "145", "445"], correct_option: 0 },
+      { question_text: "Arrange in ascending order: 78, 45, 92", options: ["92, 78, 45", "45, 78, 92", "78, 92, 45", "78, 45, 92"], correct_option: 1 },
+      { question_text: "Which number is even?", options: ["17", "29", "46", "35"], correct_option: 2 },
+      { question_text: "A triangle has how many sides?", options: ["3", "4", "5", "6"], correct_option: 0 },
+      { question_text: "Which shape has 4 equal sides?", options: ["Rectangle", "Circle", "Square", "Triangle"], correct_option: 2 },
+      { question_text: "50 + 25 = ?", options: ["65", "75", "85", "95"], correct_option: 1 },
+      { question_text: "90 − 40 = ?", options: ["60", "50", "40", "30"], correct_option: 1 },
+      { question_text: "What is half of 20?", options: ["5", "10", "15", "20"], correct_option: 1 },
+      { question_text: "If a clock shows 3:00, the hour hand points at:", options: ["12", "6", "3", "9"], correct_option: 2 },
+      { question_text: "How many tens are there in 80?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which is the smallest number?", options: ["309", "390", "903", "039"], correct_option: 3 },
+      { question_text: "If you have 5 rupees and your friend gives you 3 more, how many rupees do you have?", options: ["7", "8", "9", "6"], correct_option: 1 },
+      { question_text: "What is 300 − 100?", options: ["200", "100", "300", "400"], correct_option: 0 },
+      { question_text: "Which number comes after 799?", options: ["798", "800", "790", "801"], correct_option: 1 },
+      { question_text: "60 + 10 = ?", options: ["70", "80", "50", "60"], correct_option: 0 },
+      { question_text: "Which number is odd?", options: ["24", "36", "41", "52"], correct_option: 2 },
+      { question_text: "How many sides does a rectangle have?", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "100 + 200 = ?", options: ["100", "200", "300", "400"], correct_option: 2 },
+      { question_text: "A week has how many days?", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "What is 9 + 9?", options: ["16", "17", "18", "19"], correct_option: 2 },
+      { question_text: "Which number has 6 in the tens place?", options: ["64", "46", "16", "60"], correct_option: 0 },
+      { question_text: "80 − 30 = ?", options: ["40", "50", "60", "30"], correct_option: 1 },
+      { question_text: "How many corners does a square have?", options: ["2", "3", "4", "5"], correct_option: 2 },
+      { question_text: "If you add 1 to 999, what do you get?", options: ["1000", "999", "100", "1001"], correct_option: 0 },
+      { question_text: "Which is heavier?", options: ["Feather", "Stone", "Paper", "Leaf"], correct_option: 1 },
+      { question_text: "400 + 50 = ?", options: ["405", "450", "500", "455"], correct_option: 1 },
+      { question_text: "Which month comes after March?", options: ["May", "April", "June", "February"], correct_option: 1 },
+      { question_text: "What is the value of 7 in 172?", options: ["7", "70", "700", "17"], correct_option: 1 },
+      { question_text: "If you have 10 candies and eat 2, how many are left?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which number is between 150 and 160?", options: ["149", "165", "155", "170"], correct_option: 2 },
+      { question_text: "20 + 20 + 20 = ?", options: ["40", "50", "60", "80"], correct_option: 2 },
+      { question_text: "What is the total of 5 tens?", options: ["5", "50", "15", "500"], correct_option: 1 },
+      { question_text: "A rectangle has how many pairs of equal sides?", options: ["1", "2", "3", "4"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math2EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 MATH MEDIUM QUESTIONS ---
+  const math2MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 2' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math2MedCount.count < 40) {
+    console.log("Seeding Grade 2 Medium Math questions...");
+    const math2MedQuestions = [
+      { question_text: "58 + 27 = ?", options: ["75", "85", "95", "65"], correct_option: 1 },
+      { question_text: "73 − 48 = ?", options: ["25", "35", "45", "15"], correct_option: 0 },
+      { question_text: "What is 6 + 6 + 6 equal to?", options: ["12", "18", "24", "36"], correct_option: 1 },
+      { question_text: "There are 4 bags. Each bag has 5 apples. How many apples are there in total?", options: ["9", "15", "20", "25"], correct_option: 2 },
+      { question_text: "If 12 candies are shared equally among 3 children, how many does each child get?", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "Which number completes the pattern? 5, 10, 15, ___", options: ["18", "20", "25", "30"], correct_option: 1 },
+      { question_text: "What is half of 50?", options: ["20", "25", "30", "15"], correct_option: 1 },
+      { question_text: "A ribbon is 30 cm long. Another ribbon is 20 cm long. What is the total length?", options: ["40 cm", "45 cm", "50 cm", "60 cm"], correct_option: 2 },
+      { question_text: "Which is heavier?", options: ["1 kg of rice", "500 g of rice", "Both are equal", "1 kg of rice"], correct_option: 0 },
+      { question_text: "If it is half past 4, the time is:", options: ["4:15", "4:30", "5:30", "4:45"], correct_option: 1 },
+      { question_text: "What is 46 + 39?", options: ["75", "85", "95", "65"], correct_option: 1 },
+      { question_text: "92 − 37 = ?", options: ["45", "55", "65", "75"], correct_option: 1 },
+      { question_text: "There are 24 students in a class. 10 are girls. How many are boys?", options: ["12", "14", "16", "18"], correct_option: 1 },
+      { question_text: "Which fraction shows half?", options: ["1/4", "1/2", "2/4", "3/4"], correct_option: 1 },
+      { question_text: "How many minutes are there in one hour?", options: ["30", "45", "60", "100"], correct_option: 2 },
+      { question_text: "A book costs 35 rupees. You pay 50 rupees. How much change will you get?", options: ["10", "15", "20", "25"], correct_option: 1 },
+      { question_text: "Which number is 100 less than 456?", options: ["356", "446", "556", "366"], correct_option: 0 },
+      { question_text: "What is the total of 7 groups of 2?", options: ["9", "12", "14", "16"], correct_option: 2 },
+      { question_text: "Which comes next in the pattern? 100, 200, 300, ___", options: ["350", "400", "500", "600"], correct_option: 1 },
+      { question_text: "A farmer has 5 cows. Each cow has 4 legs. How many legs are there in total?", options: ["9", "10", "20", "25"], correct_option: 2 },
+      { question_text: "84 − 29 = ?", options: ["55", "65", "45", "35"], correct_option: 0 },
+      { question_text: "If today is Monday, what day will it be after 3 days?", options: ["Wednesday", "Thursday", "Friday", "Tuesday"], correct_option: 1 },
+      { question_text: "Which unit is used to measure weight?", options: ["meter", "liter", "kilogram", "minute"], correct_option: 2 },
+      { question_text: "What is 9 × 2?", options: ["16", "18", "20", "12"], correct_option: 1 },
+      { question_text: "A glass holds 1 liter of water. How many liters are in 3 glasses?", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "Which is the smallest fraction?", options: ["1/2", "1/4", "3/4", "2/4"], correct_option: 1 },
+      { question_text: "Find the missing number: 45, ___, 65", options: ["50", "55", "60", "70"], correct_option: 1 },
+      { question_text: "If you buy 2 pencils for 10 rupees each, how much do you pay?", options: ["10", "15", "20", "25"], correct_option: 2 },
+      { question_text: "A rope is 80 cm long. 30 cm is cut off. How long is the rope now?", options: ["40 cm", "50 cm", "60 cm", "70 cm"], correct_option: 1 },
+      { question_text: "How many quarters make one whole?", options: ["2", "3", "4", "5"], correct_option: 2 },
+      { question_text: "What is double of 13?", options: ["24", "25", "26", "28"], correct_option: 2 },
+      { question_text: "If one notebook costs 25 rupees, how much do 4 notebooks cost?", options: ["75", "80", "90", "100"], correct_option: 3 },
+      { question_text: "Which number is divisible by 2?", options: ["35", "47", "58", "63"], correct_option: 2 },
+      { question_text: "The time is 6:30. What is this called?", options: ["Half past six", "Quarter past six", "Six o’clock", "Quarter to six"], correct_option: 0 },
+      { question_text: "A jug contains 5 liters of water. 2 liters are used. How much water is left?", options: ["2 liters", "3 liters", "4 liters", "5 liters"], correct_option: 1 },
+      { question_text: "Which shape has 6 sides?", options: ["Pentagon", "Hexagon", "Triangle", "Square"], correct_option: 1 },
+      { question_text: "What is 125 + 75?", options: ["180", "190", "200", "210"], correct_option: 2 },
+      { question_text: "Find the missing number: 9 × ___ = 27", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "Which is greater?", options: ["3/4", "1/2", "Both are equal", "1/4"], correct_option: 0 },
+      { question_text: "A bus carries 40 passengers. 15 get off. How many remain?", options: ["20", "25", "30", "35"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math2MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 MATH HARD QUESTIONS ---
+  const math2HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 2' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math2HardCount.count < 40) {
+    console.log("Seeding Grade 2 Hard Math questions...");
+    const math2HardQuestions = [
+      { question_text: "468 + 257 = ?", options: ["615", "725", "715", "735"], correct_option: 1 },
+      { question_text: "700 − 358 = ?", options: ["342", "352", "442", "452"], correct_option: 0 },
+      { question_text: "A shopkeeper had 250 apples. He sold 125. How many apples are left?", options: ["115", "125", "135", "150"], correct_option: 1 },
+      { question_text: "There are 8 boxes. Each box has 6 pencils. How many pencils are there in total?", options: ["42", "46", "48", "56"], correct_option: 2 },
+      { question_text: "48 ÷ 6 = ?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "If a train leaves at 2:00 pm and reaches at 5:00 pm, how long is the journey?", options: ["2 hours", "3 hours", "4 hours", "5 hours"], correct_option: 1 },
+      { question_text: "Which fraction is greater?", options: ["1/2", "3/4", "1/4", "2/4"], correct_option: 1 },
+      { question_text: "A book costs 75 rupees. You buy 3 books. How much do you pay?", options: ["200", "210", "225", "250"], correct_option: 2 },
+      { question_text: "Find the missing number: 125, 130, 135, ___", options: ["138", "140", "145", "150"], correct_option: 1 },
+      { question_text: "What is the perimeter of a square with each side 4 cm?", options: ["12 cm", "14 cm", "16 cm", "18 cm"], correct_option: 2 },
+      { question_text: "A farmer has 45 hens. 18 hens are sold. How many remain?", options: ["27", "28", "29", "30"], correct_option: 0 },
+      { question_text: "Which number is divisible by both 2 and 5?", options: ["25", "40", "35", "45"], correct_option: 1 },
+      { question_text: "What is double of 47?", options: ["84", "94", "87", "96"], correct_option: 1 },
+      { question_text: "A jug holds 2 liters. How many liters do 5 jugs hold?", options: ["7", "8", "10", "12"], correct_option: 2 },
+      { question_text: "A class has 32 students. They are arranged in 4 equal rows. How many students are in each row?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "What is 999 − 499?", options: ["400", "500", "450", "550"], correct_option: 1 },
+      { question_text: "If today is Friday, what day will it be after 5 days?", options: ["Tuesday", "Wednesday", "Thursday", "Monday"], correct_option: 1 },
+      { question_text: "Which fraction is smallest?", options: ["3/4", "2/3", "1/4", "1/2"], correct_option: 2 },
+      { question_text: "A ribbon is 120 cm long. It is cut into 3 equal pieces. How long is each piece?", options: ["30 cm", "35 cm", "40 cm", "50 cm"], correct_option: 2 },
+      { question_text: "There are 5 buses. Each bus carries 45 students. How many students are there in total?", options: ["200", "215", "225", "250"], correct_option: 2 },
+      { question_text: "Which number completes the pattern? 2, 6, 12, 20, ___", options: ["28", "30", "32", "36"], correct_option: 1 },
+      { question_text: "If one pencil costs 12 rupees, how many can you buy with 60 rupees?", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "A clock shows 3:45. What time is it?", options: ["Quarter past three", "Quarter to four", "Half past three", "Four o’clock"], correct_option: 1 },
+      { question_text: "What is the area of a rectangle with length 5 cm and width 3 cm?", options: ["8 cm²", "10 cm²", "15 cm²", "20 cm²"], correct_option: 2 },
+      { question_text: "600 + 375 = ?", options: ["965", "975", "985", "995"], correct_option: 1 },
+      { question_text: "800 − 276 = ?", options: ["514", "524", "534", "544"], correct_option: 1 },
+      { question_text: "If a cake is cut into 8 equal slices and you eat 3, what fraction is eaten?", options: ["3/4", "3/8", "5/8", "1/2"], correct_option: 1 },
+      { question_text: "A car travels 60 km in one hour. How far will it travel in 3 hours?", options: ["120 km", "150 km", "180 km", "200 km"], correct_option: 2 },
+      { question_text: "Which is the greatest number?", options: ["789", "798", "879", "897"], correct_option: 2 },
+      { question_text: "What is triple of 14?", options: ["28", "32", "42", "44"], correct_option: 2 },
+      { question_text: "If 5 children share 25 candies equally, how many candies does each get?", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "A water tank holds 500 liters. 125 liters are used. How much water remains?", options: ["365", "375", "385", "395"], correct_option: 1 },
+      { question_text: "Find the missing number: 9, 18, 27, ___", options: ["35", "36", "37", "38"], correct_option: 1 },
+      { question_text: "If one side of a rectangle is 8 cm and the other is 6 cm, what is its perimeter?", options: ["24 cm", "26 cm", "28 cm", "30 cm"], correct_option: 2 },
+      { question_text: "What is 456 + 289?", options: ["735", "745", "755", "765"], correct_option: 1 },
+      { question_text: "A box contains 9 rows of 5 chocolates. How many chocolates are there?", options: ["40", "45", "50", "55"], correct_option: 1 },
+      { question_text: "If a movie starts at 4:15 pm and ends at 6:15 pm, how long is the movie?", options: ["1 hour", "2 hours", "3 hours", "4 hours"], correct_option: 1 },
+      { question_text: "Which number is 250 more than 450?", options: ["650", "700", "750", "600"], correct_option: 1 },
+      { question_text: "Which fraction equals 1 whole?", options: ["2/2", "1/2", "3/4", "1/4"], correct_option: 0 },
+      { question_text: "A farmer has 3 fields. Each field has 120 trees. How many trees are there in total?", options: ["320", "340", "360", "380"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math2HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 URDU EASY QUESTIONS ---
+  const urdu2EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 2' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu2EasyCount.count < 40) {
+    console.log("Seeding Grade 2 Easy Urdu questions...");
+    const urdu2EasyQuestions = [
+      { question_text: "درست جمع منتخب کریں: کتاب", options: ["کتابیں", "کتابان", "کتابی", "کتابہ"], correct_option: 0 },
+      { question_text: "درست واحد منتخب کریں: لڑکے", options: ["لڑکیاں", "لڑکا", "لڑکوں", "لڑکی"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: اونچا — ؟", options: ["لمبا", "نیچا", "بڑا", "تیز"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ اسکول جاتا ہے۔", "وہ اسکول جاتی ہے۔", "وہ اسکول جاتے ہے۔", "وہ اسکول جانا ہے۔"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: میں ___ کھانا کھاتا ہوں۔", options: ["روز", "درخت", "کتاب", "پانی"], correct_option: 0 },
+      { question_text: "\"گائے گھاس کھاتی ہے۔\" اس جملے میں فعل کون سا ہے؟", options: ["گائے", "گھاس", "کھاتی ہے", "ہے"], correct_option: 2 },
+      { question_text: "درست جنس منتخب کریں: استاد", options: ["استانی", "استادہ", "استادی", "استادات"], correct_option: 0 },
+      { question_text: "\"سورج نکل آیا۔\" یہ جملہ کس وقت کا ہے؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["اسکول", "اسکولل", "اسکل", "اسکولہ"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: سفید — ؟", options: ["کالا", "نیلا", "سبز", "لال"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: وہ اپنی امی کے ساتھ بازار ___۔", options: ["گیا", "گئی", "گئے", "جاتی"], correct_option: 0 },
+      { question_text: "\"بچے کھیل رہے ہیں۔\" اس جملے میں اسم کون سا ہے؟", options: ["کھیل", "بچے", "رہے", "ہیں"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: درخت", options: ["درختان", "درختے", "درخت", "درختوں"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["میں پانی پیتا ہوں۔", "میں پانی پیتے ہوں۔", "میں پانی پیتی ہوں۔", "میں پانی پیا ہوں۔"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: گرم — ؟", options: ["ٹھنڈا", "نرم", "سخت", "تیز"], correct_option: 0 },
+      { question_text: "الفاظ کو درست ترتیب دیں: کھانا / ہم / کھاتے / ہیں", options: ["ہم کھانا کھاتے ہیں۔", "کھاتے ہم کھانا ہیں۔", "کھانا ہم ہیں کھاتے۔", "ہم ہیں کھاتے کھانا۔"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: یہ ___ کتاب ہے۔ (میری)", options: ["میرا", "میری", "میرے", "میروں"], correct_option: 1 },
+      { question_text: "\"بلال دوڑ رہا ہے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال", "ماضی", "مستقبل", "سوالیہ"], correct_option: 0 },
+      { question_text: "درست واحد منتخب کریں: کتابیں", options: ["کتاب", "کتابوں", "کتابی", "کتابان"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: تیز — ؟", options: ["سست", "لمبا", "اونچا", "بڑا"], correct_option: 0 },
+      { question_text: "\"چڑیا اڑ رہی ہے۔\" اس جملے میں کیا کام ہو رہا ہے؟", options: ["بیٹھنا", "اڑنا", "کھیلنا", "سونا"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["محنت", "مہنت", "محنتت", "مہنٹ"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: ہم سب ایک دوسرے کی ___ کرتے ہیں۔", options: ["مدد", "کتاب", "آواز", "کھیل"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کہانی سناتی ہے۔", "وہ کہانی سناتے ہے۔", "وہ کہانی سناتا ہے۔", "وہ کہانی سنانا ہے۔"], correct_option: 0 },
+      { question_text: "\"درخت سبز ہے۔\" اس جملے میں صفت کون سی ہے؟", options: ["درخت", "سبز", "ہے", "سبزہ"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: بچہ", options: ["بچوں", "بچے", "بچیاں", "بچہان"], correct_option: 1 },
+      { question_text: "خالی جگہ پُر کریں: وہ کل اسکول ___ گا۔", options: ["جائے", "جائے گا", "گیا", "جاتی"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: دن — ؟", options: ["صبح", "رات", "دوپہر", "شام"], correct_option: 1 },
+      { question_text: "\"امی کھانا بنا رہی ہیں۔\" اس جملے میں کون سا کام ہو رہا ہے؟", options: ["کھیلنا", "پڑھنا", "بنانا", "سونا"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کتاب پڑھ رہے ہیں۔", "بچے کتاب پڑھ رہا ہے۔", "بچے کتاب پڑھتی ہیں۔", "بچے کتاب پڑھتا ہے۔"], correct_option: 0 },
+      { question_text: "درست جنس منتخب کریں: لڑکا", options: ["لڑکی", "لڑکیاں", "لڑکے", "لڑکوں"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: میں اسکول ___ جاتا ہوں۔", options: ["روز", "کتاب", "درخت", "قلم"], correct_option: 0 },
+      { question_text: "\"پھول خوشبودار ہے۔\" اس جملے میں خوشبودار کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: بڑا — ؟", options: ["چھوٹا", "لمبا", "اونچا", "موٹا"], correct_option: 0 },
+      { question_text: "درست واحد منتخب کریں: دروازے", options: ["دروازہ", "دروازوں", "دروازان", "دروازہی"], correct_option: 0 },
+      { question_text: "\"ہم پارک گئے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال", "ماضی", "مستقبل", "سوالیہ"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["علی کتاب پڑھتا ہے۔", "علی کتاب پڑھتے ہے۔", "علی کتاب پڑھتی ہے۔", "علی کتاب پڑھا ہے۔"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: یہ پھول بہت ___ ہے۔", options: ["خوبصورت", "دوڑتا", "کھیلتا", "سوتا"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["دوست", "دوسٹ", "دووست", "دو ست"], correct_option: 0 },
+      { question_text: "\"صبح سورج نکلا۔\" یہ کب ہوا؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu2EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 URDU MEDIUM QUESTIONS ---
+  const urdu2MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 2' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu2MedCount.count < 40) {
+    console.log("Seeding Grade 2 Medium Urdu questions...");
+    const urdu2MedQuestions = [
+      { question_text: "علی روز صبح جلدی اٹھتا ہے۔ وہ نماز پڑھتا ہے اور پھر اسکول جاتا ہے۔ اسکول میں وہ محنت سے پڑھائی کرتا ہے۔ علی کب اٹھتا ہے؟", options: ["دوپہر", "رات", "صبح", "شام"], correct_option: 2 },
+      { question_text: "علی اسکول میں کیا کرتا ہے؟", options: ["سوتا ہے", "کھیلتا ہے", "محنت سے پڑھائی کرتا ہے", "گھر جاتا ہے"], correct_option: 2 },
+      { question_text: "\"جلدی\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "حال بیان کرنے والا لفظ", "ضمیر"], correct_option: 2 },
+      { question_text: "پیراگراف کا مرکزی خیال کیا ہے؟", options: ["کھیل کود", "علی کی اچھی عادتیں", "اسکول کی عمارت", "نماز کا طریقہ"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["لڑکیاں کھیل رہا ہے۔", "لڑکیاں کھیل رہی ہیں۔", "لڑکیاں کھیلتے ہیں۔", "لڑکیاں کھیل رہا ہوں۔"], correct_option: 1 },
+      { question_text: "خالی جگہ پُر کریں: بچے شور ___ رہے ہیں۔", options: ["کر", "کیا", "کریں", "کرے"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: آگے — ؟", options: ["پیچھے", "اوپر", "نیچے", "باہر"], correct_option: 0 },
+      { question_text: "\"وہ کتاب پڑھ رہی ہے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال جاری", "ماضی", "مستقبل", "حکم"], correct_option: 0 },
+      { question_text: "درست جمع منتخب کریں: استاد", options: ["استادات", "استادوں", "اساتذہ", "استادان"], correct_option: 2 },
+      { question_text: "خالی جگہ پُر کریں: میں نے پانی ___۔", options: ["پیا", "پیتا", "پیتے", "پیوں"], correct_option: 0 },
+      { question_text: "\"امی نے کھانا پکایا۔\" اس جملے میں فاعل کون ہے؟", options: ["کھانا", "پکایا", "امی", "نے"], correct_option: 2 },
+      { question_text: "درست ترتیب منتخب کریں: اسکول / جاتا / علی / ہے", options: ["علی جاتا اسکول ہے", "علی اسکول جاتا ہے", "جاتا علی اسکول ہے", "اسکول علی ہے جاتا"], correct_option: 1 },
+      { question_text: "درست ضمیر منتخب کریں: عائشہ میری بہن ہے۔ ___ بہت پیاری ہے۔", options: ["وہ", "وہی", "ہم", "یہ"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: مشکل — ؟", options: ["آسان", "بڑا", "لمبا", "سخت"], correct_option: 0 },
+      { question_text: "\"بچے پارک میں کھیل رہے ہیں۔\" کہاں کھیل رہے ہیں؟", options: ["گھر", "بازار", "پارک میں", "اسکول"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں۔", options: ["تعلیم", "تعیلم", "تیلیم", "تعلیمم"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: ہم سب مل کر درخت ___ گے۔", options: ["لگائیں", "لگایا", "لگاتے", "لگاتی"], correct_option: 0 },
+      { question_text: "درست واحد منتخب کریں: اساتذہ", options: ["استاد", "استانی", "استادوں", "استادان"], correct_option: 0 },
+      { question_text: "\"بارش ہو رہی ہے۔\" یہ کس موسم کی نشاندہی کرتا ہے؟", options: ["گرمی", "سردی", "برسات", "بہار"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["میں نے کتاب پڑھی۔", "میں نے کتاب پڑھتا۔", "میں کتاب پڑھا۔", "میں کتاب پڑھی ہے گا۔"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: وہ کل ہمیں ملنے ___ گا۔", options: ["آئے", "آیا", "آئے گا", "آتا"], correct_option: 2 },
+      { question_text: "درست متضاد منتخب کریں: اندر — ؟", options: ["باہر", "اوپر", "نیچے", "قریب"], correct_option: 0 },
+      { question_text: "\"ہم سب خوش ہیں۔\" اس جملے میں \"خوش\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "درست جمع منتخب کریں: پھول", options: ["پھولان", "پھولے", "پھول", "پھولوں"], correct_option: 2 },
+      { question_text: "خالی جگہ پُر کریں: وہ بہت ___ لڑکا ہے۔", options: ["نیک", "دوڑ", "کھیل", "کھاتا"], correct_option: 0 },
+      { question_text: "\"ہم نے میچ جیتا۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال", "مستقبل", "ماضی", "جاری"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے سبق پڑھ رہے ہیں۔", "بچے سبق پڑھ رہا ہے۔", "بچے سبق پڑھتی ہیں۔", "بچے سبق پڑھا۔"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: میں نے دوست کو خط ___۔", options: ["لکھا", "لکھتے", "لکھتی", "لکھوں"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: صاف — ؟", options: ["گندا", "سفید", "خوبصورت", "ہلکا"], correct_option: 0 },
+      { question_text: "\"لڑکی ہنس رہی ہے۔\" کون ہنس رہا ہے؟", options: ["لڑکا", "لڑکی", "بچے", "استاد"], correct_option: 1 },
+      { question_text: "درست واحد منتخب کریں: کتابیں", options: ["کتاب", "کتابوں", "کتابی", "کتابان"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: ہم سب مل کر ملک کی ___ کریں گے۔", options: ["خدمت", "کھیل", "کتاب", "آواز"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["خوشبو", "خشبو", "خوشبوں", "خوشبوو"], correct_option: 0 },
+      { question_text: "\"وہ تیز دوڑتا ہے۔\" یہاں \"تیز\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم نے سبق یاد کیا۔", "ہم سبق یاد کیا۔", "ہم نے سبق یاد کرتے۔", "ہم سبق یاد کریں۔"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: وہ پانی ___ رہا ہے۔", options: ["پی", "پیا", "پیتے", "پیوں"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: نیا — ؟", options: ["پرانا", "بڑا", "لمبا", "اونچا"], correct_option: 0 },
+      { question_text: "\"ہم پارک جائیں گے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال", "ماضی", "مستقبل", "جاری"], correct_option: 2 },
+      { question_text: "درست ضمیر منتخب کریں: یہ کتاب علی کی ہے۔ یہ ___ کتاب ہے۔", options: ["اس کی", "میری", "ہماری", "تمہاری"], correct_option: 0 },
+      { question_text: "پیراگراف کا مرکزی خیال پہچاننے کا مطلب کیا ہے؟", options: ["ہر لفظ یاد کرنا", "اہم بات سمجھنا", "مشکل الفاظ ڈھونڈنا", "جملہ لکھنا"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu2MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 2 URDU HARD QUESTIONS ---
+  const urdu2HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 2' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu2HardCount.count < 40) {
+    console.log("Seeding Grade 2 Hard Urdu questions...");
+    const urdu2HardQuestions = [
+      { question_text: "احمد ایک محنتی طالب علم ہے۔ وہ روزانہ وقت پر اسکول جاتا ہے۔ وہ اپنے اساتذہ کا احترام کرتا ہے اور سبق غور سے سنتا ہے۔ اسی وجہ سے وہ کلاس میں اچھے نمبر حاصل کرتا ہے۔ احمد کو اچھے نمبر کیوں ملتے ہیں؟", options: ["وہ زیادہ کھیلتا ہے", "وہ محنت کرتا اور غور سے سنتا ہے", "وہ اسکول نہیں جاتا", "وہ شور کرتا ہے"], correct_option: 1 },
+      { question_text: "پیراگراف کا مرکزی خیال کیا ہے؟", options: ["اسکول کی عمارت", "اچھے استاد", "محنت کی اہمیت", "کھیل کود"], correct_option: 2 },
+      { question_text: "\"احترام کرتا ہے\" میں \"احترام\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 1 },
+      { question_text: "اگر احمد سبق نہ سنے تو کیا ہو سکتا ہے؟", options: ["اسے زیادہ نمبر ملیں گے", "اسے کم نمبر مل سکتے ہیں", "وہ چھٹی کرے گا", "وہ استاد بن جائے گا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کتاب پڑھ رہا ہے۔", "بچے کتاب پڑھ رہے ہیں۔", "بچے کتاب پڑھتی ہے۔", "بچے کتاب پڑھتا ہوں۔"], correct_option: 1 },
+      { question_text: "جملے کی غلطی درست کریں: \"وہ کل اسکول جاتا ہے۔\"", options: ["وہ کل اسکول گیا تھا۔", "وہ کل اسکول جائے گا۔", "وہ کل اسکول جاتا تھا ہے۔", "وہ کل اسکول جاتے ہے۔"], correct_option: 1 },
+      { question_text: "\"ہم نے درخت لگائے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["حال", "ماضی", "مستقبل", "جاری"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: کامیابی — ؟", options: ["خوشی", "ناکامی", "تعلیم", "محنت"], correct_option: 1 },
+      { question_text: "\"وہ تیزی سے دوڑ رہا ہے۔\" یہاں \"تیزی سے\" کیا ظاہر کرتا ہے؟", options: ["جگہ", "وقت", "انداز", "تعداد"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["لڑکیاں اسکول جا رہی ہیں۔", "لڑکیاں اسکول جا رہا ہے۔", "لڑکیاں اسکول جاتا ہیں۔", "لڑکیاں اسکول گئے ہے گے۔"], correct_option: 0 },
+      { question_text: "\"میں کل بازار جاؤں گا۔\" یہ کس زمانے کی مثال ہے؟", options: ["حال", "ماضی", "مستقبل", "جاری"], correct_option: 2 },
+      { question_text: "جملے کی غلطی درست کریں: \"ہم سب خوش ہے۔\"", options: ["ہم سب خوش ہیں۔", "ہم سب خوش ہوں۔", "ہم سب خوش تھا۔", "ہم سب خوش ہوں گے۔"], correct_option: 0 },
+      { question_text: "\"بارش ہونے لگی۔\" یہ جملہ کیا ظاہر کرتا ہے؟", options: ["کھیل", "موسم میں تبدیلی", "سبق", "سفر"], correct_option: 1 },
+      { question_text: "درست واحد منتخب کریں: پرندے", options: ["پرندہ", "پرندوں", "پرندان", "پرندیاں"], correct_option: 0 },
+      { question_text: "\"استاد سبق سمجھا رہے ہیں۔\" اس جملے میں فاعل کون ہے؟", options: ["سبق", "استاد", "سمجھا", "رہے"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["علی نے کتاب پڑھی۔", "علی کتاب پڑھی۔", "علی نے کتاب پڑھتے۔", "علی کتاب پڑھ رہا تھا ہے"], correct_option: 0 },
+      { question_text: "\"ہم صفائی کرتے ہیں۔\" یہ جملہ کیا ظاہر کرتا ہے؟", options: ["عادت", "ماضی", "مستقبل", "سوال"], correct_option: 0 },
+      { question_text: "درست متضاد منتخب کریں: روشنی — ؟", options: ["اندھیرا", "چراغ", "سورج", "بجلی"], correct_option: 0 },
+      { question_text: "خالی جگہ پُر کریں: اگر تم محنت کرو گے تو کامیاب ___ گے۔", options: ["ہو", "ہو جاؤ", "تھا", "ہیں"], correct_option: 1 },
+      { question_text: "\"بچہ رو رہا تھا۔\" یہ کس زمانے کی مثال ہے؟", options: ["حال", "ماضی جاری", "مستقبل", "حکم"], correct_option: 1 },
+      { question_text: "درست ترتیب منتخب کریں: رہی / ہے / وہ / ہنس", options: ["وہ ہنس رہی ہے۔", "رہی وہ ہنس ہے۔", "ہنس وہ ہے رہی۔", "ہے رہی وہ ہنس۔"], correct_option: 0 },
+      { question_text: "جملے کی غلطی درست کریں: \"وہ کتاب پڑھتی ہے گا۔\"", options: ["وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتی گا", "وہ کتاب پڑھتے ہے گا", "وہ کتاب پڑھتی ہوں"], correct_option: 0 },
+      { question_text: "\"پرندے آسمان میں اڑتے ہیں۔\" کہاں اڑتے ہیں؟", options: ["زمین پر", "درخت پر", "آسمان میں", "گھر میں"], correct_option: 2 },
+      { question_text: "درست جمع منتخب کریں: بچی", options: ["بچیاں", "بچیون", "بچیان", "بچیوں"], correct_option: 0 },
+      { question_text: "\"ہم نے میچ جیت لیا۔\" یہ جملہ کیا ظاہر کرتا ہے؟", options: ["جاری عمل", "مکمل عمل", "مستقبل", "سوال"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: قریب — ؟", options: ["دور", "پاس", "ساتھ", "اندر"], correct_option: 0 },
+      { question_text: "\"وہ آہستہ بولتا ہے۔\" یہاں \"آہستہ\" کیا بتا رہا ہے؟", options: ["جگہ", "انداز", "وقت", "تعداد"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم نے سبق یاد کیا ہے۔", "ہم سبق یاد کیا ہے۔", "ہم نے سبق یاد کرتے ہے۔", "ہم سبق یاد کیا گا"], correct_option: 0 },
+      { question_text: "\"درخت سے پھل گرا۔\" یہ جملہ کیا ظاہر کرتا ہے؟", options: ["سوال", "ماضی کا واقعہ", "مستقبل", "عادت"], correct_option: 1 },
+      { question_text: "درست ضمیر منتخب کریں: علی اور احمد دوست ہیں۔ ___ ساتھ کھیلتے ہیں۔", options: ["وہ", "وہی", "یہ", "تم"], correct_option: 0 },
+      { question_text: "\"ہم پارک جائیں گے۔\" اگر وقت بدل کر ماضی کریں تو درست جملہ کیا ہوگا؟", options: ["ہم پارک گئے۔", "ہم پارک جاتے ہیں۔", "ہم پارک جا رہے ہیں۔", "ہم پارک جاتا"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ذمہ داری", "زمداری", "ذمہداری", "زمہ داری"], correct_option: 0 },
+      { question_text: "\"وہ پانی پی چکا ہے۔\" یہ جملہ کیا ظاہر کرتا ہے؟", options: ["عمل جاری ہے", "عمل مکمل ہو چکا ہے", "مستقبل", "سوال"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["استاد ہمیں پڑھا رہے ہیں۔", "استاد ہمیں پڑھا رہا ہے۔", "استاد ہمیں پڑھاتے ہے۔", "استاد ہمیں پڑھا"], correct_option: 0 },
+      { question_text: "\"بچے شور نہ کریں۔\" یہ جملہ کیا ہے؟", options: ["سوال", "حکم", "ماضی", "خبر"], correct_option: 1 },
+      { question_text: "درست متضاد منتخب کریں: سچا — ؟", options: ["جھوٹا", "اچھا", "صاف", "نرم"], correct_option: 0 },
+      { question_text: "\"ہم سب ایک ہیں۔\" یہ جملہ کیا سکھاتا ہے؟", options: ["لڑائی", "اتحاد", "کھیل", "سفر"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: کہانی", options: ["کہانیاں", "کہانیوں", "کہانین", "کہانیا"], correct_option: 0 },
+      { question_text: "\"وہ کل آیا تھا۔\" یہ کس زمانے کی مثال ہے؟", options: ["حال", "مستقبل", "ماضی", "جاری"], correct_option: 2 },
+      { question_text: "پیراگراف سے نتیجہ اخذ کرنا کیا ہوتا ہے؟", options: ["الفاظ یاد کرنا", "اہم بات سمجھ کر نتیجہ نکالنا", "مشکل لفظ ڈھونڈنا", "صرف پڑھنا"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu2HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 2'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 2', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 ENGLISH EASY QUESTIONS ---
+  const eng3EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 3' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng3EasyCount.count < 40) {
+    console.log("Seeding Grade 3 Easy English questions...");
+    const eng3EasyQuestions = [
+      { question_text: "Read the passage and answer: Sara wakes up early in the morning. She brushes her teeth and gets ready for school. She likes to read books in her free time. When does Sara wake up?", options: ["At night", "In the morning", "In the evening", "At noon"], correct_option: 1 },
+      { question_text: "What does Sara like to do?", options: ["Play cricket", "Watch TV", "Read books", "Sleep"], correct_option: 2 },
+      { question_text: "What does Sara do before going to school?", options: ["Watches TV", "Brushes her teeth", "Sleeps again", "Plays outside"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “leaf.”", options: ["leafs", "leaves", "leafes", "leavs"], correct_option: 1 },
+      { question_text: "Identify the noun in the sentence: “The boy kicked the ball.”", options: ["kicked", "boy", "the", "ball"], correct_option: 1 },
+      { question_text: "Choose the correct verb. Birds ___ in the sky.", options: ["swim", "fly", "crawl", "jump"], correct_option: 1 },
+      { question_text: "Choose the correct pronoun. Ali is my friend. ___ is kind.", options: ["She", "He", "They", "It"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She go to school.", "She goes to school.", "She going school.", "She gone school."], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “strong.”", options: ["weak", "tall", "big", "fast"], correct_option: 0 },
+      { question_text: "Fill in the blank: I have ___ umbrella.", options: ["a", "an", "the", "two"], correct_option: 1 },
+      { question_text: "Identify the adjective in the sentence: “She has a blue dress.”", options: ["dress", "blue", "has", "she"], correct_option: 1 },
+      { question_text: "Choose the correct past tense of “go.”", options: ["gone", "went", "going", "goes"], correct_option: 1 },
+      { question_text: "Fill in the blank: They ___ playing football.", options: ["is", "are", "am", "be"], correct_option: 1 },
+      { question_text: "Choose the correct preposition. The cat is ___ the table.", options: ["in", "on", "to", "from"], correct_option: 1 },
+      { question_text: "Identify the verb in the sentence: “The baby cries loudly.”", options: ["baby", "loudly", "cries", "the"], correct_option: 2 },
+      { question_text: "Choose the correct plural form of “child.”", options: ["childs", "children", "childrens", "childes"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["They was happy.", "They were happy.", "They is happy.", "They be happy."], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “clean.”", options: ["dirty", "neat", "soft", "bright"], correct_option: 0 },
+      { question_text: "Fill in the blank: She ___ her homework yesterday.", options: ["do", "did", "does", "doing"], correct_option: 1 },
+      { question_text: "Identify the pronoun in the sentence: “Ahmed said he will come.”", options: ["Ahmed", "said", "he", "come"], correct_option: 2 },
+      { question_text: "Choose the correct question word. ___ is your teacher?", options: ["Who", "What", "Where", "When"], correct_option: 0 },
+      { question_text: "Choose the correct future tense sentence.", options: ["I went to school.", "I go to school.", "I will go to school.", "I going to school."], correct_option: 2 },
+      { question_text: "Choose the correct synonym of “happy.”", options: ["sad", "glad", "angry", "tired"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The dogs is barking.", "The dogs are barking.", "The dogs am barking.", "The dogs barking."], correct_option: 1 },
+      { question_text: "Identify the noun. “The teacher writes on the board.”", options: ["writes", "teacher", "on", "the"], correct_option: 1 },
+      { question_text: "Choose the correct article. He is ___ honest boy.", options: ["a", "an", "the", "two"], correct_option: 1 },
+      { question_text: "Fill in the blank: There are ___ apples in the basket.", options: ["much", "many", "is", "am"], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “early.”", options: ["late", "fast", "soon", "first"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She no like milk."], correct_option: 1 },
+      { question_text: "Identify the adjective. “The tall building is new.”", options: ["building", "tall", "is", "the"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “city.”", options: ["citys", "cities", "cityes", "citis"], correct_option: 1 },
+      { question_text: "Fill in the blank: I am ___ a story.", options: ["read", "reading", "reads", "readed"], correct_option: 1 },
+      { question_text: "Choose the correct preposition. The ball is ___ the box.", options: ["under", "at", "from", "of"], correct_option: 0 },
+      { question_text: "Identify the verb. “Fatima sings beautifully.”", options: ["Fatima", "sings", "beautifully", "the"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["We has finished work.", "We have finished work.", "We having finished work.", "We hading work."], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “heavy.”", options: ["light", "strong", "thick", "wide"], correct_option: 0 },
+      { question_text: "Fill in the blank: He is good ___ Math.", options: ["in", "at", "on", "to"], correct_option: 1 },
+      { question_text: "Identify the past tense verb. “She played in the park.”", options: ["she", "played", "park", "in"], correct_option: 1 },
+      { question_text: "Choose the correct pronoun. This is my bag. It is ___.", options: ["mine", "my", "me", "I"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["The sun rise in the east.", "The sun rises in the east.", "The sun rising in east.", "The sun rose in east."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng3EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 ENGLISH MEDIUM QUESTIONS ---
+  const eng3MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 3' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng3MedCount.count < 40) {
+    console.log("Seeding Grade 3 Medium English questions...");
+    const eng3MedQuestions = [
+      { question_text: "Read the passage and answer: Bilal loves planting trees. Every Sunday, he waters the plants in his garden. He believes trees make the air clean and fresh. His neighbors also help him sometimes. Why does Bilal like planting trees?", options: ["To sell them", "To make the air clean and fresh", "To cut them", "To play under them"], correct_option: 1 },
+      { question_text: "When does Bilal water the plants?", options: ["Every day", "Every Sunday", "Once a year", "At night"], correct_option: 1 },
+      { question_text: "Who helps Bilal sometimes?", options: ["His teacher", "His friends", "His neighbors", "His parents"], correct_option: 2 },
+      { question_text: "What can we learn from Bilal?", options: ["We should cut trees", "We should care for plants", "We should ignore nature", "We should play all day"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She don’t like apples.", "She doesn’t like apples.", "She not like apples.", "She didn’t likes apples."], correct_option: 1 },
+      { question_text: "Identify the adjective in the sentence: “The bright sun shines.”", options: ["shines", "sun", "bright", "the"], correct_option: 2 },
+      { question_text: "Choose the correct past tense of “take.”", options: ["taked", "took", "taken", "takes"], correct_option: 1 },
+      { question_text: "Fill in the blank: The boys ___ playing in the ground.", options: ["is", "are", "was", "am"], correct_option: 1 },
+      { question_text: "Choose the correct meaning of “brave.”", options: ["scared", "afraid", "courageous", "weak"], correct_option: 2 },
+      { question_text: "Choose the correct future sentence.", options: ["I went home.", "I will go home.", "I go home.", "I going home."], correct_option: 1 },
+      { question_text: "Identify the pronoun. “Ali said he will come tomorrow.”", options: ["Ali", "said", "he", "tomorrow"], correct_option: 2 },
+      { question_text: "Choose the correct preposition. She is afraid ___ dogs.", options: ["from", "of", "at", "in"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “woman.”", options: ["womans", "women", "womanses", "womany"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The teacher explain the lesson.", "The teacher explains the lesson.", "The teacher explaining lesson.", "The teacher explained the lesson tomorrow."], correct_option: 1 },
+      { question_text: "Identify the verb. “The baby is sleeping.”", options: ["baby", "sleeping", "the", "is baby"], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “begin.”", options: ["start", "finish", "open", "close"], correct_option: 1 },
+      { question_text: "Fill in the blank: There ___ many books on the table.", options: ["is", "are", "am", "was"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["I have ate rice.", "I have eaten rice.", "I has eaten rice.", "I eaten rice."], correct_option: 1 },
+      { question_text: "Identify the noun. “Children are playing happily.”", options: ["playing", "happily", "children", "are"], correct_option: 2 },
+      { question_text: "Choose the correct article. She bought ___ orange.", options: ["a", "an", "the", "two"], correct_option: 1 },
+      { question_text: "Read the passage and answer: Amina found a lost kitten near her house. She gave it milk and kept it safe. Later, she returned it to its owner. The owner thanked her warmly. What did Amina find?", options: ["A puppy", "A kitten", "A bird", "A toy"], correct_option: 1 },
+      { question_text: "Why did the owner thank Amina?", options: ["She sold the kitten", "She kept the kitten", "She returned the kitten", "She ignored the kitten"], correct_option: 2 },
+      { question_text: "What quality does Amina show?", options: ["Laziness", "Kindness", "Anger", "Carelessness"], correct_option: 1 },
+      { question_text: "What did Amina give the kitten?", options: ["Bread", "Milk", "Rice", "Water"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["They has finished the work.", "They have finished the work.", "They having finished.", "They finished tomorrow."], correct_option: 1 },
+      { question_text: "Choose the correct synonym of “quick.”", options: ["slow", "fast", "weak", "small"], correct_option: 1 },
+      { question_text: "Fill in the blank: He is taller ___ his brother.", options: ["then", "than", "that", "this"], correct_option: 1 },
+      { question_text: "Identify the adjective. “She wore a beautiful dress.”", options: ["wore", "dress", "beautiful", "she"], correct_option: 2 },
+      { question_text: "Choose the correct tense. “She was reading a story.”", options: ["Present", "Past continuous", "Future", "Present perfect"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The children was noisy.", "The children were noisy.", "The children is noisy.", "The children be noisy."], correct_option: 1 },
+      { question_text: "Choose the correct plural of “tooth.”", options: ["tooths", "teeth", "toothes", "toothen"], correct_option: 1 },
+      { question_text: "Fill in the blank: He ___ his homework before dinner.", options: ["finished", "finish", "finishing", "finishes"], correct_option: 0 },
+      { question_text: "Choose the correct opposite of “dangerous.”", options: ["risky", "safe", "harmful", "scary"], correct_option: 1 },
+      { question_text: "Identify the adverb. “She sings sweetly.”", options: ["sings", "sweetly", "she", "the"], correct_option: 1 },
+      { question_text: "Choose the correct question word. ___ did you arrive late?", options: ["Why", "Who", "What", "Where"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["He don’t know the answer.", "He doesn’t know the answer.", "He didn’t knows.", "He not know."], correct_option: 1 },
+      { question_text: "Choose the correct form. This is the ___ book I have ever read.", options: ["more interesting", "most interesting", "interesting", "very interesting"], correct_option: 1 },
+      { question_text: "Identify the subject. “Fatima won the race.”", options: ["Fatima", "won", "race", "the"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["We are going to picnic yesterday.", "We went to picnic yesterday.", "We go to picnic yesterday.", "We going picnic yesterday."], correct_option: 1 },
+      { question_text: "What does a story’s main idea tell us?", options: ["Every small detail", "The most important point", "Only the first line", "The ending only"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng3MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 ENGLISH HARD QUESTIONS ---
+  const eng3HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 3' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng3HardCount.count < 40) {
+    console.log("Seeding Grade 3 Hard English questions...");
+    const eng3HardQuestions = [
+      { question_text: "Read the passage and answer: Hassan found a wallet on the playground. Instead of keeping it, he gave it to his teacher. The teacher found the owner and returned it. The owner thanked Hassan for his honesty. Why did Hassan give the wallet to his teacher?", options: ["He was afraid", "He wanted money", "He was honest", "He was careless"], correct_option: 2 },
+      { question_text: "What lesson does this story teach?", options: ["Keep what you find", "Honesty is important", "Teachers are strict", "Play carefully"], correct_option: 1 },
+      { question_text: "If Hassan had kept the wallet, what might have happened?", options: ["The owner would stay happy", "The owner would lose it forever", "The teacher would thank him", "Nothing would change"], correct_option: 1 },
+      { question_text: "Identify the noun in the sentence: “The owner thanked Hassan.”", options: ["thanked", "owner", "thanked Hassan", "the"], correct_option: 1 },
+      { question_text: "Identify the pronoun in the passage.", options: ["Hassan", "teacher", "it", "wallet"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["Neither Ali nor Ahmed are ready.", "Neither Ali nor Ahmed is ready.", "Neither Ali nor Ahmed were ready.", "Neither Ali nor Ahmed be ready."], correct_option: 1 },
+      { question_text: "Change to past tense: “She eats an apple.”", options: ["She eaten an apple.", "She ate an apple.", "She was eating apple.", "She eating apple."], correct_option: 1 },
+      { question_text: "Choose the correct comparative form. This book is ___ than that one.", options: ["more interesting", "most interesting", "very interesting", "interestinger"], correct_option: 0 },
+      { question_text: "Identify the adverb. “He spoke politely to the guest.”", options: ["spoke", "politely", "guest", "the"], correct_option: 1 },
+      { question_text: "Choose the correct future continuous sentence.", options: ["I will go to school.", "I will be going to school.", "I going to school.", "I went to school."], correct_option: 1 },
+      { question_text: "Find the error: “She don’t understand the question.”", options: ["She", "don’t", "understand", "question"], correct_option: 1 },
+      { question_text: "Choose the correct reported speech. Ali said, “I am tired.”", options: ["Ali said he is tired.", "Ali said he was tired.", "Ali said I was tired.", "Ali said he tired."], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “mouse.”", options: ["mouses", "mice", "mousees", "mous"], correct_option: 1 },
+      { question_text: "Identify the subject. “The tall trees were swaying.”", options: ["tall", "trees", "swaying", "were"], correct_option: 1 },
+      { question_text: "Choose the correct superlative form. Mount Everest is the ___ mountain in the world.", options: ["higher", "highest", "high", "most high"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Each of the boys have a pen.", "Each of the boys has a pen.", "Each of the boys are pen.", "Each of the boys have pen."], correct_option: 1 },
+      { question_text: "Identify the tense. “They had finished their work.”", options: ["Present perfect", "Past perfect", "Future", "Present"], correct_option: 1 },
+      { question_text: "Choose the correct preposition. She is interested ___ painting.", options: ["on", "in", "at", "for"], correct_option: 1 },
+      { question_text: "Find the error. “The news are very important.”", options: ["The", "news", "are", "important"], correct_option: 2 },
+      { question_text: "Choose the correct passive voice sentence.", options: ["The cake was eaten by Ali.", "Ali eaten the cake.", "Ali eat the cake.", "The cake eat Ali."], correct_option: 0 },
+      { question_text: "Read the passage and answer: It was raining heavily, but Maria decided to help her neighbor carry groceries. Although she got wet, she felt happy because she had done a good deed. Why did Maria feel happy?", options: ["She stayed dry", "She helped someone", "She bought groceries", "She avoided rain"], correct_option: 1 },
+      { question_text: "What does “although” show in the passage?", options: ["Time", "Contrast", "Place", "Question"], correct_option: 1 },
+      { question_text: "What kind of person is Maria?", options: ["Selfish", "Kind", "Lazy", "Rude"], correct_option: 1 },
+      { question_text: "Identify the verb. “Maria decided to help.”", options: ["Maria", "decided", "help", "to"], correct_option: 1 },
+      { question_text: "What is the main idea?", options: ["Rain is heavy", "Helping others brings happiness", "Groceries are heavy", "Neighbors are busy"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["He has went home.", "He has gone home.", "He have gone home.", "He has go home."], correct_option: 1 },
+      { question_text: "Choose the correct conditional sentence. If you study hard, you ___ pass.", options: ["will", "would", "can", "did"], correct_option: 0 },
+      { question_text: "Identify the adjective clause. “The boy who won the race is my cousin.”", options: ["The boy", "who won the race", "is my cousin", "won the race"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She sings more better than me.", "She sings better than me.", "She sings best than me.", "She sings gooder than me."], correct_option: 1 },
+      { question_text: "Find the correct indirect question. He asked, “Where are you going?”", options: ["He asked where I am going.", "He asked where I was going.", "He asked where was I going.", "He asked where going."], correct_option: 1 },
+      { question_text: "Choose the correct homophone. She has blue ___.", options: ["eyes", "ice", "ayes", "ies"], correct_option: 0 },
+      { question_text: "Identify the conjunction. “I wanted to go, but I was sick.”", options: ["wanted", "but", "was", "go"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The team have won the match.", "The team has won the match.", "The team were won the match.", "The team win the match."], correct_option: 1 },
+      { question_text: "Identify the gerund. “Swimming is good exercise.”", options: ["Swimming", "good", "exercise", "is"], correct_option: 0 },
+      { question_text: "Choose the correct modal verb. You ___ respect your elders.", options: ["must", "might", "could", "would"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["He is the most tallest boy.", "He is the tallest boy.", "He is tallest than all.", "He is more tallest."], correct_option: 1 },
+      { question_text: "Identify the object. “Fatima bought a new bag.”", options: ["Fatima", "bought", "bag", "new"], correct_option: 2 },
+      { question_text: "Choose the correct form. This puzzle is too difficult ___ solve.", options: ["for", "to", "at", "on"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Hardly had he arrived when it started raining.", "Hardly he had arrived when it started raining.", "He hardly arrived when it started raining.", "Hardly arrived he when raining."], correct_option: 0 },
+      { question_text: "What does inference mean in reading?", options: ["Copying lines", "Guessing meaning using clues", "Reading loudly", "Memorizing sentences"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng3HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 MATH EASY QUESTIONS ---
+  const math3EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 3' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math3EasyCount.count < 40) {
+    console.log("Seeding Grade 3 Easy Math questions...");
+    const math3EasyQuestions = [
+      { question_text: "What is the place value of 5 in 3,452?", options: ["5", "50", "500", "5,000"], correct_option: 1 },
+      { question_text: "Which number is the greatest?", options: ["4,321", "4,123", "4,312", "4,213"], correct_option: 2 },
+      { question_text: "4,356 – 2,100 = ?", options: ["2,156", "2,256", "2,356", "1,256"], correct_option: 1 },
+      { question_text: "3,245 + 1,234 = ?", options: ["4,479", "4,369", "4,569", "4,579"], correct_option: 0 },
+      { question_text: "What is 6 × 4?", options: ["20", "24", "26", "28"], correct_option: 1 },
+      { question_text: "There are 15 apples. If each plate has 3 apples, how many plates are there?", options: ["3", "4", "5", "6"], correct_option: 2 },
+      { question_text: "Which fraction shows half?", options: ["1/3", "1/2", "1/4", "2/3"], correct_option: 1 },
+      { question_text: "Which is the smallest fraction?", options: ["1/2", "1/4", "3/4", "2/4"], correct_option: 1 },
+      { question_text: "How many minutes are there in 1 hour?", options: ["30", "45", "60", "100"], correct_option: 2 },
+      { question_text: "Which unit is used to measure weight?", options: ["meter", "kilogram", "liter", "hour"], correct_option: 1 },
+      { question_text: "What is 9 × 3?", options: ["18", "21", "27", "24"], correct_option: 2 },
+      { question_text: "Which number is even?", options: ["15", "19", "22", "27"], correct_option: 2 },
+      { question_text: "What is 700 + 300?", options: ["900", "1,000", "1,100", "800"], correct_option: 1 },
+      { question_text: "Which shape has 4 equal sides?", options: ["Rectangle", "Triangle", "Square", "Circle"], correct_option: 2 },
+      { question_text: "What is 1,000 – 450?", options: ["650", "550", "450", "750"], correct_option: 1 },
+      { question_text: "How many sides does a triangle have?", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "If one pencil costs Rs. 10, how much do 5 pencils cost?", options: ["Rs. 40", "Rs. 50", "Rs. 60", "Rs. 45"], correct_option: 1 },
+      { question_text: "What is 8 × 5?", options: ["35", "40", "45", "48"], correct_option: 1 },
+      { question_text: "Which number comes next? 2, 4, 6, 8, ___", options: ["9", "10", "11", "12"], correct_option: 1 },
+      { question_text: "How many centimeters are in 1 meter?", options: ["10", "100", "1,000", "1"], correct_option: 1 },
+      { question_text: "Which is the largest 3-digit number?", options: ["999", "100", "900", "990"], correct_option: 0 },
+      { question_text: "5,000 + 2,000 = ?", options: ["6,000", "7,000", "8,000", "9,000"], correct_option: 1 },
+      { question_text: "Which fraction is equal to 2/4?", options: ["1/2", "1/3", "3/4", "2/3"], correct_option: 0 },
+      { question_text: "What is 36 ÷ 6?", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "How many days are there in one week?", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "Which number is divisible by 5?", options: ["32", "45", "27", "41"], correct_option: 1 },
+      { question_text: "What is 400 + 600?", options: ["900", "1,000", "1,100", "800"], correct_option: 1 },
+      { question_text: "A rectangle has how many sides?", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "What is 7 × 2?", options: ["12", "14", "16", "18"], correct_option: 1 },
+      { question_text: "Which is heavier?", options: ["1 kg", "2 kg", "500 g", "750 g"], correct_option: 1 },
+      { question_text: "What is 65 – 25?", options: ["30", "35", "40", "45"], correct_option: 2 },
+      { question_text: "Which fraction shows one quarter?", options: ["1/3", "1/2", "1/4", "3/4"], correct_option: 2 },
+      { question_text: "How many hours are there in a day?", options: ["12", "18", "24", "36"], correct_option: 2 },
+      { question_text: "What is 9 + 8?", options: ["16", "17", "18", "19"], correct_option: 1 },
+      { question_text: "Which number is odd?", options: ["14", "18", "21", "30"], correct_option: 2 },
+      { question_text: "What is 3 × 9?", options: ["24", "27", "29", "30"], correct_option: 1 },
+      { question_text: "A clock shows 3:00. What time is it?", options: ["Three o’clock", "Half past three", "Quarter past three", "Quarter to three"], correct_option: 0 },
+      { question_text: "Which unit measures length?", options: ["kilogram", "liter", "meter", "hour"], correct_option: 2 },
+      { question_text: "What is 84 ÷ 7?", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "Which shape has no sides?", options: ["Triangle", "Square", "Circle", "Rectangle"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math3EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 MATH MEDIUM QUESTIONS ---
+  const math3MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 3' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math3MedCount.count < 40) {
+    console.log("Seeding Grade 3 Medium Math questions...");
+    const math3MedQuestions = [
+      { question_text: "2,345 + 1,678 = ?", options: ["4,023", "3,913", "4,113", "4,213"], correct_option: 0 },
+      { question_text: "5,000 – 2,756 = ?", options: ["2,344", "2,254", "2,244", "2,144"], correct_option: 2 },
+      { question_text: "A shopkeeper had 450 mangoes. He sold 275. How many are left?", options: ["175", "165", "185", "195"], correct_option: 0 },
+      { question_text: "Which fraction is greater?", options: ["3/4", "2/4", "1/4", "1/2"], correct_option: 0 },
+      { question_text: "7 × 8 = ?", options: ["54", "56", "58", "64"], correct_option: 1 },
+      { question_text: "If one notebook costs Rs. 35, what is the cost of 4 notebooks?", options: ["Rs. 120", "Rs. 135", "Rs. 140", "Rs. 150"], correct_option: 2 },
+      { question_text: "84 ÷ 4 = ?", options: ["19", "20", "21", "22"], correct_option: 2 },
+      { question_text: "How many minutes are there in 2 hours?", options: ["100", "110", "120", "130"], correct_option: 2 },
+      { question_text: "Which number is divisible by both 2 and 5?", options: ["30", "25", "18", "22"], correct_option: 0 },
+      { question_text: "What is the perimeter of a square with side 6 cm?", options: ["24 cm", "12 cm", "18 cm", "30 cm"], correct_option: 0 },
+      { question_text: "3,456 – 1,289 = ?", options: ["2,167", "2,157", "2,177", "2,187"], correct_option: 0 },
+      { question_text: "Which fraction is equal to 3/6?", options: ["1/2", "1/3", "2/3", "3/4"], correct_option: 0 },
+      { question_text: "A box contains 8 rows of 5 apples. How many apples are there?", options: ["35", "40", "45", "30"], correct_option: 1 },
+      { question_text: "Which is the smallest number?", options: ["4,305", "4,350", "4,053", "4,530"], correct_option: 2 },
+      { question_text: "90 ÷ 9 = ?", options: ["8", "9", "10", "11"], correct_option: 2 },
+      { question_text: "If a train leaves at 2:00 PM and arrives at 5:00 PM, how long is the journey?", options: ["2 hours", "3 hours", "4 hours", "5 hours"], correct_option: 1 },
+      { question_text: "Which fraction is smaller?", options: ["5/8", "3/8", "7/8", "6/8"], correct_option: 1 },
+      { question_text: "What is 125 + 375?", options: ["400", "450", "500", "550"], correct_option: 2 },
+      { question_text: "How many grams are in 2 kilograms?", options: ["200 g", "2,000 g", "20,000 g", "500 g"], correct_option: 1 },
+      { question_text: "6 × 9 = ?", options: ["52", "54", "56", "58"], correct_option: 1 },
+      { question_text: "A farmer has 36 cows. He puts them into groups of 6. How many groups are formed?", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "Which shape has only one pair of parallel sides?", options: ["Square", "Rectangle", "Parallelogram", "Trapezium"], correct_option: 3 },
+      { question_text: "2,000 + 3,500 = ?", options: ["5,000", "5,300", "5,500", "6,000"], correct_option: 2 },
+      { question_text: "If one pencil costs Rs. 12, what is the cost of 6 pencils?", options: ["Rs. 60", "Rs. 70", "Rs. 72", "Rs. 75"], correct_option: 2 },
+      { question_text: "Which number is a multiple of 9?", options: ["27", "25", "22", "29"], correct_option: 0 },
+      { question_text: "What is 700 – 368?", options: ["342", "332", "322", "352"], correct_option: 1 },
+      { question_text: "Which fraction represents three quarters?", options: ["3/4", "1/4", "2/4", "4/3"], correct_option: 0 },
+      { question_text: "How many sides does a pentagon have?", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "8 × 12 = ?", options: ["86", "96", "106", "88"], correct_option: 1 },
+      { question_text: "What is the area of a rectangle with length 5 cm and width 4 cm?", options: ["20 cm²", "18 cm²", "16 cm²", "25 cm²"], correct_option: 0 },
+      { question_text: "If 1 liter = 1,000 ml, how many ml are in 3 liters?", options: ["2,000 ml", "3,000 ml", "4,000 ml", "300 ml"], correct_option: 1 },
+      { question_text: "Which number is closest to 1,000?", options: ["980", "990", "995", "970"], correct_option: 2 },
+      { question_text: "What is 63 ÷ 7?", options: ["8", "9", "10", "7"], correct_option: 1 },
+      { question_text: "If a rope is 8 meters long and 3 meters are cut, how much is left?", options: ["4 m", "5 m", "6 m", "3 m"], correct_option: 1 },
+      { question_text: "Which fraction is equal to 4/8?", options: ["1/2", "1/4", "3/4", "2/3"], correct_option: 0 },
+      { question_text: "4,500 – 1,500 = ?", options: ["3,000", "2,000", "3,500", "4,000"], correct_option: 0 },
+      { question_text: "If a book has 120 pages and Ali reads 30 pages, how many pages are left?", options: ["80", "90", "100", "70"], correct_option: 1 },
+      { question_text: "Which angle is smaller than 90°?", options: ["Right angle", "Obtuse angle", "Acute angle", "Straight angle"], correct_option: 2 },
+      { question_text: "9 × 11 = ?", options: ["90", "99", "100", "101"], correct_option: 1 },
+      { question_text: "A class has 5 rows of 8 students. How many students are there in total?", options: ["35", "40", "45", "48"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math3MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 MATH HARD QUESTIONS ---
+  const math3HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 3' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math3HardCount.count < 40) {
+    console.log("Seeding Grade 3 Hard Math questions...");
+    const math3HardQuestions = [
+      { question_text: "A shopkeeper had 2,500 kg of rice. He sold 1,275 kg in the morning and 525 kg in the evening. How much rice is left?", options: ["700 kg", "800 kg", "600 kg", "750 kg"], correct_option: 0 },
+      { question_text: "Which fraction is the greatest?", options: ["5/6", "4/6", "3/6", "2/6"], correct_option: 0 },
+      { question_text: "A train leaves at 9:15 AM and reaches at 12:45 PM. How long is the journey?", options: ["3 hours 15 minutes", "3 hours 30 minutes", "2 hours 45 minutes", "4 hours"], correct_option: 1 },
+      { question_text: "What is the area of a rectangle with length 9 cm and width 7 cm?", options: ["56 cm²", "63 cm²", "72 cm²", "49 cm²"], correct_option: 1 },
+      { question_text: "3,456 + 2,789 – 1,245 = ?", options: ["5,000", "4,900", "5,200", "4,800"], correct_option: 0 },
+      { question_text: "If 8 boxes contain 24 pencils each, how many pencils are there in total?", options: ["182", "192", "204", "212"], correct_option: 1 },
+      { question_text: "Which number is divisible by 3 and 4?", options: ["18", "24", "30", "36"], correct_option: 1 },
+      { question_text: "A rope 15 meters long is cut into pieces of 3 meters each. How many pieces are made?", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "Which fraction is equivalent to 6/9?", options: ["2/3", "3/4", "4/5", "5/6"], correct_option: 0 },
+      { question_text: "Find the perimeter of a rectangle with length 12 cm and width 5 cm.", options: ["30 cm", "34 cm", "24 cm", "17 cm"], correct_option: 1 },
+      { question_text: "4,000 – 1,675 + 925 = ?", options: ["3,250", "3,150", "3,350", "3,450"], correct_option: 0 },
+      { question_text: "Which angle measures more than 90°?", options: ["Acute angle", "Right angle", "Obtuse angle", "Straight angle"], correct_option: 2 },
+      { question_text: "If 1 kg = 1,000 g, how many grams are in 5.5 kg?", options: ["5,500 g", "5,050 g", "500 g", "55,000 g"], correct_option: 0 },
+      { question_text: "Find the missing number: 7 × ___ = 84", options: ["11", "12", "13", "14"], correct_option: 1 },
+      { question_text: "A farmer plants 9 rows of trees. Each row has 14 trees. How many trees are planted?", options: ["116", "126", "136", "146"], correct_option: 1 },
+      { question_text: "Which is the smallest fraction?", options: ["7/10", "3/10", "5/10", "9/10"], correct_option: 1 },
+      { question_text: "A book costs Rs. 245. How much will 3 books cost?", options: ["Rs. 735", "Rs. 725", "Rs. 745", "Rs. 755"], correct_option: 0 },
+      { question_text: "2,800 ÷ 7 = ?", options: ["300", "350", "400", "420"], correct_option: 2 },
+      { question_text: "A movie starts at 6:40 PM and ends at 8:10 PM. What is its duration?", options: ["1 hour 20 minutes", "1 hour 30 minutes", "2 hours", "1 hour 40 minutes"], correct_option: 1 },
+      { question_text: "Which number pattern continues correctly? 5, 10, 20, 40, ___", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "What is 96 ÷ 8 × 2?", options: ["22", "24", "20", "18"], correct_option: 1 },
+      { question_text: "Which fraction is closest to 1?", options: ["7/8", "5/8", "3/8", "1/8"], correct_option: 0 },
+      { question_text: "A tank holds 2,000 liters. If 750 liters are used, how much water remains?", options: ["1,150 L", "1,250 L", "1,350 L", "1,450 L"], correct_option: 1 },
+      { question_text: "What is the area of a square with side 11 cm?", options: ["121 cm²", "44 cm²", "22 cm²", "110 cm²"], correct_option: 0 },
+      { question_text: "Which number is a multiple of both 5 and 6?", options: ["25", "30", "35", "40"], correct_option: 1 },
+      { question_text: "3,600 + 2,400 ÷ 6 = ?", options: ["4,000", "4,100", "4,200", "4,300"], correct_option: 0 },
+      { question_text: "If 12 students share 96 chocolates equally, how many chocolates does each student get?", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which fraction is greater than 1/2?", options: ["3/8", "4/10", "5/8", "2/5"], correct_option: 2 },
+      { question_text: "What is 7 × 15?", options: ["95", "100", "105", "110"], correct_option: 2 },
+      { question_text: "A rectangular garden is 20 m long and 10 m wide. What is its perimeter?", options: ["40 m", "50 m", "60 m", "70 m"], correct_option: 2 },
+      { question_text: "Find the missing number: ___ ÷ 9 = 12", options: ["96", "108", "120", "118"], correct_option: 1 },
+      { question_text: "If a clock shows 4:45, what time will it show after 30 minutes?", options: ["5:00", "5:10", "5:15", "5:20"], correct_option: 2 },
+      { question_text: "Which number is closest to 5,000?", options: ["4,950", "4,800", "5,200", "5,300"], correct_option: 0 },
+      { question_text: "What is 125 × 8?", options: ["900", "950", "1,000", "1,100"], correct_option: 2 },
+      { question_text: "If 1/3 of a number is 15, what is the number?", options: ["30", "45", "60", "35"], correct_option: 1 },
+      { question_text: "Which fraction is equivalent to 9/12?", options: ["3/4", "2/3", "4/5", "5/6"], correct_option: 0 },
+      { question_text: "A bus travels 60 km in 1 hour. How far will it travel in 4 hours?", options: ["200 km", "220 km", "240 km", "260 km"], correct_option: 2 },
+      { question_text: "Find the next number: 2, 6, 12, 20, ___", options: ["28", "30", "32", "34"], correct_option: 1 },
+      { question_text: "Which is the smallest 4-digit number divisible by 5?", options: ["1000", "1001", "1002", "1003"], correct_option: 0 },
+      { question_text: "A shopkeeper gives Rs. 1,000 and receives Rs. 765 back. How much did he spend?", options: ["Rs. 225", "Rs. 235", "Rs. 245", "Rs. 255"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math3HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 URDU EASY QUESTIONS ---
+  const urdu3EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 3' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu3EasyCount.count < 40) {
+    console.log("Seeding Grade 3 Easy Urdu questions...");
+    const urdu3EasyQuestions = [
+      { question_text: "لفظ \"بڑا\" کا متضاد کیا ہے؟", options: ["لمبا", "چھوٹا", "موٹا", "اونچا"], correct_option: 1 },
+      { question_text: "لفظ \"کتاب\" کی جمع کیا ہے؟", options: ["کتابیں", "کتابان", "کتابی", "کتابوں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے مذکر لفظ کون سا ہے؟", options: ["لڑکی", "عورت", "استاد", "بہن"], correct_option: 2 },
+      { question_text: "لفظ \"بیٹی\" کی جنس کیا ہے؟", options: ["مذکر", "مونث", "واحد", "جمع"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: میں اسکول ___ جاتا ہوں۔", options: ["کو", "میں", "سے", "جاتا"], correct_option: 3 },
+      { question_text: "لفظ \"گرم\" کا متضاد کیا ہے؟", options: ["ٹھنڈا", "تیز", "نرم", "ہلکا"], correct_option: 0 },
+      { question_text: "لفظ \"درخت\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "حرف"], correct_option: 2 },
+      { question_text: "درج ذیل میں سے واحد لفظ کون سا ہے؟", options: ["بچے", "کتابیں", "دروازے", "پھول"], correct_option: 3 },
+      { question_text: "لفظ \"استاد\" کی جمع کیا ہے؟", options: ["استادات", "استادوں", "اساتذہ", "استادی"], correct_option: 2 },
+      { question_text: "\"خوش\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: علی کرکٹ ___ رہا ہے۔", options: ["کھیل", "کھیلتا", "کھیل رہا", "کھیلا"], correct_option: 2 },
+      { question_text: "لفظ \"تیز\" کا متضاد کیا ہے؟", options: ["آہستہ", "نرم", "اونچا", "گہرا"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے فعل کون سا ہے؟", options: ["دوڑنا", "کتاب", "میز", "نیلا"], correct_option: 0 },
+      { question_text: "لفظ \"خوشی\" کس سے بنا ہے؟", options: ["خوش", "خوشحال", "خوشبو", "خوشگوار"], correct_option: 0 },
+      { question_text: "\"پانی\" کس قسم کا لفظ ہے؟", options: ["صفت", "اسم", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "لفظ \"بیٹا\" کی جمع کیا ہے؟", options: ["بیٹوں", " بیٹے", "بیٹیاں", "بیٹہ"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے مونث لفظ کون سا ہے؟", options: ["لڑکا", "استاد", "بہن", "باپ"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: ہم پارک ___ گئے۔", options: ["کو", "میں", "سے", "نے"], correct_option: 1 },
+      { question_text: "لفظ \"اونچا\" کا متضاد کیا ہے؟", options: ["نیچا", "لمبا", "گہرا", "ہلکا"], correct_option: 0 },
+      { question_text: " \"سچ\" کا متضاد کیا ہے؟", options: ["غلط", "جھوٹ", "سادہ", "صاف"], correct_option: 1 },
+      { question_text: "لفظ \"قلم\" کی جمع کیا ہے؟", options: ["قلمیں", "قلموں", "اقلام", "قلمی"], correct_option: 2 },
+      { question_text: "درج ذیل میں سے حرفِ جار کون سا ہے؟", options: ["کتاب", "میں", "دوڑنا", "نیلا"], correct_option: 1 },
+      { question_text: "لفظ \"سفید\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: بچے اسکول ___ پڑھتے ہیں۔", options: ["میں", "سے", "کو", "نے"], correct_option: 0 },
+      { question_text: "لفظ \"گھوڑا\" کی جنس کیا ہے؟", options: ["مذکر", "مونث", "جمع", "واحد"], correct_option: 0 },
+      { question_text: "لفظ \"رات\" کا متضاد کیا ہے؟", options: ["دن", "شام", "دوپہر", "صبح"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے جمع لفظ کون سا ہے؟", options: ["لڑکا", "کتاب", "بچے", "قلم"], correct_option: 2 },
+      { question_text: "\"دوڑ\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "لفظ \"نیا\" کا متضاد کیا ہے؟", options: ["پرانا", "تازہ", "اچھا", "خوبصورت"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے صفت کون سی ہے؟", options: ["دوڑنا", "سبز", "میز", "قلم"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: وہ روزانہ سبق ___ ہے۔", options: ["پڑھتا", "پڑھ", "پڑھی", "پڑھے"], correct_option: 0 },
+      { question_text: "لفظ \"میٹھا\" کا متضاد کیا ہے؟", options: ["نمکین", "کڑوا", "کھٹا", "تیز"], correct_option: 1 },
+      { question_text: "لفظ \"پھول\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے صحیح جملہ کون سا ہے؟", options: ["وہ کھیل رہا ہیں۔", "وہ کھیل رہا ہے۔", "وہ کھیل رہے ہے۔", "وہ کھیل رہی ہے۔"], correct_option: 1 },
+      { question_text: "لفظ \"گہرا\" کا متضاد کیا ہے؟", options: ["ہلکا", "کم", "اتھلا", "نرم"], correct_option: 2 },
+      { question_text: "لفظ \"استاد\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "جملہ مکمل کریں: میں نے کتاب ___۔", options: ["پڑھیا", "پڑھ", "پڑھتے", "پڈھی"], correct_option: 0 },
+      { question_text: "لفظ \"ہنسی\" کس سے بنا ہے؟", options: ["ہنسنا", "ہنس", "ہنسا", "ہنسیوں"], correct_option: 0 },
+      { question_text: "لفظ \"سخت\" کا متضاد کیا ہے؟", options: ["نرم", "تیز", "گہرا", "اونچا"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے اسمِ معرفہ کون سا ہے؟", options: ["لڑکا", "کتاب", "علی", "شہر"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu3EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 URDU MEDIUM QUESTIONS ---
+  const urdu3MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 3' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu3MedCount.count < 40) {
+    console.log("Seeding Grade 3 Medium Urdu questions...");
+    const urdu3MedQuestions = [
+      { question_text: "پیراگراف پڑھیں اور سوال کا جواب دیں: \"علی روزانہ صبح جلدی اٹھتا ہے۔ وہ نماز پڑھتا ہے اور پھر اسکول جاتا ہے۔\" علی صبح کیا کرتا ہے؟", options: ["کھیلتا ہے", "سوتا ہے", "نماز پڑھتا ہے", "بازار جاتا ہے"], correct_option: 2 },
+      { question_text: "لفظ \"خوبصورت\" کا ہم معنی کیا ہے؟", options: ["بدصورت", "حسین", "لمبا", "موٹا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔", "بچے کھیل رہا ہیں۔"], correct_option: 1 },
+      { question_text: "لفظ \"استاد\" کی مونث کیا ہے؟", options: ["استادی", "استانی", "استادہ", "استادن"], correct_option: 1 },
+      { question_text: "لفظ \"کمزور\" کا متضاد کیا ہے؟", options: ["طاقتور", "نرم", "آہستہ", "کم"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے فعل ماضی کون سا ہے؟", options: ["کھاتا ہے", "کھائے گا", "کھایا", "کھاتا"], correct_option: 2 },
+      { question_text: "\"باغ میں پھول کھلے ہیں۔\" اس جملے میں اسم کون سا ہے؟", options: ["کھلے", "ہیں", "باغ", "میں"], correct_option: 2 },
+      { question_text: "واحد سے جمع بنائیں: \"لڑکی\"", options: ["لڑکیاں", "لڑکے", "لڑکوں", "لڑکین"], correct_option: 0 },
+      { question_text: "جملہ مکمل کریں: ہم نے سبق اچھی طرح ___۔", options: ["پڑھیا", "پڑھ", "پڑھے", "پڑھتے"], correct_option: 0 },
+      { question_text: "لفظ \"اندھیرا\" کا متضاد کیا ہے؟", options: ["روشنی", "رات", "سیاہ", "گہرا"], correct_option: 0 },
+      { question_text: "\"وہ روزانہ اسکول جاتا ہے۔\" اس جملے میں فعل کون سا ہے؟", options: ["وہ", "روزانہ", "جاتا", "اسکول"], correct_option: 2 },
+      { question_text: "لفظ \"صاف\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "صحیح جمع منتخب کریں: \"دروازہ\"", options: ["دروازیاں", "دروازے", "دروازوں", "دروازہان"], correct_option: 1 },
+      { question_text: "پیراگراف پڑھیں: \"احمد نے درخت لگایا۔ وہ روزانہ اسے پانی دیتا ہے۔\" احمد درخت کو کیا دیتا ہے؟", options: ["کھاد", "پانی", "دھوپ", "مٹی"], correct_option: 1 },
+      { question_text: "لفظ \"محنت\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے مونث لفظ کون سا ہے؟", options: ["گھوڑا", "استاد", "ٹیچر", "گھوڑی"], correct_option: 3 },
+      { question_text: "جملہ درست کریں: \"وہ کتاب پڑھتی ہے۔\" (اگر فاعل لڑکا ہو)", options: ["وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتی ہیں۔", "وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھتا ہیں۔"], correct_option: 0 },
+      { question_text: "لفظ \"آسان\" کا متضاد کیا ہے؟", options: ["مشکل", "نرم", "کم", "بڑا"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے حرفِ جار کون سا ہے؟", options: ["میں", "کھیل", "کتاب", "اچھا"], correct_option: 0 },
+      { question_text: "لفظ \"بہادر\" کس قسم کا لفظ ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "\"ہم پارک میں کھیلتے ہیں۔\" اس جملے میں فاعل کون ہے؟", options: ["پارک", "کھیلتے", "ہم", "میں"], correct_option: 2 },
+      { question_text: "لفظ \"چھوٹا\" کی مونث کیا ہے؟", options: ["چھوٹیاں", "چھوٹی", "چھوٹے", "چھوٹوں"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["علی اسکول جاتے ہیں۔", "علی اسکول جاتا ہے۔", "علی اسکول جاتی ہے۔", "علی اسکول گیا ہیں۔"], correct_option: 1 },
+      { question_text: "لفظ \"دوستی\" کس سے بنا ہے؟", options: ["دوست", "دوستا", "دوستیان", "دوستیوں"], correct_option: 0 },
+      { question_text: "لفظ \"تیز\" کا ہم معنی کیا ہے؟", options: ["آہستہ", "جلد", "نرم", "سست"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: لڑکیاں اسکول ___ جا رہی ہیں۔", options: ["کو", "میں", "سے", "جا"], correct_option: 3 },
+      { question_text: "درج ذیل میں سے مستقبل کا فعل کون سا ہے؟", options: ["جائے گا", "گیا", "جاتا", "جاؤ"], correct_option: 0 },
+      { question_text: "لفظ \"اونچا\" کی مونث کیا ہے؟", options: ["اونچی", "اونچے", "اونچوں", "اونچیاں"], correct_option: 0 },
+      { question_text: "\"کتاب میز پر رکھی ہے۔\" اس جملے میں حرفِ جار کون سا ہے؟", options: ["کتاب", "میز", "پر", "رکھی"], correct_option: 2 },
+      { question_text: "لفظ \"سچائی\" کس سے بنا ہے؟", options: ["سچ", "سچا", "سچان", "سچوں"], correct_option: 0 },
+      { question_text: "صحیح جملہ منتخب کریں:", options: ["ہم نے آم کھایا۔", "ہم نے آم کھائے۔", "ہم نے آم کھاتی", "ہم نے آم کھاتی ہیں"], correct_option: 1 },
+      { question_text: "لفظ \"دوڑنا\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "لفظ \"سرد\" کا متضاد کیا ہے؟", options: ["گرم", "ٹھنڈا", "نرم", "خشک"], correct_option: 0 },
+      { question_text: "واحد سے جمع بنائیں: \"پرندہ\"", options: ["پرندیاں", "پرندے", "پرندوں", "پرندہان"], correct_option: 1 },
+      { question_text: "\"ماں بچوں کو کہانی سناتی ہے۔\" اس جملے میں فعل کون سا ہے؟", options: ["ماں", "بچوں", "کہانی", "سناتی"], correct_option: 3 },
+      { question_text: "لفظ \"سخت\" کا ہم معنی کیا ہے؟", options: ["مشکل", "نرم", "آسان", "ہلکا"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے اسمِ خاص کون سا ہے؟", options: ["شہر", "لڑکا", "پاکستان", "کتاب"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: وہ بہت اچھا ___ ہے۔", options: ["لڑکا", "کھیل", "دوڑ", "پڑھ"], correct_option: 0 },
+      { question_text: "لفظ \"محنتی\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "\"بچے خوشی سے کھیل رہے ہیں۔\" اس جملے میں کیفیت ظاہر کرنے والا لفظ کون سا ہے؟", options: ["بچے", "کھیل", "خوشی", "رہے"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu3MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 3 URDU HARD QUESTIONS ---
+  const urdu3HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 3' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu3HardCount.count < 40) {
+    console.log("Seeding Grade 3 Hard Urdu questions...");
+    const urdu3HardQuestions = [
+      { question_text: "پیراگراف پڑھیں: \"عائشہ ایک محنتی طالبہ ہے۔ وہ روزانہ وقت پر اسکول جاتی ہے اور اپنا کام مکمل کرتی ہے۔\" عائشہ کی کون سی خوبی بیان کی گئی ہے؟", options: ["بہادری", "سستی", "محنتی ہونا", "شرارت"], correct_option: 2 },
+      { question_text: "لفظ \"اندھیرا\" کا متضاد مناسب جملے میں کون سا ہوگا؟ \"رات کو کمرے میں بہت ___ تھا۔\"", options: ["شور", "روشنی", "گرمی", "آواز"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["بچے پارک میں کھیل رہا ہے۔", "بچے پارک میں کھیل رہے ہیں۔", "بچے پارک میں کھیل رہی ہے۔", "بچے پارک میں کھیل رہا ہیں۔"], correct_option: 1 },
+      { question_text: "لفظ \"ایماندار\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: اگر بارش ہوگی تو ہم ___ نہیں جائیں گے۔", options: ["بازار", "گئے", "جاتے", "جاؤ"], correct_option: 0 },
+      { question_text: "لفظ \"خوشی\" کس سے بنا ہے؟", options: ["خوش", "خوشبو", "خوشحال", "خوشیانہ"], correct_option: 0 },
+      { question_text: "\"استاد نے سبق سمجھایا۔\" اس جملے میں فاعل کون ہے؟", options: ["سبق", "سمجھایا", "استاد", "نے"], correct_option: 2 },
+      { question_text: "واحد سے جمع بنائیں: \"کہانی\"", options: ["کہانیاں", "کہانے", "کہانیوں", "کہانیان"], correct_option: 0 },
+      { question_text: "لفظ \"اونچا\" کی مونث کیا ہے؟", options: ["اونچیاں", "اونچی", "اونچے", "اونچوں"], correct_option: 1 },
+      { question_text: "پیراگراف پڑھیں: \"باغ میں رنگ برنگے پھول کھلے ہوئے تھے۔ تتلیاں ان پر منڈلا رہی تھیں۔\" تتلیاں کہاں تھیں؟", options: ["درخت پر", "باغ میں", "گھر میں", "سڑک پر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["وہ کتابیں پڑھتا ہیں۔", "وہ کتابیں پڑھتی ہیں۔", "وہ کتابیں پڑھتا ہے۔", "وہ کتابیں پڑھتی ہے۔"], correct_option: 1 },
+      { question_text: "لفظ \"مشکل\" کا متضاد کیا ہے؟", options: ["آسان", "سخت", "کمزور", "گہرا"], correct_option: 0 },
+      { question_text: "\"علی نے درخت لگایا۔\" اس جملے میں مفعول کون سا ہے؟", options: ["علی", "لگایا", "درخت", "نے"], correct_option: 2 },
+      { question_text: "لفظ \"سچائی\" کس سے بنا ہے؟", options: ["سچ", "سچا", "سچان", "سچوں"], correct_option: 0 },
+      { question_text: "صحیح مستقبل کا جملہ منتخب کریں:", options: ["وہ کل آئے گا۔", "وہ کل آیا۔", "وہ کل آتا ہے۔", "وہ کل آؤ۔"], correct_option: 0 },
+      { question_text: "لفظ \"طاقتور\" کا متضاد کیا ہے؟", options: ["کمزور", "نرم", "چھوٹا", "آہستہ"], correct_option: 0 },
+      { question_text: "\"ہم نے دریا دیکھا۔\" اس جملے میں فعل کون سا ہے؟", options: ["ہم", "نے", "دریا", "دیکھا"], correct_option: 3 },
+      { question_text: "لفظ \"محنتی\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "جملہ درست کریں: \"لڑکی کھیل رہا ہے۔\"", options: ["لڑکی کھیل رہی ہے۔", "لڑکی کھیل رہے ہیں۔", "لڑکی کھیل رہا ہیں۔", "لڑکی کھیل رہی ہیں۔"], correct_option: 0 },
+      { question_text: "لفظ \"گرم\" کا متضاد کیا ہے؟", options: ["ٹھنڈا", "نرم", "سخت", "گہرا"], correct_option: 0 },
+      { question_text: "پیراگراف پڑھیں: \"احمد نے ایمانداری سے کام کیا۔ اس کے استاد نے اسے انعام دیا۔\" احمد کو انعام کیوں ملا؟", options: ["سستی کی وجہ سے", "ایمانداری کی وجہ سے", "دیر سے آنے کی وجہ سے", "شور مچانے کی وجہ سے"], correct_option: 1 },
+      { question_text: "لفظ \"بہادری\" کس سے بنا ہے؟", options: ["بہادر", "بہار", "بہادریاں", "بہادران"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے اسمِ خاص کون سا ہے؟", options: ["شہر", "لڑکا", "لاہور", "کتاب"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: ہم کل پکنک پر ___ گے۔", options: ["جائیں", "جاتے", "گیا", "جاؤ"], correct_option: 0 },
+      { question_text: "لفظ \"سخت\" کا ہم معنی کیا ہے؟", options: ["مشکل", "نرم", "آسان", "ہلکا"], correct_option: 0 },
+      { question_text: "واحد سے جمع بنائیں: \"پرندہ\"", options: ["پرندے", "پرندیاں", "پرندہان", "پرندوں"], correct_option: 0 },
+      { question_text: "\"کتاب میز پر رکھی ہے۔\" اس جملے میں حرفِ جار کون سا ہے؟", options: ["کتاب", "میز", "پر", "رکھی"], correct_option: 2 },
+      { question_text: "لفظ \"روشنی\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "صحیح جملہ منتخب کریں:", options: ["ہم نے آم کھایا۔", "ہم نے آم کھائے۔", "ہم نے آم کھاتی", "ہم نے آم کھاتی ہیں۔"], correct_option: 1 },
+      { question_text: "لفظ \"صاف\" کا متضاد کیا ہے؟", options: ["گندا", "روشن", "نرم", "صافہ"], correct_option: 0 },
+      { question_text: "\"بچے خوشی سے کھیل رہے ہیں۔\" اس جملے میں کیفیت ظاہر کرنے والا لفظ کون سا ہے؟", options: ["بچے", "کھیل", "خوشی", "رہے"], correct_option: 2 },
+      { question_text: "لفظ \"نیکی\" کس سے بنا ہے؟", options: ["نیک", "نیکیان", "نیکو", "نیکیاں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے حال کا فعل کون سا ہے؟", options: ["جاتا ہے", "گیا", "جائے گا", "جاؤ"], correct_option: 0 },
+      { question_text: "لفظ \"اونچا\" کا متضاد کیا ہے؟", options: ["نیچا", "لمبا", "گہرا", "ہلکا"], correct_option: 0 },
+      { question_text: "\"استاد بچوں کو کہانی سناتی ہے۔\" اس جملے میں مفعول کون سا ہے؟", options: ["استاد", "بچوں", "کہانی", "سناتا"], correct_option: 2 },
+      { question_text: "لفظ \"آزادی\" کس سے بنا ہے؟", options: ["آزاد", "آزادہ", "آزادیاں", "آزادیان"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["وہ روزانہ اسکول جاتے ہیں۔", "وہ روزانہ اسکول جاتا ہے۔", "وہ روزانہ اسکول جاتی ہیں۔", "وہ روزانہ اسکول گئے۔"], correct_option: 1 },
+      { question_text: "لفظ \"بڑا\" کی مونث کیا ہے؟", options: ["بڑی", "بڑے", "بڑیاں", "بڑوں"], correct_option: 0 },
+      { question_text: "\"ہم نے درخت لگائے۔\" اس جملے میں فعل کون سا ہے؟", options: ["ہم", "نے", "درخت", "لگائے"], correct_option: 3 },
+      { question_text: "پیراگراف پڑھیں: \"ماں نے بچوں کو صفائی کی اہمیت بتائی۔ بچوں نے گھر صاف رکھا۔\" بچوں نے کیا کیا؟", options: ["گھر گندا کیا", "گھر صاف رکھا", "شور مچایا", "باہر چلے گئے"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu3HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 3'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 3', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 ENGLISH EASY QUESTIONS ---
+  const eng4EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 4' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng4EasyCount.count < 40) {
+    console.log("Seeding Grade 4 Easy English questions...");
+    const eng4EasyQuestions = [
+      { question_text: "Which of the following is a noun?", options: ["Run", "Happy", "Book", "Quickly"], correct_option: 2 },
+      { question_text: "Choose the correct plural of “child.”", options: ["Childs", "Childes", "Children", "Childrens"], correct_option: 2 },
+      { question_text: "Which word is a verb?", options: ["Jump", "Table", "Blue", "Tall"], correct_option: 0 },
+      { question_text: "“She ___ to school every day.”", options: ["go", "goes", "going", "gone"], correct_option: 1 },
+      { question_text: "Choose the correct pronoun: Ali is my friend. ___ is very kind.", options: ["He", "She", "It", "They"], correct_option: 0 },
+      { question_text: "Which word is an adjective?", options: ["Apple", "Run", "Beautiful", "Eat"], correct_option: 2 },
+      { question_text: "What is the opposite of “hot”?", options: ["Cold", "Warm", "Soft", "Dry"], correct_option: 0 },
+      { question_text: "Choose the correct past tense of “play.”", options: ["Playing", "Plays", "Played", "Play"], correct_option: 2 },
+      { question_text: "Which sentence is correct?", options: ["She go to school.", "She goes to school.", "She going to school.", "She gone to school."], correct_option: 1 },
+      { question_text: "Which word is a pronoun?", options: ["Ahmad", "Teacher", "He", "School"], correct_option: 2 },
+      { question_text: "Choose the correct article: ___ apple is red.", options: ["A", "An", "The", "No article"], correct_option: 1 },
+      { question_text: "Which word shows future tense?", options: ["Went", "Go", "Will go", "Going"], correct_option: 2 },
+      { question_text: "Find the synonym of “big.”", options: ["Large", "Small", "Short", "Thin"], correct_option: 0 },
+      { question_text: "Which sentence has correct punctuation?", options: ["where are you going", "Where are you going?", "Where are you going.", "where are You going?"], correct_option: 1 },
+      { question_text: "Which word is singular?", options: ["Cats", "Books", "Dog", "Boys"], correct_option: 2 },
+      { question_text: "“She is ___ honest girl.”", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Choose the correct possessive word: This is ___ bag. (belonging to me)", options: ["my", "me", "mine", "I"], correct_option: 0 },
+      { question_text: "Which word is an adverb?", options: ["Quick", "Quickly", "Run", "Blue"], correct_option: 1 },
+      { question_text: "Choose the correct question word: ___ is your name?", options: ["Who", "What", "Where", "When"], correct_option: 1 },
+      { question_text: "Find the opposite of “early.”", options: ["Fast", "Late", "Soon", "Quick"], correct_option: 1 },
+      { question_text: "Which word is a proper noun?", options: ["city", "school", "Pakistan", "country"], correct_option: 2 },
+      { question_text: "Choose the correct helping verb: They ___ playing cricket.", options: ["is", "am", "are", "was"], correct_option: 2 },
+      { question_text: "Select the correct sentence.", options: ["He have a car.", "He has a car.", "He having a car.", "He hads a car."], correct_option: 1 },
+      { question_text: "Which word describes a person?", options: ["Kind", "Jump", "Eat", "School"], correct_option: 0 },
+      { question_text: "Choose the correct comparative form of “tall.”", options: ["Taller", "Tallest", "More tall", "Very tall"], correct_option: 0 },
+      { question_text: "Which word is a common noun?", options: ["London", "River", "Boy", "Ahmed"], correct_option: 2 },
+      { question_text: "Find the correct spelling.", options: ["Frend", "Friend", "Freind", "Frind"], correct_option: 1 },
+      { question_text: "Which word shows action?", options: ["Sleep", "Chair", "Green", "Soft"], correct_option: 0 },
+      { question_text: "“She ___ a letter yesterday.”", options: ["write", "writes", "wrote", "writing"], correct_option: 2 },
+      { question_text: "Choose the correct conjunction: I like tea ___ coffee.", options: ["but", "and", "because", "so"], correct_option: 1 },
+      { question_text: "Which word is feminine?", options: ["King", "Queen", "Prince", "Boy"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["We was happy.", "We were happy.", "We is happy.", "We are happy yesterday."], correct_option: 1 },
+      { question_text: "Find the antonym of “happy.”", options: ["Glad", "Sad", "Joyful", "Bright"], correct_option: 1 },
+      { question_text: "Which word is a preposition?", options: ["Under", "Run", "Big", "Apple"], correct_option: 0 },
+      { question_text: "Choose the correct form: There ___ many students in the class.", options: ["is", "are", "was", "am"], correct_option: 1 },
+      { question_text: "Which sentence is in past tense?", options: ["She eats rice.", "She will eat rice.", "She ate rice.", "She is eating rice."], correct_option: 2 },
+      { question_text: "Find the correct capitalized sentence.", options: ["ali lives in lahore.", "Ali lives in Lahore.", "ali lives in Lahore.", "Ali lives in lahore."], correct_option: 1 },
+      { question_text: "Which word is a question word?", options: ["Because", "Why", "And", "But"], correct_option: 1 },
+      { question_text: "Choose the correct superlative form of “fast.”", options: ["Faster", "Fastest", "More fast", "Very fast"], correct_option: 1 },
+      { question_text: "Which sentence is correct?", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She didn’t likes milk."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng4EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 ENGLISH MEDIUM QUESTIONS ---
+  const eng4MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 4' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng4MedCount.count < 40) {
+    console.log("Seeding Grade 4 Medium English questions...");
+    const eng4MedQuestions = [
+      { question_text: "Read the passage: “Ali wakes up early every day. He washes his face and goes for a walk.” What does Ali do after washing his face?", options: ["Goes to school", "Goes for a walk", "Eats breakfast", "Sleeps again"], correct_option: 1 },
+      { question_text: "Choose the correct tense: She ___ her homework before dinner yesterday.", options: ["finishes", "finished", "finishing", "will finish"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["The boys is playing.", "The boys are playing.", "The boys was playing.", "The boys plays."], correct_option: 1 },
+      { question_text: "Choose the correct comparative form: This book is ___ than that one.", options: ["interesting", "more interesting", "most interesting", "very interesting"], correct_option: 1 },
+      { question_text: "Find the synonym of “begin.”", options: ["End", "Start", "Close", "Stop"], correct_option: 1 },
+      { question_text: "“She gave the gift to Sara.” What is the pronoun for “Sara”?", options: ["He", "She", "It", "They"], correct_option: 1 },
+      { question_text: "Choose the correct preposition: The cat is hiding ___ the table.", options: ["in", "under", "on", "between"], correct_option: 1 },
+      { question_text: "Which sentence is in future tense?", options: ["They play football.", "They played football.", "They will play football.", "They are playing football."], correct_option: 2 },
+      { question_text: "Identify the adjective: She wore a beautiful dress.", options: ["She", "Wore", "Beautiful", "Dress"], correct_option: 2 },
+      { question_text: "Choose the correct spelling.", options: ["Recieve", "Receive", "Receve", "Receeve"], correct_option: 1 },
+      { question_text: "Read the passage: “Fatima helps her mother in the kitchen. She washes the dishes.” Where does Fatima help her mother?", options: ["In the garden", "In the kitchen", "In school", "In the market"], correct_option: 1 },
+      { question_text: "Choose the correct conjunction: I was tired, ___ I finished my work.", options: ["but", "and", "because", "so"], correct_option: 0 },
+      { question_text: "Which word is an adverb?", options: ["Slow", "Slowly", "Slower", "Slowest"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["She don’t like apples.", "She doesn’t like apples.", "She not like apples.", "She didn’t likes apples."], correct_option: 1 },
+      { question_text: "Choose the correct superlative form: Mount Everest is the ___ mountain in the world.", options: ["high", "higher", "highest", "more high"], correct_option: 2 },
+      { question_text: "Find the antonym of “strong.”", options: ["Weak", "Powerful", "Brave", "Big"], correct_option: 0 },
+      { question_text: "Choose the correct helping verb: She ___ watching TV now.", options: ["is", "are", "were", "be"], correct_option: 0 },
+      { question_text: "Which sentence has correct punctuation?", options: ["Wow that is amazing", "Wow! That is amazing.", "Wow, that is amazing", "Wow That is amazing"], correct_option: 1 },
+      { question_text: "Choose the correct form: Each of the students ___ ready.", options: ["are", "is", "were", "be"], correct_option: 1 },
+      { question_text: "Identify the common noun:", options: ["Karachi", "River", "School", "Asia"], correct_option: 2 },
+      { question_text: "“She is taller ___ her sister.”", options: ["then", "than", "that", "them"], correct_option: 1 },
+      { question_text: "Choose the correct question word: ___ did you go yesterday?", options: ["What", "Where", "Why", "Who"], correct_option: 1 },
+      { question_text: "Read the passage: “The sun rises in the east. It gives us light and heat.” What does the sun give us?", options: ["Rain", "Wind", "Light and heat", "Snow"], correct_option: 2 },
+      { question_text: "Choose the correct past tense: They ___ the match last week.", options: ["win", "wins", "won", "winning"], correct_option: 2 },
+      { question_text: "Which word is a pronoun?", options: ["Them", "Table", "Red", "Jump"], correct_option: 0 },
+      { question_text: "Choose the correct article: He is ___ honest man.", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Identify the verb: The baby cried loudly.", options: ["Baby", "Cried", "Loudly", "The"], correct_option: 1 },
+      { question_text: "Find the synonym of “quick.”", options: ["Fast", "Slow", "Late", "Calm"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["There is many books.", "There are many books.", "There was many books.", "There be many books."], correct_option: 1 },
+      { question_text: "Which word shows possession?", options: ["Their", "Them", "They", "Theirs"], correct_option: 0 },
+      { question_text: "“She ___ already finished her work.”", options: ["have", "has", "hads", "having"], correct_option: 1 },
+      { question_text: "Identify the proper noun:", options: ["City", "Teacher", "Islamabad", "Country"], correct_option: 2 },
+      { question_text: "Choose the correct preposition: The picture is hanging ___ the wall.", options: ["in", "on", "at", "between"], correct_option: 1 },
+      { question_text: "Which sentence is correct?", options: ["He can sings well.", "He can sing well.", "He can singing well.", "He cans sing well."], correct_option: 1 },
+      { question_text: "Find the antonym of “clean.”", options: ["Dirty", "Clear", "Pure", "Fresh"], correct_option: 0 },
+      { question_text: "Choose the correct form: The teacher and the students ___ present.", options: ["is", "are", "was", "be"], correct_option: 1 },
+      { question_text: "“She was tired ___ she continued working.”", options: ["but", "because", "so", "and"], correct_option: 0 },
+      { question_text: "Which sentence is in present continuous tense?", options: ["She reads a book.", "She read a book.", "She is reading a book.", "She will read a book."], correct_option: 2 },
+      { question_text: "Choose the correct word: This is ___ umbrella.", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Which sentence is grammatically correct?", options: ["Me and Ali went to school.", "Ali and I went to school.", "Ali and me went to school.", "I and Ali went to school."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng4MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 ENGLISH HARD QUESTIONS ---
+  const eng4HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 4' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng4HardCount.count < 40) {
+    console.log("Seeding Grade 4 Hard English questions...");
+    const eng4HardQuestions = [
+      { question_text: "Passage 1: “Ahmed found a wallet on the road. He looked inside and saw some money and an identity card. He decided to return it to the owner.” Why did Ahmed look inside the wallet?", options: ["To take the money", "To find the owner", "To throw it away", "To hide it"], correct_option: 1 },
+      { question_text: "What does this passage show about Ahmed?", options: ["He is careless", "He is dishonest", "He is honest", "He is angry"], correct_option: 2 },
+      { question_text: "Choose the correct passive voice: Ahmed returned the wallet.", options: ["The wallet is returned by Ahmed.", "The wallet was returned by Ahmed.", "The wallet returned by Ahmed.", "Ahmed was returned the wallet."], correct_option: 1 },
+      { question_text: "Identify the verb phrase: He decided to return it.", options: ["He", "Decided to return", "It", "Return"], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: He said, “I found a wallet.”", options: ["He said that he found a wallet.", "He says he find a wallet.", "He said that I found a wallet.", "He say he found wallet."], correct_option: 0 },
+      { question_text: "Passage 2: “Zara studies hard because she wants to become a doctor. She reads books daily and never wastes her time.” Why does Zara study hard?", options: ["To earn money", "To become famous", "To become a doctor", "To travel"], correct_option: 2 },
+      { question_text: "Which word shows cause?", options: ["Hard", "Because", "Never", "Daily"], correct_option: 1 },
+      { question_text: "Choose the correct complex sentence:", options: ["Zara studies hard and she wants to become a doctor.", "Zara studies hard because she wants to become a doctor.", "Zara studies hard but she wants to become a doctor.", "Zara studies hard so she doctor."], correct_option: 1 },
+      { question_text: "Identify the adverb in the passage.", options: ["Hard", "Doctor", "Daily", "Books"], correct_option: 2 },
+      { question_text: "Choose the correct tense: She ___ studying for two hours.", options: ["is", "has been", "was", "will"], correct_option: 1 },
+      { question_text: "Find the synonym of “waste.”", options: ["Use", "Spend", "Misuse", "Save"], correct_option: 2 },
+      { question_text: "Choose the correct superlative form: This is the ___ movie I have ever seen.", options: ["good", "better", "best", "more good"], correct_option: 2 },
+      { question_text: "Identify the conjunction: I wanted to go, but it was raining.", options: ["Wanted", "But", "Raining", "Go"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Each boy have a book.", "Each boy has a book.", "Each boys has a book.", "Each boy having a book."], correct_option: 1 },
+      { question_text: "Which sentence is passive?", options: ["The chef cooked the meal.", "The meal was cooked by the chef.", "The chef is cooking the meal.", "The chef cooks the meal."], correct_option: 1 },
+      { question_text: "Choose the correct comparative degree: Gold is ___ than silver.", options: ["precious", "more precious", "most precious", "very precious"], correct_option: 1 },
+      { question_text: "Find the antonym of “brave.”", options: ["Bold", "Fearless", "Cowardly", "Strong"], correct_option: 2 },
+      { question_text: "Choose the correct indirect speech: She said, “I am tired.”", options: ["She said that she is tired.", "She said that she was tired.", "She says she was tired.", "She say she tired."], correct_option: 1 },
+      { question_text: "Identify the dependent clause: Although it was late, we continued working.", options: ["We continued working", "Although it was late", "Continued working", "It was"], correct_option: 1 },
+      { question_text: "Choose correct punctuation.", options: ["What a beautiful day.", "What a beautiful day!", "What a beautiful day,", "What a beautiful day?"], correct_option: 1 },
+      { question_text: "Passage 3: “Bilal planted a tree in his garden. He watered it every day. After a few months, it grew tall and strong.” Why did the tree grow tall?", options: ["Because it was big", "Because Bilal watered it daily", "Because of rain only", "Because of sunlight only"], correct_option: 1 },
+      { question_text: "Which tense is used in the passage?", options: ["Present", "Past", "Future", "Continuous"], correct_option: 1 },
+      { question_text: "Choose the correct passive: Bilal planted a tree.", options: ["A tree was planted by Bilal.", "A tree is planted by Bilal.", "Bilal was planted a tree.", "Tree planted Bilal."], correct_option: 0 },
+      { question_text: "Find the synonym of “tall.”", options: ["Short", "High", "Low", "Small"], correct_option: 1 },
+      { question_text: "Identify the pronoun reference in “He watered it.” “It” refers to:", options: ["Garden", "Water", "Tree", "Months"], correct_option: 2 },
+      { question_text: "Choose the correct form: Neither Ali nor Ahmed ___ present.", options: ["are", "is", "were", "be"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["She has went home.", "She has gone home.", "She have gone home.", "She had went home."], correct_option: 1 },
+      { question_text: "Choose the correct relative pronoun: This is the boy ___ won the prize.", options: ["which", "who", "whose", "whom"], correct_option: 1 },
+      { question_text: "Find the antonym of “strong.”", options: ["Weak", "Tough", "Brave", "Healthy"], correct_option: 0 },
+      { question_text: "Choose correct tense transformation: He plays cricket. (Past tense)", options: ["He played cricket.", "He playing cricket.", "He will play cricket.", "He has played cricket."], correct_option: 0 },
+      { question_text: "Identify the object in: She bought a new bag.", options: ["She", "Bought", "Bag", "New"], correct_option: 2 },
+      { question_text: "Choose correct article: It is ___ unique idea.", options: ["a", "an", "the", "no article"], correct_option: 0 },
+      { question_text: "Which sentence is correct?", options: ["The news are interesting.", "The news is interesting.", "The news were interesting.", "The news have interesting."], correct_option: 1 },
+      { question_text: "Choose correct conjunction: He studied hard ___ he passed the exam.", options: ["because", "so", "but", "although"], correct_option: 1 },
+      { question_text: "Find the synonym of “silent.”", options: ["Quiet", "Loud", "Angry", "Bright"], correct_option: 0 },
+      { question_text: "Choose correct reported speech: They said, “We are ready.”", options: ["They said that they are ready.", "They said that they were ready.", "They say they were ready.", "They said we were ready."], correct_option: 1 },
+      { question_text: "Identify the adjective clause: The book that you gave me is interesting.", options: ["The book", "That you gave me", "Is interesting", "You gave"], correct_option: 1 },
+      { question_text: "Choose correct form: She is one of the ___ students in the class.", options: ["intelligent", "more intelligent", "most intelligent", "very intelligent"], correct_option: 2 },
+      { question_text: "Which sentence is grammatically correct?", options: ["Hardly had he reached when it started raining.", "Hardly had he reached than it started raining.", "Hardly had he reached when it started raining.", "Hardly he had reached when it started raining."], correct_option: 0 },
+      { question_text: "Choose the correct sentence transformation: Open the door. (Passive voice)", options: ["Let the door be opened.", "The door opened.", "The door is open.", "Door is opened by you."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng4HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 MATH EASY QUESTIONS ---
+  const math4EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 4' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math4EasyCount.count < 40) {
+    console.log("Seeding Grade 4 Easy Math questions...");
+    const math4EasyQuestions = [
+      { question_text: "What is the place value of 5 in 45,321?", options: ["5", "50", "5,000", "50,000"], correct_option: 2 },
+      { question_text: "Find the sum: 3,245 + 2,134 =", options: ["5,379", "5,289", "5,469", "5,349"], correct_option: 0 },
+      { question_text: "Subtract: 8,000 – 3,256 =", options: ["4,844", "4,744", "4,654", "4,734"], correct_option: 1 },
+      { question_text: "Multiply: 234 × 3 =", options: ["602", "692", "702", "712"], correct_option: 2 },
+      { question_text: "Divide: 48 ÷ 6 =", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which fraction is greater?", options: ["1/4", "1/2", "1/5", "1/6"], correct_option: 1 },
+      { question_text: "What is half of 96?", options: ["46", "48", "49", "50"], correct_option: 1 },
+      { question_text: "Write 3,506 in expanded form.", options: ["3,000 + 500 + 6", "3,000 + 50 + 6", "3,000 + 500 + 0 + 6", "3,500 + 6"], correct_option: 2 },
+      { question_text: "Find the missing number: ___ + 275 = 500", options: ["215", "225", "235", "245"], correct_option: 1 },
+      { question_text: "What is 9 × 7?", options: ["56", "63", "72", "49"], correct_option: 1 },
+      { question_text: "Which number is the largest?", options: ["4,598", "4,859", "4,985", "4,589"], correct_option: 2 },
+      { question_text: "How many minutes are there in 1 hour?", options: ["30", "45", "60", "100"], correct_option: 2 },
+      { question_text: "Convert 2 hours into minutes.", options: ["100", "110", "120", "130"], correct_option: 2 },
+      { question_text: "What is 1/4 of 20?", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "Find the product: 125 × 4 =", options: ["400", "450", "500", "520"], correct_option: 2 },
+      { question_text: "A shopkeeper has 36 apples. He puts them equally in 6 baskets. How many apples in each basket?", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "Which fraction shows one half?", options: ["2/4", "1/3", "3/4", "1/5"], correct_option: 0 },
+      { question_text: "Find the difference: 9,001 – 4,000 =", options: ["5,000", "5,001", "4,999", "4,001"], correct_option: 1 },
+      { question_text: "How many centimeters are in 1 meter?", options: ["10", "50", "100", "1,000"], correct_option: 2 },
+      { question_text: "Round 4,567 to the nearest thousand.", options: ["4,000", "5,000", "4,600", "4,500"], correct_option: 1 },
+      { question_text: "Find the missing number: 7 × ___ = 56", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which is an even number?", options: ["35", "47", "58", "63"], correct_option: 2 },
+      { question_text: "Add: 4,999 + 1 =", options: ["5,000", "4,100", "5,100", "4,900"], correct_option: 0 },
+      { question_text: "Find 3/4 of 16.", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "How many days are there in 2 weeks?", options: ["10", "12", "14", "16"], correct_option: 2 },
+      { question_text: "What is 400 × 2?", options: ["600", "700", "800", "900"], correct_option: 2 },
+      { question_text: "Which number is divisible by 5?", options: ["42", "53", "65", "78"], correct_option: 2 },
+      { question_text: "Find the perimeter of a square with side 4 cm.", options: ["8 cm", "12 cm", "16 cm", "20 cm"], correct_option: 2 },
+      { question_text: "Subtract: 5,500 – 2,500 =", options: ["2,500", "3,000", "3,500", "2,000"], correct_option: 1 },
+      { question_text: "What is the value of 6 in 6,789?", options: ["6", "60", "600", "6,000"], correct_option: 3 },
+      { question_text: "A pencil costs Rs. 15. What is the cost of 4 pencils?", options: ["45", "50", "60", "75"], correct_option: 2 },
+      { question_text: "What is 100 ÷ 10?", options: ["5", "8", "10", "20"], correct_option: 2 },
+      { question_text: "Which fraction is smallest?", options: ["1/2", "1/3", "1/4", "1/5"], correct_option: 2 },
+      { question_text: "Find the sum: 2,345 + 1,655 =", options: ["4,000", "3,900", "3,800", "4,100"], correct_option: 0 },
+      { question_text: "What is double of 125?", options: ["200", "250", "225", "275"], correct_option: 1 },
+      { question_text: "Which number is odd?", options: ["28", "44", "57", "62"], correct_option: 2 },
+      { question_text: "Convert 500 cm into meters.", options: ["4 m", "5 m", "6 m", "50 m"], correct_option: 1 },
+      { question_text: "What is 6 × 8?", options: ["42", "48", "54", "56"], correct_option: 1 },
+      { question_text: "Find the missing number: 900 + ___ = 1,200", options: ["200", "250", "300", "350"], correct_option: 2 },
+      { question_text: "A book has 120 pages. If you read 20 pages, how many pages are left?", options: ["80", "90", "100", "110"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math4EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 MATH MEDIUM QUESTIONS ---
+  const math4MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 4' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math4MedCount.count < 40) {
+    console.log("Seeding Grade 4 Medium Math questions...");
+    const math4MedQuestions = [
+      { question_text: "Find the sum: 4,568 + 3,729 =", options: ["8,187", "8,297", "8,207", "8,397"], correct_option: 1 },
+      { question_text: "Subtract: 9,000 – 4,785 =", options: ["4,215", "4,315", "4,125", "4,205"], correct_option: 0 },
+      { question_text: "Multiply: 324 × 12 =", options: ["3,888", "3,798", "3,968", "3,808"], correct_option: 0 },
+      { question_text: "Divide: 125 ÷ 8 =", options: ["15 R5", "16 R5", "15 R3", "14 R5"], correct_option: 0 },
+      { question_text: "Which fraction is equivalent to 2/4?", options: ["1/2", "2/3", "3/4", "4/5"], correct_option: 0 },
+      { question_text: "Which fraction is greater?", options: ["3/5", "4/5", "2/5", "1/5"], correct_option: 1 },
+      { question_text: "Find 3/4 of 28.", options: ["18", "20", "21", "24"], correct_option: 2 },
+      { question_text: "Find the LCM of 4 and 6.", options: ["8", "10", "12", "24"], correct_option: 2 },
+      { question_text: "Which number is a factor of 36?", options: ["5", "7", "9", "11"], correct_option: 2 },
+      { question_text: "Round 6,748 to the nearest hundred.", options: ["6,700", "6,800", "6,750", "6,600"], correct_option: 1 },
+      { question_text: "A shopkeeper sold 235 apples in the morning and 189 in the evening. How many apples were sold in total?", options: ["414", "424", "434", "444"], correct_option: 1 },
+      { question_text: "A train travels 60 km in one hour. How far will it travel in 5 hours?", options: ["250 km", "280 km", "300 km", "320 km"], correct_option: 2 },
+      { question_text: "Convert 3 meters into centimeters.", options: ["30", "300", "3,000", "33"], correct_option: 1 },
+      { question_text: "Find the perimeter of a rectangle with length 8 cm and width 5 cm.", options: ["13 cm", "26 cm", "40 cm", "16 cm"], correct_option: 1 },
+      { question_text: "Find the area of a rectangle with length 6 cm and width 4 cm.", options: ["10 cm²", "20 cm²", "24 cm²", "30 cm²"], correct_option: 2 },
+      { question_text: "What is 75% of 200?", options: ["100", "120", "150", "175"], correct_option: 2 },
+      { question_text: "Convert 2 hours 30 minutes into minutes.", options: ["130", "140", "150", "160"], correct_option: 2 },
+      { question_text: "A book costs Rs. 250. What is the cost of 6 books?", options: ["1,200", "1,300", "1,500", "1,600"], correct_option: 2 },
+      { question_text: "Find the missing number: ___ × 9 = 117", options: ["11", "12", "13", "14"], correct_option: 2 },
+      { question_text: "Which number is a multiple of 7?", options: ["48", "49", "52", "54"], correct_option: 1 },
+      { question_text: "Subtract: 8,456 – 2,789 =", options: ["5,667", "5,677", "5,657", "5,697"], correct_option: 0 },
+      { question_text: "A farmer has 144 mangoes. He packs them equally in 12 boxes. How many mangoes in each box?", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "Which fraction is smallest?", options: ["5/8", "3/8", "7/8", "6/8"], correct_option: 1 },
+      { question_text: "Find 25% of 80.", options: ["15", "20", "25", "30"], correct_option: 1 },
+      { question_text: "How many seconds are there in 5 minutes?", options: ["200", "250", "300", "350"], correct_option: 2 },
+      { question_text: "Multiply: 456 × 3 =", options: ["1,268", "1,368", "1,458", "1,488"], correct_option: 1 },
+      { question_text: "Divide: 560 ÷ 7 =", options: ["70", "75", "80", "90"], correct_option: 2 },
+      { question_text: "Which number is divisible by both 2 and 3?", options: ["12", "14", "16", "18"], correct_option: 0 },
+      { question_text: "Find the HCF of 12 and 18.", options: ["3", "6", "9", "12"], correct_option: 1 },
+      { question_text: "Convert 2.5 km into meters.", options: ["2,500", "250", "25", "20,500"], correct_option: 0 },
+      { question_text: "Find the difference between 1/2 and 1/4.", options: ["1/4", "1/2", "3/4", "2/4"], correct_option: 0 },
+      { question_text: "A class has 24 students. If each row has 6 students, how many rows are there?", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "Find the next number in the pattern: 5, 10, 20, 40, ___", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "Add: 7,899 + 1,101 =", options: ["8,900", "9,000", "9,100", "8,990"], correct_option: 1 },
+      { question_text: "A rope is 15 meters long. If 7 meters are cut, how much rope is left?", options: ["7 m", "8 m", "9 m", "10 m"], correct_option: 1 },
+      { question_text: "Find the product: 205 × 5 =", options: ["1,025", "1,015", "1,005", "1,035"], correct_option: 0 },
+      { question_text: "Which fraction represents three quarters?", options: ["2/3", "3/4", "4/3", "1/3"], correct_option: 1 },
+      { question_text: "Find the average of 4, 6, and 8.", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "A bus leaves at 9:30 AM and reaches at 12:00 PM. How long is the journey?", options: ["2 hours", "2 hours 30 minutes", "3 hours", "3 hours 30 minutes"], correct_option: 1 },
+      { question_text: "What is the value of 3 in 73,245?", options: ["3", "30", "300", "3,000"], correct_option: 3 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math4MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 MATH HARD QUESTIONS ---
+  const math4HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 4' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math4HardCount.count < 40) {
+    console.log("Seeding Grade 4 Hard Math questions...");
+    const math4HardQuestions = [
+      { question_text: "Multiply: 346 × 24 =", options: ["8,204", "8,304", "8,214", "8,404"], correct_option: 1 },
+      { question_text: "Divide: 2,496 ÷ 12 =", options: ["206", "208", "212", "218"], correct_option: 1 },
+      { question_text: "Find the HCF of 24 and 36.", options: ["6", "8", "12", "18"], correct_option: 2 },
+      { question_text: "Find the LCM of 8 and 12.", options: ["16", "24", "32", "48"], correct_option: 1 },
+      { question_text: "Add the fractions: 1/4 + 2/4 =", options: ["2/4", "3/4", "1/2", "4/4"], correct_option: 1 },
+      { question_text: "Subtract: 5/6 – 2/6 =", options: ["2/6", "3/6", "4/6", "1/6"], correct_option: 1 },
+      { question_text: "Find 3/5 of 45.", options: ["25", "27", "30", "35"], correct_option: 1 },
+      { question_text: "A factory produces 125 toys each day. How many toys are produced in 28 days?", options: ["3,400", "3,500", "3,600", "3,700"], correct_option: 1 },
+      { question_text: "A train travels 75 km in one hour. How far will it travel in 6 hours 30 minutes?", options: ["450 km", "480 km", "487.5 km", "500 km"], correct_option: 2 },
+      { question_text: "Find the area of a rectangle with length 15 cm and width 9 cm.", options: ["120 cm²", "130 cm²", "135 cm²", "140 cm²"], correct_option: 2 },
+      { question_text: "Find the perimeter of a square whose area is 64 cm².", options: ["16 cm", "24 cm", "32 cm", "64 cm"], correct_option: 2 },
+      { question_text: "A shopkeeper bought 240 pens. He packed them equally in boxes of 15. How many boxes did he need?", options: ["14", "15", "16", "18"], correct_option: 2 },
+      { question_text: "Find the missing number: ___ × 18 = 1,134", options: ["62", "63", "64", "65"], correct_option: 1 },
+      { question_text: "What is 125% of 80?", options: ["90", "95", "100", "110"], correct_option: 2 },
+      { question_text: "Convert 3.75 km into meters.", options: ["3,075", "3,750", "37,500", "375"], correct_option: 1 },
+      { question_text: "Add: 3,456 + 7,899 + 1,245 =", options: ["12,500", "12,600", "12,700", "12,800"], correct_option: 1 },
+      { question_text: "A bus left at 8:45 AM and arrived at 2:15 PM. How long was the journey?", options: ["5 hours", "5 hours 15 minutes", "5 hours 30 minutes", "6 hours"], correct_option: 2 },
+      { question_text: "Which number is divisible by 9?", options: ["234", "235", "236", "237"], correct_option: 0 },
+      { question_text: "A field is 25 m long and 18 m wide. Find its area.", options: ["430 m²", "440 m²", "450 m²", "460 m²"], correct_option: 2 },
+      { question_text: "Find the average of 12, 18, 24, and 30.", options: ["18", "20", "21", "21"], correct_option: 3 },
+      { question_text: "Simplify: 4/8 =", options: ["1/4", "1/2", "2/4", "4/4"], correct_option: 1 },
+      { question_text: "A car covers 360 km in 4 hours. What is its speed per hour?", options: ["80 km/h", "85 km/h", "90 km/h", "95 km/h"], correct_option: 2 },
+      { question_text: "Find the next number in the pattern: 3, 6, 12, 24, ___", options: ["36", "42", "48", "54"], correct_option: 2 },
+      { question_text: "Subtract: 10,000 – 4,567 =", options: ["5,333", "5,423", "5,433", "5,523"], correct_option: 2 },
+      { question_text: "Find 2/3 of 90.", options: ["50", "55", "60", "65"], correct_option: 2 },
+      { question_text: "If one notebook costs Rs. 85, what is the cost of 14 notebooks?", options: ["1,090", "1,190", "1,200", "1,250"], correct_option: 1 },
+      { question_text: "Convert 2 hours 45 minutes into minutes.", options: ["155", "160", "165", "170"], correct_option: 2 },
+      { question_text: "Find the HCF of 45 and 60.", options: ["10", "15", "20", "30"], correct_option: 1 },
+      { question_text: "Find the LCM of 5 and 7.", options: ["30", "35", "40", "45"], correct_option: 1 },
+      { question_text: "A water tank holds 750 liters. If 275 liters are used, how much water remains?", options: ["465", "470", "475", "480"], correct_option: 2 },
+      { question_text: "Multiply: 908 × 6 =", options: ["5,438", "5,448", "5,458", "5,468"], correct_option: 1 },
+      { question_text: "Divide: 3,600 ÷ 25 =", options: ["140", "144", "150", "160"], correct_option: 1 },
+      { question_text: "A farmer has 96 sheep. If each pen holds 8 sheep, how many pens are needed?", options: ["10", "11", "12", "14"], correct_option: 2 },
+      { question_text: "Find the area of a square with side 13 cm.", options: ["156 cm²", "159 cm²", "169 cm²", "173 cm²"], correct_option: 2 },
+      { question_text: "What is the value of 7 in 478,512?", options: ["7", "70", "7,000", "70,000"], correct_option: 3 },
+      { question_text: "A shopkeeper earns Rs. 350 per day. How much will he earn in 15 days?", options: ["5,000", "5,150", "5,250", "5,350"], correct_option: 2 },
+      { question_text: "Find the missing number: ___ ÷ 9 = 84", options: ["746", "756", "766", "776"], correct_option: 1 },
+      { question_text: "Which fraction is greatest?", options: ["5/6", "4/6", "3/6", "2/6"], correct_option: 0 },
+      { question_text: "If a clock shows 3:00 PM, what will be the time after 145 minutes?", options: ["5:05 PM", "5:15 PM", "5:25 PM", "5:35 PM"], correct_option: 2 },
+      { question_text: "A school bought 48 desks at Rs. 1,250 each. What was the total cost?", options: ["58,000", "59,000", "60,000", "61,000"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math4HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 URDU EASY QUESTIONS ---
+  const urdu4EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 4' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu4EasyCount.count < 40) {
+    console.log("Seeding Grade 4 Easy Urdu questions...");
+    const urdu4EasyQuestions = [
+      { question_text: "درج ذیل میں سے اسم کون سا ہے؟", options: ["دوڑنا", "کتاب", "خوبصورت", "تیز"], correct_option: 1 },
+      { question_text: "لفظ \"لڑکا\" کی جمع کیا ہے؟", options: ["لڑکیاں", "لڑکے", "لڑکی", "لڑکوں"], correct_option: 1 },
+      { question_text: "\"استاد\" کا مؤنث کیا ہے؟", options: ["استادی", "استانی", "استادہ", "استادات"], correct_option: 1 },
+      { question_text: "\"تیز\" کا متضاد کیا ہے؟", options: ["آہستہ", "جلدی", "اونچا", "چھوٹا"], correct_option: 0 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: علی روزانہ اسکول ___ جاتا ہے۔", options: ["کل", "ضرور", "باقاعدگی سے", "شاید"], correct_option: 2 },
+      { question_text: "درج ذیل میں سے فعل کون سا ہے؟", options: ["قلم", "بیٹھنا", "نیلا", "لمبا"], correct_option: 1 },
+      { question_text: "\"بڑا\" کا مؤنث کیا ہے؟", options: ["بڑی", "بڑے", "بڑیاں", "بڑو"], correct_option: 0 },
+      { question_text: "درست املا کی نشاندہی کریں:", options: ["سکول", "اسکول", "اسکوول", "اسکولل"], correct_option: 1 },
+      { question_text: "\"خوش\" کا مترادف کیا ہے؟", options: ["غمگین", "اداس", "مسرور", "پریشان"], correct_option: 2 },
+      { question_text: "جملہ مکمل کریں: ہم سب کو سچ ___ چاہیے۔", options: ["بولنا", "بولتی", "بولے", "بولتے"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے صفت کون سی ہے؟", options: ["لڑکا", "کھیلنا", "خوبصورت", "دروازہ"], correct_option: 2 },
+      { question_text: "\"درخت\" کی جمع کیا ہے؟", options: ["درختوں", "درخت", "درختاں", "درختے"], correct_option: 1 },
+      { question_text: "\"اندھیرا\" کا متضاد کیا ہے؟", options: ["رات", "روشنی", "سیاہ", "کالا"], correct_option: 1 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: وہ بہت ___ لڑکی ہے۔", options: ["اچھا", "اچھی", "اچھے", "اچھوں"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے مذکر لفظ کون سا ہے؟", options: ["بہن", "لڑکی", "استاد", "آنٹی"], correct_option: 2 },
+      { question_text: "\"دوڑ\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "درست جملہ کون سا ہے؟", options: ["وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھتی ہیں۔"], correct_option: 0 },
+      { question_text: "\"گرم\" کا متضاد کیا ہے؟", options: ["ٹھنڈا", "ہلکا", "سادہ", "صاف"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے واحد لفظ کون سا ہے؟", options: ["بچے", "کتابیں", "پھول", "پرندہ"], correct_option: 3 },
+      { question_text: "\"صاف\" کا مترادف کیا ہے؟", options: ["گندا", "شفاف", "سیاہ", "خشک"], correct_option: 1 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: ہم سب کو بڑوں کی ___ کرنی چاہیے۔", options: ["عزت", "عزتی", "عزتیں", "عزتوں"], correct_option: 0 },
+      { question_text: "\"نیا\" کی جمع کیا ہے؟", options: ["نئے", "نئی", "نیاں", "نیاں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے کون سا فعل ہے؟", options: ["بیٹھا", "بیٹھنا", "بیٹھ", "بیٹھک"], correct_option: 1 },
+      { question_text: "درست املا کی نشاندہی کریں:", options: ["زندگی", "زنگی", "زندگئی", "زندیگی"], correct_option: 0 },
+      { question_text: "\"باغ\" کا مؤنث کیا ہے؟", options: ["باغیچہ", "باغات", "باغی", "باغیں"], correct_option: 0 },
+      { question_text: "جملہ مکمل کریں: بارش ہو رہی ہے، اس لیے ہم ___ نہیں گئے۔", options: ["باہر", "اندر", "اوپر", "نیچے"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے کون سا لفظ جمع ہے؟", options: ["دروازہ", "دروازے", "دروازہ", "دروازی"], correct_option: 1 },
+      { question_text: "\"اونچا\" کا متضاد کیا ہے؟", options: ["نیچا", "لمبا", "چوڑا", "پتلا"], correct_option: 0 },
+      { question_text: "\"محنت\" کس قسم کا لفظ ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "درست جملہ کون سا ہے؟", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔", "بچے کھیل رہا ہوں۔"], correct_option: 1 },
+      { question_text: "\"روشنی\" کا متضاد کیا ہے؟", options: ["اندھیرا", "چمک", "روش", "سیاہی"], correct_option: 0 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: استاد نے سبق ___۔", options: ["پڑھایا", "پڑھاتے", "پڑھتی", "پڑھایا ہے"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے صفت کون سی ہے؟", options: ["خوشبو", "مہکتا", "مہکنا", "خوشبودار"], correct_option: 3 },
+      { question_text: "\"پانی\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "\"دوست\" کی جمع کیا ہے؟", options: ["دوستیں", "دوستوں", "دوست", "دوستا"], correct_option: 2 },
+      { question_text: "درست املا کی نشاندہی کریں:", options: ["تعلییم", "تعلیم", "تلیم", "تعلئم"], correct_option: 1 },
+      { question_text: "\"جلدی\" کا مترادف کیا ہے؟", options: ["آہستہ", "فوراً", "دیر", "رکنا"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: پرندے آسمان میں ___ ہیں۔", options: ["اڑتے", "اڑتی", "اڑتا", "اڑوں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے مؤنث لفظ کون سا ہے؟", options: ["بھائی", "استاد", "بہن", "لڑکا"], correct_option: 2 },
+      { question_text: "\"سچ\" کا متضاد کیا ہے؟", options: ["جھوٹ", "حق", "بات", "جواب"], correct_option: 0 },
+      // Batch 2
+      { question_text: "\"استاد\" کی جمع کیا ہے؟", options: ["استاداں", "استادیں", "اساتذہ", "استادی"], correct_option: 2 },
+      { question_text: "\"بڑا\" کا مؤنث کیا ہے؟", options: ["بڑے", "بڑی", "بڑیاں", "بڑو"], correct_option: 1 },
+      { question_text: "\"گرم\" کا متضاد کیا ہے؟", options: ["نرم", "ٹھنڈا", "ہلکا", "صاف"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے فعل کون سا ہے؟", options: ["بیٹھنا", "کرسی", "لمبا", "دروازہ"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ بازار جاتا ہے۔", "وہ بازار جاتی ہے۔", "وہ بازار جاتے ہے۔", "وہ بازار جاتی ہیں۔"], correct_option: 0 },
+      { question_text: "\"خوش\" کا مترادف کیا ہے؟", options: ["اداش", "مسرور", "پریشان", "غصہ"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے صفت کون سی ہے؟", options: ["لڑکا", "دوڑنا", "خوبصورت", "باغ"], correct_option: 2 },
+      { question_text: "\"پرندہ\" کی جمع کیا ہے؟", options: ["پرندوں", "پرندے", "پرندیاں", "پرندہ"], correct_option: 1 },
+      { question_text: "درست املا کی نشاندہی کریں:", options: ["ذمداری", "ذمہ داری", "زمہ داری", "ذمدری"], correct_option: 1 },
+      { question_text: "\"اندھیرا\" کا متضاد کیا ہے؟", options: ["روشنی", "سایہ", "سیاہی", "رات"], correct_option: 0 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: ہمیں سچ ___ چاہیے۔", options: ["بولنا", "بولتی", "بولے", "بولتے"], correct_option: 0 },
+      { question_text: "\"دوستی\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہے ہیں۔", "بچے کھیل رہا ہے۔", "بچے کھیل رہی ہے۔", "بچے کھیل رہا ہوں۔"], correct_option: 0 },
+      { question_text: "\"اونچا\" کا متضاد کیا ہے؟", options: ["لمبا", "نیچا", "چوڑا", "پتلا"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے مؤنث لفظ کون سا ہے؟", options: ["بھائی", "لڑکی", "استاد", "لڑکا"], correct_option: 1 },
+      { question_text: "\"محنت\" کس قسم کا لفظ ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں:", options: ["تعلییم", "تعلیم", "تلیم", "تعلئم"], correct_option: 1 },
+      { question_text: "\"سچ\" کا متضاد کیا ہے؟", options: ["جھوٹ", "حق", "جواب", "بات"], correct_option: 0 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: وہ ایک ___ طالب علم ہے۔", options: ["محنتی", "محنت", "محنتا", "محنتیں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے فعل ماضی کون سا ہے؟", options: ["جاتا", "جائے گا", "گیا", "جا رہا"], correct_option: 2 },
+      { question_text: "درج ذیل میں سے جمع لفظ کون سا ہے؟", options: ["دروازہ", "دروازے", "دروازی", "دروازہ"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھتی ہیں۔"], correct_option: 0 },
+      { question_text: "\"بہادر\" کا متضاد کیا ہے؟", options: ["ڈرپوک", "مضبوط", "تیز", "ڈرپوک"], correct_option: 0 },
+      { question_text: "\"روشنی\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: ہمیں بڑوں کی ___ کرنی چاہیے۔", options: ["عزت", "عزتی", "عزتیں", "عزتوں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے مذکر لفظ کون سا ہے؟", options: ["بہن", "خاتون", "لڑکا", "آنٹی"], correct_option: 2 },
+      { question_text: "\"جلدی\" کا مترادف کیا ہے؟", options: ["دیر", "فوراً", "رکنا", "آہستہ"], correct_option: 1 },
+      { question_text: "درست املا کی نشاندہی کریں:", options: ["مسلہ", "مسئلہ", "مسلہہ", "مسیلا"], correct_option: 1 },
+      { question_text: "\"لمبا\" کی مونث کیا ہے؟", options: ["لمبی", "لمبے", "لمبوں", "لمبیاں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے صفت کون سی ہے؟", options: ["نیلا", "نیلاپن", "نیل", "نیلنا"], correct_option: 0 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: پرندے آسمان میں ___ ہیں۔", options: ["اڑتے", "اڑتی", "اڑتا", "اڑوں"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے مفعول کون سا ہے؟ (Assuming context if needed, but following options)", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "\"خوشی\" کا متضاد کیا ہے؟", options: ["غم", "ہنسی", "مزہ", "پیار"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["استاد بچوں کو پڑھاتے ہیں۔", "استاد بچوں کو پڑھاتا ہیں۔", "استاد بچوں کو پڑھاتے ہے۔", "استاد بچوں کو پڑھاتی ہے۔"], correct_option: 0 },
+      { question_text: "\"چمک\" کس قسم کا لفظ ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے فعل مضارع کون سا ہے؟", options: ["جائے گا", "گیا", "جاتا ہے", "گیا تھا"], correct_option: 2 },
+      { question_text: "\"آزادی\" کا متضاد کیا ہے؟", options: ["خوشی", "غلامی", "روشنی", "محنت"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے اسکول جاتے ہیں۔", "بچے اسکول جاتا ہیں۔", "بچے اسکول جاتی ہے۔", "بچے اسکول جاتے ہے۔"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu4EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 URDU MEDIUM QUESTIONS ---
+  const urdu4MediumCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 4' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu4MediumCount.count < 40) {
+    console.log("Seeding Grade 4 Medium Urdu questions...");
+    const urdu4MedQuestions = [
+      { question_text: "درج ذیل میں سے مرکب لفظ کون سا ہے؟", options: ["کتاب", "قلم", "خوشبو", "دروازہ"], correct_option: 2 },
+      { question_text: "\"وقت کی پابندی\" کا مطلب کیا ہے؟", options: ["دیر سے آنا", "وقت پر کام کرنا", "کھیلنا", "آرام کرنا"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے اسم صفت کون سا ہے؟", options: ["دوڑنا", "خوبصورتی", "خوبصورت", "خوب"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہمیں سچ بولنی چاہیے۔", "ہمیں سچ بولنا چاہیے۔", "ہمیں سچ بولتے چاہیے۔", "ہمیں سچ بولتی چاہیے۔"], correct_option: 1 },
+      { question_text: "\"محنتی طالب علم کامیاب ہوتا ہے\" میں \"محنتی\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "\"اونچا\" کی جمع کیا ہوگی؟", options: ["اونچی", "اونچے", "اونچوں", "اونچیاں"], correct_option: 1 },
+      { question_text: "درست املا کی نشاندہی کریں:", options: ["زمداری", "زمہ داری", "ذمہ داری", "ذمدری"], correct_option: 2 },
+      { question_text: "\"دل لگانا\" کیا ظاہر کرتا ہے؟", options: ["جسمانی حرکت", "دلچسپی لینا", "کھیلنا", "غصہ کرنا"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے فعل مستقبل کون سا ہے؟", options: ["گیا", "جاتا ہے", "جائے گا", "جا رہا ہے"], correct_option: 2 },
+      { question_text: "\"خوشحال\" کا متضاد کیا ہے؟", options: ["امیر", "غریب", "مضبوط", "بہادر"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے مذکر لفظ کون سا ہے؟", options: ["ملکہ", "استانی", "شہزادہ", "لڑکی"], correct_option: 2 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: وہ بہت ___ انداز میں بات کرتا ہے۔", options: ["مہذب", "مہذبی", "مہذبہ", "مہذبیں"], correct_option: 0 },
+      { question_text: "\"آزادی\" کس قسم کا اسم ہے؟", options: ["اسم خاص", "اسم ذات", "اسم معنی", "اسم ضمیر"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["استاد نے سبق پڑھایا۔", "استاد نے سبق پڑھاتے۔", "استاد نے سبق پڑھاتے ہیں۔", "استاد سبق پڑھایا ہے۔"], correct_option: 0 },
+      { question_text: "\"چمکدار\" کس قسم کا لفظ ہے؟", options: ["فعل", "صفت", "اسم", "حرف"], correct_option: 1 },
+      { question_text: "\"نیکی\" کا متضاد کیا ہے؟", options: ["اچھائی", "بدی", "خوشی", "سچائی"], correct_option: 1 },
+      { question_text: "محاورہ \"آنکھ کا تارا\" کا مطلب کیا ہے؟", options: ["آنکھ کی بیماری", "بہت پیارا", "ستارہ", "روشنی"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے اسم ضمیر کون سا ہے؟", options: ["احمد", "وہ", "کتاب", "خوبصورت"], correct_option: 1 },
+      { question_text: "\"بچوں نے کھیل کھیلا\" میں \"کھیلا\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں:", options: ["مسلہ", "مسئلہ", "مسیلا", "مسلہہ"], correct_option: 1 },
+      { question_text: "\"تیز ہوا چل رہی ہے\" میں \"تیز\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: ہمیں اپنے ملک کی ___ کرنی چاہیے۔", options: ["خدمت", "خدمتی", "خدماتی", "خدمتیں"], correct_option: 0 },
+      { question_text: "\"خاموش\" کا مترادف کیا ہے؟", options: ["شور", "چپ", "آواز", "بولنا"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے فعل حال کون سا ہے؟", options: ["آیا", "آ رہا ہے", "آئے گا", "آیا تھا"], correct_option: 1 },
+      { question_text: "\"روشنی\" کا متضاد کیا ہے؟", options: ["اندھیرا", "چمک", "سایہ", "دن"], correct_option: 0 },
+      { question_text: "\"کتابیں\" کس کی مثال ہے؟", options: ["واحد", "جمع", "مذکر", "صفت"], correct_option: 1 },
+      { question_text: "محاورہ \"ہاتھ پاؤں پھول جانا\" کا مطلب ہے:", options: ["کھیلنا", "گھبرا جانا", "گر جانا", "دوڑنا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے سبق پڑھ رہے ہیں۔", "بچے سبق پڑھ رہا ہے۔", "بچے سبق پڑھ رہی ہے۔", "بچے سبق پڑھتے ہے۔"], correct_option: 0 },
+      { question_text: "\"محنت رنگ لاتی ہے\" کا مطلب کیا ہے؟", options: ["محنت ضائع ہوتی ہے", "محنت کا نتیجہ ملتا ہے", "رنگ بدلتا ہے", "کھیل ہوتا ہے"], correct_option: 1 },
+      { question_text: "\"مہربان\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: سچائی ہمیشہ ___ ہوتی ہے۔", options: ["جیتتی", "ہارتی", "روتی", "گرتی"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے اسم خاص کون سا ہے؟", options: ["شہر", "لاہور", "لڑکا", "کتاب"], correct_option: 1 },
+      { question_text: "\"سردی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم معنی", "اسم ضمیر", "اسم خاص"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں:", options: ["خوشقسمت", "خوش قسمت", "خوشقسمتہ", "خوش قسمتتیہ"], correct_option: 1 },
+      { question_text: "\"اونچی آواز\" میں \"اونچی\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "\"جلدی\" کا متضاد کیا ہے؟", options: ["دیر", "فوراً", "تیزی", "رکنا"], correct_option: 0 },
+      { question_text: "درج ذیل میں سے فعل امر کون سا ہے؟", options: ["جا رہا ہے", "جائے گا", "جاؤ", "گیا"], correct_option: 2 },
+      { question_text: "\"دوستی\" کس قسم کا اسم ہے؟", options: ["اسم خاص", "اسم ذات", "اسم معنی", "اسم ضمیر"], correct_option: 2 },
+      { question_text: "خالی جگہ پر درست لفظ لگائیں: وہ ___ کتاب پڑھ رہا ہے۔", options: ["دلچسپ", "دلچسپی", "دلچسپہ", "دلچسپیں"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: [" ہمیں بڑوں کا احترام کرنا چاہیے۔", " ہمیں بڑوں کا احترام کرتے چاہیے۔", " ہمیں بڑوں کا احترام کرنی چاہیے۔", " ہمیں بڑوں کا احترام کرنا چاہیے ہیں۔"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu4MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 4 URDU HARD QUESTIONS ---
+  const urdu4HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 4' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu4HardCount.count < 40) {
+    console.log("Seeding Grade 4 Hard Urdu questions...");
+    const urdu4HardQuestions = [
+      { question_text: "درج ذیل میں سے اسمِ فاعل کون سا ہے؟", options: ["چلنا", "چلا", "چلنے والا", "چلے"], correct_option: 2 },
+      { question_text: "\"محنت کرنے والا کامیاب ہوتا ہے\" میں \"کامیاب\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "محاورہ \"ناک کٹ جانا\" کا مطلب کیا ہے؟", options: ["زخمی ہونا", "بدنام ہونا", "رونا", "گر جانا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["استاد بچوں کو سمجھاتے ہے۔", "استاد بچوں کو سمجھاتے ہیں۔", "استاد بچوں کو سمجھاتا ہیں۔", "استاد بچوں کو سمجھاتے ہوں۔"], correct_option: 1 },
+      { question_text: "\"دوڑتا ہوا لڑکا\" میں \"دوڑتا\" کیا ہے؟", options: ["اسم", "صفت", "فعل ماضی", "حرف"], correct_option: 1 },
+      { question_text: "\"امانت\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم معنی", "اسم خاص", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے فعلِ امر کون سا ہے؟", options: ["جائے گا", "جا رہا ہے", "جاؤ", "گیا"], correct_option: 2 },
+      { question_text: "\"نیکی کا بدلہ نیکی ہے\" اس جملے کا مرکزی خیال کیا ہے؟", options: ["کھیل", "بدلہ لینا", "اچھائی کا اچھا نتیجہ", "سستی"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں:", options: ["احتیاط", "احتیات", "احتیاط (Alt)", "احتیاتہ"], correct_option: 0 },
+      { question_text: "\"اونچی عمارت\" میں \"اونچی\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "\"محنت رنگ لاتی ہے\" میں \"لاتی ہے\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "\"قائداعظم\" کس کی مثال ہے؟", options: ["اسم عام", "اسم خاص", "اسم معنی", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "محاورہ \"کان بھرنا\" کا مطلب کیا ہے؟", options: ["سننا", "شکایت کرنا", "کسی کے خلاف بھڑکانا", "بات کرنا"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچوں نے سبق یاد کیا۔", "بچوں نے سبق یاد کیے۔", "بچوں نے سبق یاد کرتا ہے۔", "بچوں نے سبق یاد کرتے ہیں۔"], correct_option: 0 },
+      { question_text: "\"آزادی\" کس قسم کا اسم ہے؟", options: ["اسم خاص", "اسم معنی", "اسم ذات", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے مرکب جملہ کون سا ہے؟", options: ["وہ آیا۔", "وہ آیا اور بیٹھ گیا۔", "وہ آیا۔", "وہ بیٹھا۔"], correct_option: 1 },
+      { question_text: "\"خوشحال\" کا متضاد کیا ہے؟", options: ["امیر", "غریب", "بہادر", "طاقتور"], correct_option: 1 },
+      { question_text: "\"دوستی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم معنی", "اسم خاص", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے اسمِ جمع کون سا ہے؟", options: ["لڑکا", "بچے", "کتاب", "قلم"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں:", options: ["مظبوط", "مضبوط", "مظبوت", "مزبوط"], correct_option: 1 },
+      { question_text: "\"ہوشیار طالب علم کامیاب ہوتا ہے\" میں \"ہوشیار\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "محاورہ \"منہ کی کھانا\" کا مطلب کیا ہے؟", options: ["کھانا کھانا", "شکست کھانا", "ہنسنا", "غصہ کرنا"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے فعلِ ماضی کون سا ہے؟", options: ["جائے گا", "جاتا ہے", "گیا", "جا رہا ہے"], correct_option: 2 },
+      { question_text: "\"انصاف\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم معنی", "اسم خاص", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھ رہی ہیں۔", "وہ کتاب پڑھ رہی ہے۔", "وہ کتاب پڑھ رہا ہیں۔", "وہ کتاب پڑھتے ہے۔"], correct_option: 1 },
+      { question_text: "\"نرمی\" کا متضاد کیا ہے؟", options: ["سختی", "گرمی", "نرمیہ", "صفائی"], correct_option: 0 },
+      { question_text: "\"جلتا ہوا چراغ\" میں \"جلتا ہوا\" کیا ہے؟", options: ["اسم", "صفت", "فعل ماضی", "حرف"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے ضمیر کون سا ہے؟", options: ["احمد", "وہ", "شہر", "خوبصورت"], correct_option: 1 },
+      { question_text: "\"سچ بولنا اچھی عادت ہے\" میں \"عادت\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں:", options: ["کامیابی", "کامیابیی", "کامیابئ", "کامیابی (Alt)"], correct_option: 0 },
+      { question_text: "محاورہ \"آنکھوں کا نور\" کا مطلب کیا ہے؟", options: ["روشنی", "بہت پیارا", "آنکھ کی بیماری", "چمک"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے فعل حال کون سا ہے؟", options: ["آیا", "آئے گا", "آ رہا ہے", "آیا تھا"], correct_option: 2 },
+      { question_text: "\"اونچائی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم معنی", "اسم خاص", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: [" ہمیں سچ بولنا چاہیے۔", " ہمیں سچ بولنی چاہیے۔", " ہمیں سچ بولتے چاہیے۔", " ہمیں سچ بولتی چاہیے۔"], correct_option: 0 },
+      { question_text: "\"خاموشی\" کا متضاد کیا ہے؟", options: ["شور", "چپ", "سکون", "نیند"], correct_option: 0 },
+      { question_text: "\"پڑھنے والا بچہ\" میں \"پڑھنے والا\" کیا ہے؟", options: ["اسم", "اسمِ فاعل", "فعل", "حرف"], correct_option: 1 },
+      { question_text: "درج ذیل میں سے مرکب لفظ کون سا ہے؟", options: ["کتاب", "قلم", "خوش اخلاق", "درخت"], correct_option: 2 },
+      { question_text: "\"سچائی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم معنی", "اسم خاص", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچوں نے کھیل کھیلا۔", "بچوں نے کھیل کھیلتے۔", "بچوں نے کھیل کھیل رہا ہے۔", "بچوں نے کھیل کھیلتے ہیں۔"], correct_option: 0 },
+      { question_text: "\"محنتی انسان کامیاب ہوتا ہے\" اس جملے کا پیغام کیا ہے؟", options: ["محنت ضروری نہیں", "محنت کامیابی کا سبب بنتی ہے", "کامیابی آسان ہے", "کھیل ضروری ہے"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu4HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 4'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 4', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 ENGLISH EASY QUESTIONS ---
+  const eng5EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 5' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng5EasyCount.count < 40) {
+    console.log("Seeding Grade 5 Easy English questions...");
+    const eng5EasyQuestions = [
+      { question_text: "Choose the noun in the sentence: \"The boy kicked the ball.\"", options: ["kicked", "boy", "kicked", "the"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of \"child\":", options: ["childs", "childrens", "children", "childes"], correct_option: 2 },
+      { question_text: "Choose the correct verb: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
+      { question_text: "Identify the adjective:", options: ["quickly", "happy", "run", "table"], correct_option: 1 },
+      { question_text: "Choose the correct past tense of \"eat\":", options: ["eated", "ate", "eating", "eats"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["She play football.", "She plays football.", "She playing football.", "She played football everyday."], correct_option: 1 },
+      { question_text: "Choose the synonym of \"big\":", options: ["small", "large", "thin", "short"], correct_option: 1 },
+      { question_text: "Choose the antonym of \"happy\":", options: ["glad", "joyful", "sad", "excited"], correct_option: 2 },
+      { question_text: "Identify the pronoun:", options: ["Ahmed", "she", "book", "beautiful"], correct_option: 1 },
+      { question_text: "Choose the correct article: I saw ___ elephant in the zoo.", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Choose the correct form: They ___ playing in the park.", options: ["is", "are", "was", "be"], correct_option: 1 },
+      { question_text: "Identify the verb:", options: ["quickly", "jump", "blue", "chair"], correct_option: 1 },
+      { question_text: "Choose the correct future tense: She ___ visit her grandmother tomorrow.", options: ["will", "visited", "visits", "visiting"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["The boys is running.", "The boys are running.", "The boys was running.", "The boys runs."], correct_option: 1 },
+      { question_text: "Choose the correct comparative form of \"tall\":", options: ["taller", "tall", "tallest", "more tall"], correct_option: 0 },
+      { question_text: "Identify the adverb:", options: ["slowly", "slow", "slowing", "slowed"], correct_option: 0 },
+      { question_text: "Choose the correct question form:", options: ["Where you are going?", "Where are you going?", "Where you going are?", "Where going you are?"], correct_option: 1 },
+      { question_text: "Choose the correct possessive pronoun: This book is ___.", options: ["my", "mine", "me", "I"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He have a car.", "He has a car.", "He having a car.", "He had a car everyday."], correct_option: 1 },
+      { question_text: "Choose the antonym of \"clean\":", options: ["neat", "dirty", "tidy", "fresh"], correct_option: 1 },
+      { question_text: "Identify the conjunction:", options: ["and", "quickly", "table", "jump"], correct_option: 0 },
+      { question_text: "Choose the correct form: I ___ my homework yesterday.", options: ["do", "did", "does", "doing"], correct_option: 1 },
+      { question_text: "Choose the correct superlative form of \"fast\":", options: ["faster", "fastest", "more fast", "most fast"], correct_option: 1 },
+      { question_text: "Choose the correct preposition: The cat is ___ the table.", options: ["in", "on", "at", "to"], correct_option: 1 },
+      { question_text: "Identify the subject: \"The teacher explained the lesson.\"", options: ["teacher", "explained", "lesson", "the"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["She is more intelligent than me.", "She is more intelligent than I am.", "She is intelligent than me.", "She more intelligent than me."], correct_option: 1 },
+      { question_text: "Choose the correct verb form: The baby ___ loudly.", options: ["cry", "cries", "crying", "crieded"], correct_option: 1 },
+      { question_text: "Choose the correct plural:", options: ["tooths", "teeth", "toothes", "tooth"], correct_option: 1 },
+      { question_text: "Identify the helping verb: She is reading a book.", options: ["reading", "book", "is", "she"], correct_option: 2 },
+      { question_text: "Choose the correct sentence:", options: ["I am agree.", "I agree.", "I agreeing.", "I agreed now."], correct_option: 1 },
+      { question_text: "Choose the synonym of \"brave\":", options: ["coward", "fearless", "weak", "shy"], correct_option: 1 },
+      { question_text: "Choose the correct form: He ___ already finished his work.", options: ["has", "have", "had", "having"], correct_option: 0 },
+      { question_text: "Choose the correct question tag: She is coming, ___?", options: ["is she", "isn’t she", "doesn’t she", "wasn’t she"], correct_option: 1 },
+      { question_text: "Identify the object: \"The girl kicked the ball.\"", options: ["girl", "kicked", "ball", "the"], correct_option: 2 },
+      { question_text: "Choose the correct preposition: He is good ___ English.", options: ["in", "at", "on", "to"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["There is many books.", "There are many books.", "There was many books.", "There be many books."], correct_option: 1 },
+      { question_text: "Choose the correct verb: Neither Ali nor Ahmed ___ present.", options: ["are", "is", "were", "be"], correct_option: 1 },
+      { question_text: "Choose the antonym of \"early\":", options: ["late", "soon", "quick", "first"], correct_option: 0 },
+      { question_text: "Choose the correct conditional: If it rains, we ___ stay home.", options: ["will", "would", "stayed", "staying"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She didn’t likes milk."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng5EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 ENGLISH MEDIUM QUESTIONS ---
+  const eng5MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 5' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng5MedCount.count < 40) {
+    console.log("Seeding Grade 5 Medium English questions...");
+    const eng5MedQuestions = [
+      { question_text: "Choose the correct sentence:", options: ["Each of the boys have a book.", "Each of the boys has a book.", "Each of the boys are having a book.", "Each of the boys have books."], correct_option: 1 },
+      { question_text: "Choose the correct form: She has lived here ___ five years.", options: ["since", "for", "from", "at"], correct_option: 1 },
+      { question_text: "Identify the subordinate clause: \"I will help you if you need me.\"", options: ["I will help you", "if you need me", "will help", "you need"], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: \"The teacher explained the lesson.\"", options: ["The lesson was explained by the teacher.", "The lesson explained by the teacher.", "The lesson is explained by the teacher.", "The lesson was explaining by the teacher."], correct_option: 0 },
+      { question_text: "Choose the correct indirect speech: He said, \"I am tired.\"", options: ["He said that he is tired.", "He said that he was tired.", "He said he tired.", "He says he was tired."], correct_option: 1 },
+      { question_text: "Choose the correct comparative sentence:", options: ["This book is more better than that one.", "This book is better than that one.", "This book is most better.", "This book better than that."], correct_option: 1 },
+      { question_text: "Choose the correct verb: Neither the teacher nor the students ___ ready.", options: ["is", "are", "was", "be"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["She asked where was I going.", "She asked where I was going.", "She asked where I am going.", "She asked where going I was."], correct_option: 1 },
+      { question_text: "Identify the adverb clause: \"He ran because he was late.\"", options: ["He ran", "because he was late", "he was", "ran because"], correct_option: 1 },
+      { question_text: "Choose the correct form: The news ___ surprising.", options: ["are", "is", "were", "be"], correct_option: 1 },
+      { question_text: "Choose the correct conditional sentence: If she studies hard, she ___ pass the exam.", options: ["would", "will", "would have", "passed"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["I have seen him yesterday.", "I saw him yesterday.", "I have saw him yesterday.", "I seen him yesterday."], correct_option: 1 },
+      { question_text: "Identify the relative pronoun: \"The boy who won the race is my cousin.\"", options: ["boy", "who", "won", "race"], correct_option: 1 },
+      { question_text: "Choose the correct superlative form: She is the ___ student in the class.", options: ["most intelligent", "more intelligent", "intelligent", "intelligenter"], correct_option: 0 },
+      { question_text: "Choose the correct verb form: By next year, I ___ completed the course.", options: ["will have", "have", "had", "will"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["He is too weak that he cannot walk.", "He is so weak that he cannot walk.", "He is very weak that he cannot walk.", "He is weak that he cannot walk."], correct_option: 1 },
+      { question_text: "Choose the correct preposition: She is afraid ___ dogs.", options: ["from", "of", "with", "by"], correct_option: 1 },
+      { question_text: "Identify the gerund: \"Swimming is good exercise.\"", options: ["Swimming", "good", "exercise", "is"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["The furniture are new.", "The furniture is new.", "The furniture is new.", "The furnitures are new."], correct_option: 1 }, // Options were "The furniture is new." twice in request, fixing
+      { question_text: "Choose the correct tag question: They finished the work, ___?", options: ["didn’t they", "don’t they", "did they", "haven’t they"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["One of my friends are here.", "One of my friends is here.", "One of my friend is here.", "One of my friends were here."], correct_option: 1 },
+      { question_text: "Choose the correct indirect question: She asked, \"Where do you live?\"", options: ["She asked where do I live.", "She asked where I lived.", "She asked where I live.", "She asked where lived I."], correct_option: 1 },
+      { question_text: "Choose the correct conjunction: He was tired, ___ he continued working.", options: ["but", "because", "so", "although"], correct_option: 0 },
+      { question_text: "Identify the infinitive: \"I want to learn English.\"", options: ["want", "to learn", "learn", "English"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["She has been waiting since two hours.", "She has been waiting for two hours.", "She has been waiting from two hours.", "She is waiting since two hours."], correct_option: 1 },
+      { question_text: "Choose the correct verb agreement: Mathematics ___ my favorite subject.", options: ["are", "is", "were", "be"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He is senior than me.", "He is senior to me.", "He is senior from me.", "He senior than me."], correct_option: 1 },
+      { question_text: "Choose the correct conditional: If I had known, I ___ helped you.", options: ["will", "would have", "would", "had"], correct_option: 1 },
+      { question_text: "Identify the main clause: \"Although it was raining, we played outside.\"", options: ["Although it was raining", "we played outside", "it was raining", "raining"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["There are less water in the bottle.", "There is less water in the bottle.", "There is fewer water in the bottle.", "There are fewer water in the bottle."], correct_option: 1 },
+      { question_text: "Choose the correct form: She is used to ___ early.", options: ["wake", "waking", "woke", "wakes"], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: He said, \"We have finished.\"", options: ["He said they have finished.", "He said they had finished.", "He said we had finished.", "He said they finished."], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["The police is investigating the case.", "The police are investigating the case.", "The police was investigating.", "The police has investigating."], correct_option: 1 },
+      { question_text: "Choose the correct form: Hardly had he arrived ___ it started raining.", options: ["when", "than", "then", "while"], correct_option: 0 },
+      { question_text: "Choose the correct preposition: She is interested ___ music.", options: ["on", "in", "at", "to"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He denied to steal the money.", "He denied stealing the money.", "He denied steal the money.", "He denied stole the money."], correct_option: 1 },
+      { question_text: "Choose the correct pronoun: Everyone must bring ___ own lunch.", options: ["his or her", "their", "his", "her"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["She is one of the best student.", "She is one of the best students.", "She is one of best students.", "She is the one of best students."], correct_option: 1 },
+      { question_text: "Choose the correct verb form: He would rather ___ at home.", options: ["stay", "staying", "stayed", "to stay"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["No sooner did he arrive than the train left.", "No sooner he arrived than the train left.", "No sooner did he arrive when the train left.", "No sooner he did arrive than the train left."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng5MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 ENGLISH HARD QUESTIONS ---
+  const eng5HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 5' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng5HardCount.count < 40) {
+    console.log("Seeding Grade 5 Hard English questions...");
+    const eng5HardQuestions = [
+      { question_text: "Choose the correct transformation: \"He is too tired to walk.\"", options: ["He is so tired that he can walk.", "He is so tired that he cannot walk.", "He is very tired that he cannot walk.", "He is tired so he walk."], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: She said, \"I will finish the work.\"", options: ["She said she will finish the work.", "She said she would finish the work.", "She said she finishes the work.", "She says she would finish the work."], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: \"People speak English all over the world.\"", options: ["English is spoken all over the world.", "English was spoken all over the world.", "English spoken all over the world.", "English is speaking all over the world."], correct_option: 0 },
+      { question_text: "Identify the error: \"Neither of the answers are correct.\"", options: ["Neither", "of", "are", "correct"], correct_option: 2 },
+      { question_text: "Choose the correct conditional sentence: If he had studied harder, he ___ passed the exam.", options: ["will have", "would have", "would", "will"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["The number of students are increasing.", "The number of students is increasing.", "The number of student are increasing.", "The numbers of students is increasing."], correct_option: 1 },
+      { question_text: "Identify the type of clause: \"She smiled although she was nervous.\"", options: ["Noun clause", "Adverb clause", "Adjective clause", "Main clause"], correct_option: 1 },
+      { question_text: "Choose the correct form: He has been working here ___ 2020.", options: ["for", "since", "from", "by"], correct_option: 1 },
+      { question_text: "Choose the correct transformation into indirect speech: He said, \"Do you like coffee?\"", options: ["He asked if I liked coffee.", "He asked do I like coffee.", "He asked that I liked coffee.", "He asked I like coffee."], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["She hardly knew nothing about it.", "She hardly knew anything about it.", "She hardly know anything about it.", "She hardly knew something about it."], correct_option: 1 },
+      { question_text: "Choose the correct comparative structure: This road is ___ than the other one.", options: ["more narrow", "narrower", "most narrow", "narrowest"], correct_option: 1 },
+      { question_text: "Choose the correct verb form: By the time we arrived, the movie ___.", options: ["started", "has started", "had started", "starts"], correct_option: 2 },
+      { question_text: "Identify the function of \"that\": \"I believe that he is honest.\"", options: ["Relative pronoun", "Conjunction", "Adverb", "Preposition"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He insisted to go there.", "He insisted on going there.", "He insisted going there.", "He insisted that go there."], correct_option: 1 },
+      { question_text: "Choose the correct inversion: Only after the meeting ___ the truth.", options: ["did he realize", "he realized", "realized he", "he did realize"], correct_option: 0 },
+      { question_text: "Choose the correct pronoun agreement: Everyone must submit ___ assignment on time.", options: ["their", "his or her", "his", "her"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["The teacher along with the students were present.", "The teacher along with the students was present.", "The teacher along with students were present.", "The teacher along with students are present."], correct_option: 1 },
+      { question_text: "Choose the correct meaning of the idiom: \"Break the ice\"", options: ["Destroy something", "Start a conversation", "Feel cold", "End friendship"], correct_option: 1 },
+      { question_text: "Choose the correct structure: He speaks English ___ fluently than his brother.", options: ["more", "most", "very", "too"], correct_option: 0 },
+      { question_text: "Identify the error: \"The sceneries of this place is beautiful.\"", options: ["sceneries", "of", "this", "is"], correct_option: 0 },
+      { question_text: "Choose the correct transformation: \"As soon as he reached, it started raining.\"", options: ["No sooner had he reached than it started raining.", "No sooner he reached than it started raining.", "No sooner had he reached when it started raining.", "No sooner did he reach than it started raining."], correct_option: 0 },
+      { question_text: "Choose the correct verb form: She would rather ___ now.", options: ["leave", "leaving", "left", "to leave"], correct_option: 0 },
+      { question_text: "Choose the correct reported command: He said to me, \"Open the door.\"", options: ["He told me to open the door.", "He said me to open the door.", "He told to open the door.", "He asked me open the door."], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["There is too many problems.", "There are too many problems.", "There are too much problems.", "There is too much problems."], correct_option: 1 },
+      { question_text: "Identify the infinitive phrase: \"He went to the market to buy vegetables.\"", options: ["went", "to buy vegetables", "the market", "buy"], correct_option: 1 },
+      { question_text: "Choose the correct usage: He is capable ___ solving the problem.", options: ["to", "of", "for", "at"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["She is married with a doctor.", "She is married to a doctor.", "She married with a doctor.", "She married to a doctor."], correct_option: 1 },
+      { question_text: "Choose the correct conditional: If I were you, I ___ apologize.", options: ["will", "would", "will have", "had"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He is one of the smartest boy in the class.", "He is one of the smartest boys in the class.", "He is one of smartest boys.", "He is the one of smartest boys."], correct_option: 1 },
+      { question_text: "Choose the correct meaning of \"once in a blue moon\":", options: ["Very often", "Rarely", "Daily", "Suddenly"], correct_option: 1 },
+      { question_text: "Choose the correct tense: I ___ this book before.", options: ["have read", "had read yesterday", "read yesterday", "was reading before"], correct_option: 0 },
+      { question_text: "Identify the error: \"He denied to take the money.\"", options: ["denied", "to take", "the", "money"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["Not only he is intelligent but also hardworking.", "Not only is he intelligent but also hardworking.", "Not only he intelligent but also hardworking.", "Not only he is intelligent but hardworking also."], correct_option: 1 },
+      { question_text: "Choose the correct usage: She is accustomed ___ early.", options: ["to waking", "wake", "waking", "to wake"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["The more you practice, the better you become.", "The more you practice, better you become.", "More you practice, better you become.", "The more you practice, you become better."], correct_option: 0 },
+      { question_text: "Choose the correct structure: He has little interest ___ politics.", options: ["in", "on", "at", "for"], correct_option: 0 },
+      { question_text: "Identify the error: \"She is one of the best dancer in the group.\"", options: ["one", "best", "dancer", "group"], correct_option: 2 },
+      { question_text: "Choose the correct meaning of \"under the weather\":", options: ["Feeling sick", "Feeling happy", "Working hard", "Feeling lucky"], correct_option: 0 },
+      { question_text: "Choose the correct inversion: Hardly ___ the door when the phone rang.", options: ["had he closed", "he had closed", "did he close", "he closed"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["Unless you work hard, you will fail.", "Unless you work hard, you will pass.", "Unless you worked hard, you will fail.", "Unless you work hard, you would fail."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng5HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 MATH EASY QUESTIONS ---
+  const math5EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 5' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math5EasyCount.count < 40) {
+    console.log("Seeding Grade 5 Easy Math questions...");
+    const math5EasyQuestions = [
+      { question_text: "What is the place value of 7 in 47,356?", options: ["7", "70", "7,000", "700"], correct_option: 2 },
+      { question_text: "What is 8,432 + 2,568?", options: ["10,000", "11,000", "9,000", "10,900"], correct_option: 1 },
+      { question_text: "What is 9,000 − 4,375?", options: ["4,625", "4,525", "4,675", "5,625"], correct_option: 0 },
+      { question_text: "What is 24 × 5?", options: ["100", "120", "140", "150"], correct_option: 1 },
+      { question_text: "What is 144 ÷ 12?", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "Which number is a multiple of 9?", options: ["36", "35", "34", "37"], correct_option: 0 },
+      { question_text: "Which number is a factor of 48?", options: ["7", "9", "6", "10"], correct_option: 2 },
+      { question_text: "What is the LCM of 4 and 6?", options: ["10", "12", "24", "8"], correct_option: 1 },
+      { question_text: "What is the HCF of 18 and 24?", options: ["6", "12", "3", "9"], correct_option: 0 },
+      { question_text: "Which fraction is equivalent to 1/2?", options: ["2/4", "3/4", "1/3", "2/3"], correct_option: 0 },
+      { question_text: "What is 3/5 + 1/5?", options: ["4/5", "4/10", "3/10", "2/5"], correct_option: 0 },
+      { question_text: "Which fraction is greater?", options: ["3/4", "2/4", "1/4", "3/8"], correct_option: 0 },
+      { question_text: "What is 0.5 in fraction form?", options: ["1/2", "5/10", "2/5", "1/5"], correct_option: 0 },
+      { question_text: "What is 0.25 + 0.25?", options: ["0.25", "0.50", "0.75", "1.00"], correct_option: 1 },
+      { question_text: "How many centimeters are in 2 meters?", options: ["20", "200", "2,000", "100"], correct_option: 1 },
+      { question_text: "How many grams are in 1 kilogram?", options: ["100", "1,000", "10,000", "500"], correct_option: 1 },
+      { question_text: "What is the perimeter of a square with side 5 cm?", options: ["20 cm", "25 cm", "10 cm", "15 cm"], correct_option: 0 },
+      { question_text: "How many minutes are in 2 hours?", options: ["100", "120", "60", "180"], correct_option: 1 },
+      { question_text: "What time is 15:00 in 12-hour format?", options: ["3:00 PM", "3:00 AM", "5:00 PM", "12:00 PM"], correct_option: 0 },
+      { question_text: "What is the area of a rectangle of length 8 cm and width 4 cm?", options: ["12 cm²", "24 cm²", "32 cm²", "28 cm²"], correct_option: 2 },
+      { question_text: "What is the value of 5²?", options: ["10", "20", "25", "15"], correct_option: 2 },
+      { question_text: "What is the next multiple of 7 after 35?", options: ["40", "42", "49", "38"], correct_option: 1 },
+      { question_text: "What is 1/4 of 20?", options: ["4", "5", "6", "8"], correct_option: 1 },
+      { question_text: "Which number is divisible by 3?", options: ["25", "27", "29", "31"], correct_option: 1 },
+      { question_text: "What is 0.8 written as a fraction?", options: ["8/10", "8/100", "4/5", "2/5"], correct_option: 0 },
+      { question_text: "If one book costs Rs. 120, what is the cost of 3 books?", options: ["300", "360", "240", "480"], correct_option: 1 },
+      { question_text: "What is 600 ÷ 6?", options: ["60", "100", "120", "90"], correct_option: 1 },
+      { question_text: "What is the perimeter of a rectangle of length 6 cm and width 4 cm?", options: ["20 cm", "24 cm", "18 cm", "16 cm"], correct_option: 0 },
+      { question_text: "Which is the smallest number?", options: ["0.5", "0.05", "0.15", "0.25"], correct_option: 1 },
+      { question_text: "What is 3/4 of 16?", options: ["10", "12", "14", "8"], correct_option: 1 },
+      { question_text: "What is 45% of 100?", options: ["40", "45", "50", "55"], correct_option: 1 },
+      { question_text: "What is 2.5 + 1.5?", options: ["3", "4", "5", "3.5"], correct_option: 1 },
+      { question_text: "Which angle is 90°?", options: ["Acute", "Obtuse", "Right angle", "Reflex"], correct_option: 2 },
+      { question_text: "What is the product of 11 and 9?", options: ["99", "98", "101", "90"], correct_option: 0 },
+      { question_text: "What is the value of 1/10 as a decimal?", options: ["0.1", "0.01", "1.0", "0.001"], correct_option: 0 },
+      { question_text: "Which number is prime?", options: ["21", "15", "13", "27"], correct_option: 2 },
+      { question_text: "How many edges does a cube have?", options: ["8", "10", "12", "6"], correct_option: 2 },
+      { question_text: "What is 1000 − 1?", options: ["998", "999", "1001", "900"], correct_option: 1 },
+      { question_text: "What is the value of 3 × (4 + 2)?", options: ["18", "12", "14", "16"], correct_option: 0 },
+      { question_text: "Which decimal is equal to 3/10?", options: ["0.03", "0.3", "3.0", "0.003"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math5EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 MATH MEDIUM QUESTIONS ---
+  const math5MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 5' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math5MedCount.count < 40) {
+    console.log("Seeding Grade 5 Medium Math questions...");
+    const math5MedQuestions = [
+      { question_text: "A shopkeeper sold 125 pencils on Monday and 175 on Tuesday. How many pencils were sold in total?", options: ["250", "275", "300", "325"], correct_option: 2 },
+      { question_text: "A factory produces 480 toys in 6 days. How many toys are produced per day?", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "What is the LCM of 8 and 12?", options: ["16", "24", "32", "48"], correct_option: 1 },
+      { question_text: "What is the HCF of 36 and 54?", options: ["6", "9", "18", "12"], correct_option: 2 },
+      { question_text: "A ribbon is 3/4 meter long. Another ribbon is 2/4 meter long. What is the total length?", options: ["4/4", "5/4", "6/4", "1/4"], correct_option: 1 },
+      { question_text: "What is 2/3 of 27?", options: ["9", "12", "18", "21"], correct_option: 2 },
+      { question_text: "Which fraction is larger?", options: ["5/6", "4/5", "3/4", "7/8"], correct_option: 0 },
+      { question_text: "Convert 0.75 into a fraction.", options: ["3/4", "7/5", "75/10", "1/4"], correct_option: 0 },
+      { question_text: "A rectangle has length 12 cm and width 5 cm. What is its perimeter?", options: ["30 cm", "34 cm", "60 cm", "24 cm"], correct_option: 1 },
+      { question_text: "Find the area of a square whose side is 9 cm.", options: ["18 cm²", "36 cm²", "81 cm²", "72 cm²"], correct_option: 2 },
+      { question_text: "What is 35% of 200?", options: ["60", "70", "80", "75"], correct_option: 1 },
+      { question_text: "A book costs Rs. 250. What will be the cost of 4 books?", options: ["900", "1000", "1050", "950"], correct_option: 1 },
+      { question_text: "A train travels 60 km in 1 hour. How far will it travel in 3 hours?", options: ["120 km", "150 km", "180 km", "200 km"], correct_option: 2 },
+      { question_text: "If one angle of a triangle is 90°, what type of triangle is it?", options: ["Acute", "Obtuse", "Right-angled", "Equilateral"], correct_option: 2 },
+      { question_text: "Add: 4.6 + 3.25", options: ["7.75", "7.85", "8.85", "6.85"], correct_option: 1 },
+      { question_text: "Subtract: 9.5 − 4.75", options: ["4.75", "5.75", "4.25", "3.75"], correct_option: 0 },
+      { question_text: "What is 15 × 14?", options: ["200", "210", "220", "215"], correct_option: 1 },
+      { question_text: "If a clock shows 2:30 PM, what time will it be after 2 hours 45 minutes?", options: ["5:00 PM", "5:15 PM", "4:45 PM", "5:30 PM"], correct_option: 1 },
+      { question_text: "A bag contains 50 mangoes. If 20% are spoiled, how many are spoiled?", options: ["5", "8", "10", "12"], correct_option: 2 },
+      { question_text: "What is 1/5 of 150?", options: ["25", "30", "35", "40"], correct_option: 1 },
+      { question_text: "Which number is divisible by both 4 and 6?", options: ["18", "20", "24", "28"], correct_option: 2 },
+      { question_text: "A field is 20 m long and 15 m wide. What is its area?", options: ["200 m²", "250 m²", "300 m²", "350 m²"], correct_option: 2 },
+      { question_text: "What is 0.4 × 10?", options: ["4", "40", "0.04", "0.004"], correct_option: 0 },
+      { question_text: "If 5 notebooks cost Rs. 150, what is the cost of 1 notebook?", options: ["25", "30", "35", "20"], correct_option: 1 },
+      { question_text: "What is 72 ÷ 8?", options: ["8", "9", "7", "6"], correct_option: 1 },
+      { question_text: "Find the missing number: __ × 7 = 84", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "What is the perimeter of a square with side 11 cm?", options: ["44 cm", "22 cm", "121 cm", "33 cm"], correct_option: 0 },
+      { question_text: "Convert 3/5 into decimal.", options: ["0.6", "0.3", "0.5", "0.8"], correct_option: 0 },
+      { question_text: "What is the value of 4³?", options: ["12", "16", "64", "48"], correct_option: 2 },
+      { question_text: "A car covers 150 km using 10 liters of petrol. How many km per liter?", options: ["10", "12", "15", "20"], correct_option: 2 },
+      { question_text: "Which angle is greater than 90° but less than 180°?", options: ["Acute", "Right", "Obtuse", "Straight"], correct_option: 2 },
+      { question_text: "What is 3/8 + 2/8?", options: ["5/8", "5/16", "1/8", "6/8"], correct_option: 0 },
+      { question_text: "A class has 40 students. If 3/4 are present, how many are present?", options: ["20", "25", "30", "35"], correct_option: 2 },
+      { question_text: "What is 2500 ÷ 50?", options: ["40", "50", "60", "45"], correct_option: 1 },
+      { question_text: "How many degrees are there in a straight angle?", options: ["90°", "180°", "360°", "45°"], correct_option: 1 },
+      { question_text: "If a pen costs Rs. 45, what will 6 pens cost?", options: ["260", "270", "250", "275"], correct_option: 1 },
+      { question_text: "What is 5.2 − 1.8?", options: ["3.4", "4.4", "3.2", "2.4"], correct_option: 0 },
+      { question_text: "Which number is a prime factor of 21?", options: ["4", "5", "7", "9"], correct_option: 2 },
+      { question_text: "What is the volume of a cube with side 3 cm?", options: ["9 cm³", "18 cm³", "27 cm³", "36 cm³"], correct_option: 2 },
+      { question_text: "If 25% of a number is 50, what is the number?", options: ["100", "150", "200", "250"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math5MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 MATH HARD QUESTIONS ---
+  const math5HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 5' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math5HardCount.count < 40) {
+    console.log("Seeding Grade 5 Hard Math questions...");
+    const math5HardQuestions = [
+      { question_text: "A shopkeeper buys a book for Rs. 400 and sells it for Rs. 460. What is the profit percentage?", options: ["10%", "12%", "15%", "20%"], correct_option: 2 },
+      { question_text: "What is the LCM of 15 and 20?", options: ["45", "60", "30", "75"], correct_option: 1 },
+      { question_text: "Find the HCF of 84 and 126.", options: ["21", "42", "14", "28"], correct_option: 1 },
+      { question_text: "What is 2¾ + 1½ ?", options: ["4¼", "3¼", "4½", "3½"], correct_option: 0 },
+      { question_text: "What is 5.6 × 0.5?", options: ["2.8", "3.0", "2.5", "2.6"], correct_option: 0 },
+      { question_text: "A car travels 180 km in 3 hours. What is its speed?", options: ["50 km/h", "55 km/h", "60 km/h", "65 km/h"], correct_option: 2 },
+      { question_text: "If the ratio of boys to girls is 3:2 and there are 30 boys, how many girls are there?", options: ["15", "18", "20", "25"], correct_option: 2 },
+      { question_text: "A rectangle has area 96 cm² and width 8 cm. What is its length?", options: ["10 cm", "11 cm", "12 cm", "13 cm"], correct_option: 2 },
+      { question_text: "What is 125% of 80?", options: ["90", "95", "100", "110"], correct_option: 2 },
+      { question_text: "Simplify: 4 × (6 + 3) ÷ 3", options: ["12", "18", "9", "15"], correct_option: 0 },
+      { question_text: "A tank holds 500 liters of water. If 35% is used, how much water remains?", options: ["300 L", "325 L", "350 L", "275 L"], correct_option: 1 },
+      { question_text: "Find the missing number: __ : 9 = 4 : 3", options: ["10", "11", "12", "15"], correct_option: 2 },
+      { question_text: "What is the volume of a cube with side 5 cm?", options: ["25 cm³", "100 cm³", "125 cm³", "150 cm³"], correct_option: 2 },
+      { question_text: "If a train leaves at 9:45 AM and arrives at 2:15 PM, how long is the journey?", options: ["4 hours", "4 hours 15 minutes", "4 hours 30 minutes", "5 hours"], correct_option: 2 },
+      { question_text: "What is 3/4 ÷ 1/2 ?", options: ["1", "1½", "2", "2½"], correct_option: 1 },
+      { question_text: "A shirt costs Rs. 800. After a 10% discount, what is the sale price?", options: ["700", "720", "750", "780"], correct_option: 1 },
+      { question_text: "If 6 workers can build a wall in 12 days, how many days will 3 workers take (same rate)?", options: ["18", "20", "24", "30"], correct_option: 2 },
+      { question_text: "What is the simple interest on Rs. 1000 at 5% per year for 2 years?", options: ["50", "75", "100", "150"], correct_option: 2 },
+      { question_text: "The perimeter of a rectangle is 50 cm. If length is 15 cm, what is the width?", options: ["10 cm", "15 cm", "20 cm", "5 cm"], correct_option: 0 },
+      { question_text: "What is 0.75 ÷ 0.25?", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "A number when divided by 12 gives remainder 5. What is the remainder when the same number is divided by 6?", options: ["1", "5", "3", "4"], correct_option: 1 },
+      { question_text: "If 3 pens cost Rs. 90 and 5 notebooks cost Rs. 250, what is the total cost of 1 pen and 1 notebook?", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "What is the average of 10, 20, and 30?", options: ["15", "20", "25", "30"], correct_option: 1 },
+      { question_text: "Find the value of: 2³ + 3²", options: ["13", "15", "17", "19"], correct_option: 2 },
+      { question_text: "A field is 40 m long and 25 m wide. What is its perimeter?", options: ["130 m", "120 m", "150 m", "110 m"], correct_option: 0 },
+      { question_text: "What is 5/6 of 72?", options: ["50", "55", "60", "65"], correct_option: 2 },
+      { question_text: "If a number increases from 200 to 250, what is the percentage increase?", options: ["20%", "25%", "30%", "15%"], correct_option: 1 },
+      { question_text: "A cyclist travels 15 km in 30 minutes. What is his speed per hour?", options: ["20 km/h", "25 km/h", "30 km/h", "35 km/h"], correct_option: 2 },
+      { question_text: "What is 1.2 × 3.5?", options: ["4.0", "4.2", "4.5", "4.8"], correct_option: 1 },
+      { question_text: "The difference between two numbers is 48. If the smaller number is 36, what is the larger number?", options: ["72", "80", "84", "90"], correct_option: 2 },
+      { question_text: "What is the value of 10% of 250 plus 20% of 250?", options: ["50", "60", "75", "100"], correct_option: 2 },
+      { question_text: "A tank is 3/5 full. If its capacity is 200 liters, how much water is in it?", options: ["100 L", "110 L", "120 L", "150 L"], correct_option: 2 },
+      { question_text: "What is the LCM of 9 and 6?", options: ["18", "27", "36", "12"], correct_option: 0 },
+      { question_text: "A number is multiplied by 4 and then 12 is added. The result is 52. What is the number?", options: ["8", "9", "10", "11"], correct_option: 2 },
+      { question_text: "How many diagonals does a rectangle have?", options: ["1", "2", "3", "4"], correct_option: 1 },
+      { question_text: "If 40% of a number is 80, what is the number?", options: ["150", "180", "200", "220"], correct_option: 2 },
+      { question_text: "A trader gains Rs. 150 on selling an item for Rs. 750. What was the cost price?", options: ["600", "550", "650", "500"], correct_option: 0 },
+      { question_text: "Find the median of 5, 9, 11, 15, 20.", options: ["9", "10", "11", "15"], correct_option: 2 },
+      { question_text: "What is 2/3 × 9/4 ?", options: ["3/2", "6/12", "18/12", "2/4"], correct_option: 0 },
+      { question_text: "A rectangular hall is 12 m long and 10 m wide. What is the cost of tiling it at Rs. 50 per m²?", options: ["5000", "5500", "6000", "6500"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math5HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 URDU EASY QUESTIONS ---
+  const urdu5EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 5' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu5EasyCount.count < 40) {
+    console.log("Seeding Grade 5 Easy Urdu questions...");
+    const urdu5EasyQuestions = [
+      { question_text: "لفظ \"کتاب\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 2 },
+      { question_text: "لفظ \"لڑکا\" کی جمع کیا ہے؟", options: ["لڑکی", "لڑکیاں", "لڑکے", "لڑکوں"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ اسکول جاتا ہے۔", "وہ اسکول جاتی ہے۔", "وہ اسکول جاتے ہے۔", "وہ اسکول جاؤ ہے۔"], correct_option: 0 },
+      { question_text: "لفظ \"تیز\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "\"وہ کھیل رہا ہے\" میں فعل کون سا ہے؟", options: ["وہ", "کھیل رہا ہے", "ہے", "رہا"], correct_option: 1 },
+      { question_text: "لفظ \"اندھیرا\" کا متضاد کیا ہے؟", options: ["روشنی", "کالا", "گہرا", "تیز"], correct_option: 0 },
+      { question_text: "لفظ \"بڑا\" کا مؤنث کیا ہے؟", options: ["بڑی", "بڑا", "بڑیاں", "بڑ"], correct_option: 0 },
+      { question_text: "لفظ \"ہم\" کیا ہے؟", options: ["اسم", "فعل", "ضمیر", "صفت"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہے ہیں۔", "بچے کھیل رہا ہے۔", "بچے کھیل رہی ہے۔", "بچے کھیلتا ہے۔"], correct_option: 0 },
+      { question_text: "لفظ \"خوشی\" کیا ہے؟", options: ["صفت", "فعل", "اسم", "ضمیر"], correct_option: 2 },
+      { question_text: "لفظ \"استاد\" کی جمع کیا ہے؟", options: ["استادیں", "اساتذہ", "استادی", "استادوں"], correct_option: 1 },
+      { question_text: "\"وہ کھانا کھاتا ہے\" میں فاعل کون ہے؟", options: ["کھانا", "کھاتا", "وہ", "ہے"], correct_option: 2 },
+      { question_text: "لفظ \"نرم\" کا متضاد کیا ہے؟", options: ["ہلکا", "سخت", "موٹا", "پتلا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھوں ہے۔"], correct_option: 0 },
+      { question_text: "لفظ \"دوڑنا\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 1 },
+      { question_text: "لفظ \"خوبصورت\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "لفظ \"پہاڑ\" کا متضاد کیا ہے؟", options: ["دریا", "میدان", "جنگل", "شہر"], correct_option: 1 },
+      { question_text: "\"ہم پڑھ رہے ہیں\" میں زمانہ کون سا ہے؟", options: ["ماضی", "حال", "مستقبل", "امر"], correct_option: 1 },
+      { question_text: "لفظ \"بیٹی\" کا مذکر کیا ہے؟", options: ["لڑکا", "بھائی", "بیٹا", "بچہ"], correct_option: 2 },
+      { question_text: "درست جمع منتخب کریں۔ لفظ \"پھول\"", options: ["پھولیں", "پھولوں", "پھول", "پھولی"], correct_option: 2 },
+      { question_text: "لفظ \"چلنا\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 0 },
+      { question_text: "لفظ \"اونچا\" کا متضاد کیا ہے؟", options: ["نیچا", "بڑا", "چھوٹا", "لمبا"], correct_option: 0 },
+      { question_text: "\"وہ کل آئے گا\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی", "مستقبل", "امر"], correct_option: 2 },
+      { question_text: "لفظ \"دوست\" کیا ہے؟", options: ["صفت", "فعل", "اسم", "ضمیر"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم بازار گئے تھے۔", "ہم بازار جاتا تھا۔", "ہم بازار جاتے ہے۔", "ہم بازار جاؤ تھے۔"], correct_option: 0 },
+      { question_text: "لفظ \"صاف\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "لفظ \"خریدنا\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 1 },
+      { question_text: "لفظ \"رات\" کی جمع کیا ہے؟", options: ["راتیں", "راتوں", "رات", "راتی"], correct_option: 0 },
+      { question_text: "لفظ \"دور\" کا متضاد کیا ہے؟", options: ["پاس", "قریباً", "لمبا", "اونچا"], correct_option: 0 },
+      { question_text: "\"بچہ ہنس رہا ہے\" میں فعل کون سا ہے؟", options: ["بچہ", "ہنس رہا ہے", "رہا", "ہے"], correct_option: 1 },
+      { question_text: "لفظ \"جلدی\" کیا ہے؟", options: ["صفت", "اسم", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "لفظ \"میٹھا\" کا مؤنث کیا ہے؟", options: ["میٹھے", "میٹھی", "میٹھیاں", "میٹھا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["استاد پڑھا رہے ہیں۔", "استاد پڑھا رہا ہے۔", "استاد پڑھتی ہیں۔", "استاد پڑھتا ہیں۔"], correct_option: 0 },
+      { question_text: "لفظ \"پرندہ\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 0 },
+      { question_text: "لفظ \"آسان\" کا متضاد کیا ہے؟", options: ["مشکل", "بڑا", "لمبا", "اچھا"], correct_option: 0 },
+      { question_text: "\"میں اسکول جاتا ہوں\" میں فاعل کون ہے؟", options: ["اسکول", "جاتا", "میں", "ہوں"], correct_option: 2 },
+      { question_text: "لفظ \"گرم\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 1 },
+      { question_text: "لفظ \"درخت\" کی جمع کیا ہے؟", options: ["درختوں", "درخت", "درختیں", "درختا"], correct_option: 1 },
+      { question_text: "لفظ \"نیا\" کا متضاد کیا ہے؟", options: ["پرانا", "اچھا", "صاف", "بڑا"], correct_option: 0 },
+      { question_text: "\"وہ پانی پی رہا ہے\" میں ضمیر کون سا ہے؟", options: ["پانی", "پی رہا ہے", "وہ", "ہے"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu5EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 URDU MEDIUM QUESTIONS ---
+  const urdu5MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 5' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu5MedCount.count < 40) {
+    console.log("Seeding Grade 5 Medium Urdu questions...");
+    const urdu5MedQuestions = [
+      { question_text: "لفظ \"پاکستان\" کس قسم کا اسم ہے؟", options: ["اسم نکرہ", "اسم معرفہ", "اسم صفت", "اسم فعل"], correct_option: 1 },
+      { question_text: "\"وہ خط لکھ چکا ہے\" میں زمانہ کون سا ہے؟", options: ["ماضی مطلق", "ماضی بعید", "ماضی کامل", "حال"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچوں نے کہانی سنائی۔", "بچوں نے کہانی سنایا۔", "بچوں نے کہانی سنائیں۔", "بچوں نے کہانی سناتی۔"], correct_option: 0 },
+      { question_text: "لفظ \"باغیچہ\" میں کون سا لاحقہ ہے؟", options: ["باغ", "چہ", "باغی", "یچہ"], correct_option: 1 },
+      { question_text: "محاورہ \"ناک میں دم کرنا\" کا مطلب کیا ہے؟", options: ["خوش کرنا", "تنگ کرنا", "ناراض ہونا", "ہنسنا"], correct_option: 1 },
+      { question_text: "لفظ \"پڑھائی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم صفت", "اسم مصدر", "اسم معرفہ"], correct_option: 2 },
+      { question_text: "\"ہم نے سبق یاد کیا\" میں فاعل کون ہے؟", options: ["سبق", "ہم", "یاد", "کیا"], correct_option: 1 },
+      { question_text: "لفظ \"تیزی\" کس سے بنا ہے؟", options: ["تیز + ی", "تیز + یت", "تیز + گی", "تیز + نہ"], correct_option: 0 },
+      { question_text: "درست جمع منتخب کریں: لفظ \"کرسی\"", options: ["کرسیاں", "کرسیوں", "کرسی", "کرسیات"], correct_option: 0 },
+      { question_text: "لفظ \"ایماندار\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "\"وہ کل آیا تھا\" میں زمانہ کون سا ہے؟", options: ["حال", "مستقبل", "ماضی", "امر"], correct_option: 2 },
+      { question_text: "لفظ \"نیکی\" کا متضاد کیا ہے؟", options: ["بدی", "اچھائی", "بھلائی", "سچائی"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["میں نے پانی پی لیا۔", "میں نے پانی پی لیا ہے تھا۔", "میں نے پانی پیا لیا۔", "میں نے پانی پی لیتا۔"], correct_option: 0 },
+      { question_text: "لفظ \"دوستی\" میں کون سا سابقہ یا لاحقہ ہے؟", options: ["دوست + ی", "دو + ستی", "دوست + گی", "دوست + دار"], correct_option: 0 },
+      { question_text: "محاورہ \"آنکھوں کا تارا\" کا مطلب کیا ہے؟", options: ["پیارا شخص", "بہادر شخص", "غصے والا", "کمزور"], correct_option: 0 },
+      { question_text: "\"استاد سبق پڑھا رہے تھے\" میں فعل کی کون سی حالت ہے؟", options: ["حال", "مستقبل", "ماضی استمراری", "امر"], correct_option: 2 },
+      { question_text: "لفظ \"لڑکپن\" میں کون سا لاحقہ ہے؟", options: ["لڑک", "پن", "پنن", "لڑ"], correct_option: 1 },
+      { question_text: "لفظ \"سمندر\" کیا ہے؟", options: ["اسم ذات", "اسم صفت", "فعل", "ضمیر"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["زمیندار", "زمین دار", "زمین دار", "زمین دارر"], correct_option: 2 },
+      { question_text: "لفظ \"خوشی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم کیفیت", "اسم معرفہ", "اسم فعل"], correct_option: 1 },
+      { question_text: "\"وہ کام کرے گا\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی", "مستقبل", "امر"], correct_option: 2 },
+      { question_text: "لفظ \"سچائی\" میں کون سا لاحقہ ہے؟", options: ["سچ", "ائی", "چائی", "سچائ"], correct_option: 1 },
+      { question_text: "محاورہ \"ہاتھ پر ہاتھ دھرے بیٹھنا\" کا مطلب کیا ہے؟", options: ["کام کرنا", "آرام کرنا", "بے کار بیٹھنا", "ہنسنا"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["اس نے خط لکھا ہے۔", "اس نے خط لکھا تھا ہے۔", "اس نے خط لکھے ہے۔", "اس نے خط لکھتے ہے۔"], correct_option: 0 },
+      { question_text: "لفظ \"استاد\" کی مؤنث کیا ہے؟", options: ["استانی", "استادہ", "استادنی", "استادین"], correct_option: 0 },
+      { question_text: "لفظ \"سچ\" کیا ہے؟", options: ["صفت", "اسم", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "\"وہ کھیل رہا تھا\" میں فعل کی حالت کیا ہے؟", options: ["حال", "ماضی استمراری", "مستقبل", "امر"], correct_option: 1 },
+      { question_text: "لفظ \"چوکیدار\" کس سے بنا ہے؟", options: ["چوکی + دار", "چو + کیدار", "چوکی + یدار", "چوک + دار"], correct_option: 0 },
+      { question_text: "لفظ \"اونچا\" کی جمع کیا ہے؟", options: ["اونچے", "اونچیاں", "اونچا", "اونچ"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے اسکول گئے تھے۔", "بچے اسکول گیا تھا۔", "بچے اسکول جاتی تھے۔", "بچے اسکول جاتے تھا۔"], correct_option: 0 },
+      { question_text: "لفظ \"روشنی\" کس قسم کا اسم ہے؟", options: ["اسم کیفیت", "اسم ذات", "فعل", "ضمیر"], correct_option: 0 },
+      { question_text: "محاورہ \"کان کھڑے ہونا\" کا مطلب کیا ہے؟", options: ["حیران ہونا", "چونک جانا", "ہنسنا", "بھاگنا"], correct_option: 1 },
+      { question_text: "لفظ \"جلدی\" کیا ہے؟", options: ["اسم", "فعل", "ضمیر", "حرف"], correct_option: 0 },
+      { question_text: "\"ہم سبق پڑھ رہے ہیں\" میں زمانہ کون سا ہے؟", options: ["حال استمراری", "ماضی", "مستقبل", "امر"], correct_option: 0 },
+      { question_text: "لفظ \"نیک\" کیا ہے؟", options: ["صفت", "اسم", "فعل", "ضمیر"], correct_option: 0 },
+      { question_text: "لفظ \"بچپن\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم کیفیت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["حقیقت", "حقیت", "حکیقت", "حقیقت"], correct_option: 0 },
+      { question_text: "لفظ \"گھرانہ\" میں کون سا لاحقہ ہے؟", options: ["گھر", "انہ", "گھرن", "انہا"], correct_option: 1 },
+      { question_text: "محاورہ \"دل چھوٹا کرنا\" کا مطلب کیا ہے؟", options: ["خوش ہونا", "ہمت ہارنا", "غصہ کرنا", "دوڑنا"], correct_option: 1 },
+      { question_text: "\"میں کتاب پڑھ چکا ہوں\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی کامل", "مستقبل", "امر"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu5MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 5 URDU HARD QUESTIONS ---
+  const urdu5HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 5' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu5HardCount.count < 40) {
+    console.log("Seeding Grade 5 Hard Urdu questions...");
+    const urdu5HardQuestions = [
+      { question_text: "\"استاد نے طالب علم کو سبق سمجھایا\" میں مفعول کون ہے؟", options: ["استاد", "طالب علم", "سبق", "سمجھایا"], correct_option: 1 },
+      { question_text: "لفظ \"بے ایمان\" میں کون سا سابقہ ہے؟", options: ["بے", "ایمان", "ان", "دار"], correct_option: 0 },
+      { question_text: "\"وہ دوڑتا ہے\" میں فعل کی قسم کیا ہے؟", options: ["فعل متعدی", "فعل لازم", "فعل امر", "فعل ناقص"], correct_option: 1 },
+      { question_text: "درست مرکب جملہ منتخب کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "وہ آیا بیٹھ گیا۔", "وہ آیا بیٹھتے۔", "وہ آیا ہے بیٹھ گیا۔"], correct_option: 0 },
+      { question_text: "محاورہ \"آسمان سر پر اٹھانا\" کا مطلب کیا ہے؟", options: ["شور مچانا", "آسمان دیکھنا", "ڈر جانا", "بھاگ جانا"], correct_option: 0 },
+      { question_text: "لفظ \"ہماری\" کس قسم کا ضمیر ہے؟", options: ["ضمیر شخصی", "ضمیر ملکی", "ضمیر اشارہ", "ضمیر استفہام"], correct_option: 1 },
+      { question_text: "\"بچوں نے گیند کھیلی\" میں فعل کی قسم کیا ہے؟", options: ["لازم", "متعدی", "امر", "ناقص"], correct_option: 1 },
+      { question_text: "لفظ \"بدتمیز\" میں کون سا سابقہ ہے؟", options: ["بد", "تمیز", "بے", "نا"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ذمہ داری", "زمداری", "زمہداری", "ذمداری"], correct_option: 0 },
+      { question_text: "\"وہ کل آئے گا\" میں فعل کی نوعیت کیا ہے؟", options: ["حال", "ماضی", "مستقبل", "امر"], correct_option: 2 },
+      { question_text: "لفظ \"سچائی\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم کیفیت", "اسم معرفہ", "اسم جمع"], correct_option: 1 },
+      { question_text: "\"وہ کتاب پڑھ رہا تھا\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی استمراری", "مستقبل", "امر"], correct_option: 1 },
+      { question_text: "محاورہ \"منہ کی کھانا\" کا مطلب کیا ہے؟", options: ["کھانا کھانا", "شکست کھانا", "ہنسنا", "شرمانا"], correct_option: 1 },
+      { question_text: "لفظ \"نادان\" میں کون سا سابقہ ہے؟", options: ["نا", "دان", "بے", "ان"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["مجھے پانی چاہیے۔", "مجھے پانی چاہیے ہیں۔", "مجھے پانی چاہیے تھا ہے۔", "مجھے پانی چاہیے تھے۔"], correct_option: 0 },
+      { question_text: "\"ہم نے خط لکھا\" میں فعل کی قسم کیا ہے؟", options: ["لازم", "متعدی", "ناقص", "امر"], correct_option: 1 },
+      { question_text: "لفظ \"دوستی\" میں کون سا لاحقہ ہے؟", options: ["دوست", "ی", "تی", "ستی"], correct_option: 1 },
+      { question_text: "\"یہ میرا گھر ہے\" میں خبر کون ہے؟", options: ["یہ", "میرا گھر", "ہے", "گھر"], correct_option: 1 },
+      { question_text: "لفظ \"نیکی\" کا متضاد کیا ہے؟", options: ["اچھائی", "بدی", "سچائی", "بھلائی"], correct_option: 1 },
+      { question_text: "درست مرکب لفظ منتخب کریں۔", options: ["آبشار", "آب شار", "آ بشار", "آ ب شار"], correct_option: 0 },
+      { question_text: "\"استاد پڑھا رہے تھے\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی استمراری", "مستقبل", "امر"], correct_option: 1 },
+      { question_text: "لفظ \"خوشحال\" کس سے بنا ہے؟", options: ["خوش + حال", "خو + شحال", "خوش + حالی", "خوشی + حال"], correct_option: 0 },
+      { question_text: "محاورہ \"کانوں کان خبر نہ ہونا\" کا مطلب کیا ہے؟", options: ["سب کو معلوم ہونا", "کسی کو خبر نہ ہونا", "شور مچانا", "حیران ہونا"], correct_option: 1 },
+      { question_text: "\"میں سبق پڑھ چکا ہوں\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی کامل", "مستقبل", "امر"], correct_option: 1 },
+      { question_text: "لفظ \"بے خبر\" میں سابقہ کیا ہے؟", options: ["بے", "خبر", "بے خبر", "خ"], correct_option: 0 },
+      { question_text: "\"وہ سو گیا\" میں فعل کی قسم کیا ہے؟", options: ["لازم", "متعدی", "ناقص", "امر"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["مستقل", "مستکل", "مستقعل", "مستقل"], correct_option: 0 },
+      { question_text: "لفظ \"لڑکپن\" کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم کیفیت", "اسم جمع", "اسم معرفہ"], correct_option: 1 },
+      { question_text: "\"بچے کھیل رہے تھے\" میں فاعل کون ہے؟", options: ["کھیل", "بچے", "رہے", "تھے"], correct_option: 1 },
+      { question_text: "لفظ \"سفید\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "محاورہ \"آنکھیں کھل جانا\" کا مطلب کیا ہے؟", options: ["جاگ جانا", "حقیقت معلوم ہونا", "سونا", "دیکھنا"], correct_option: 1 },
+      { question_text: "\"وہ کام کر رہا ہے\" میں زمانہ کون سا ہے؟", options: ["حال استمراری", "ماضی", "مستقبل", "امر"], correct_option: 0 },
+      { question_text: "لفظ \"بچگانہ\" میں کون سا لاحقہ ہے؟", options: ["بچہ", "گانہ", "گان", "انہ"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["हमें سچ بولنا چاہیے۔", "ہمیں سچ بولنا چاہیے ہیں۔", "ہمیں سچ بولنا چاہیے تھا ہے۔", "ہمیں سچ بولنا چاہیے تھے۔"], correct_option: 0 },
+      { question_text: "لفظ \"ایمانداری\" میں کون سا لاحقہ ہے؟", options: ["ایمان", "داری", "داریہ", "ی"], correct_option: 1 },
+      { question_text: "\"استاد نے سبق پڑھایا\" میں فاعل کون ہے؟", options: ["استاد", "سبق", "پڑھایا", "نے"], correct_option: 0 },
+      { question_text: "لفظ \"اونچائی\" کس قسم کا اسم ہے؟", options: ["اسم کیفیت", "اسم ذات", "فعل", "ضمیر"], correct_option: 0 },
+      { question_text: "محاورہ \"دل لگانا\" کا مطلب کیا ہے؟", options: ["کھیلنا", "محبت کرنا", "بھاگنا", "ناراض ہونا"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["احتیاط", "احتیات", "احتیاط", "احتیاطھ"], correct_option: 0 },
+      { question_text: "\"وہ کتاب پڑھ چکی ہے\" میں فعل کی جنس کیا ہے؟", options: ["مذکر", "مؤنث", "جمع", "امر"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu5HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 5'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 5', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 ENGLISH EASY QUESTIONS ---
+  const eng6EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 6' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng6EasyCount.count < 40) {
+    console.log("Seeding Grade 6 Easy English questions...");
+    const eng6EasyQuestions = [
+      { question_text: "Identify the noun in the sentence: “The children are playing in the park.”", options: ["playing", "children", "in", "are"], correct_option: 1 },
+      { question_text: "Choose the correct plural form of “leaf.”", options: ["leafs", "leaves", "leafes", "leavs"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She didn’t likes milk."], correct_option: 1 },
+      { question_text: "Identify the adjective in the sentence: “He bought a new bicycle.”", options: ["bought", "bicycle", "new", "he"], correct_option: 2 },
+      { question_text: "Choose the correct preposition: The book is ___ the table.", options: ["in", "on", "at", "by"], correct_option: 1 },
+      { question_text: "Identify the tense: “She is reading a novel.”", options: ["Simple Present", "Present Continuous", "Past Continuous", "Future"], correct_option: 1 },
+      { question_text: "Choose the correct opposite of “honest.”", options: ["loyal", "brave", "dishonest", "polite"], correct_option: 2 },
+      { question_text: "Choose the correct article: He is ___ intelligent boy.", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Identify the verb in the sentence: “The baby cried loudly.”", options: ["baby", "cried", "loudly", "the"], correct_option: 1 },
+      { question_text: "Choose the correct past form of “write.”", options: ["writed", "wrote", "written", "writes"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["There is many books on the shelf.", "There are many books on the shelf.", "There are much books.", "There is much books."], correct_option: 1 },
+      { question_text: "Identify the pronoun in the sentence: “Ali said he would come later.”", options: ["Ali", "said", "he", "later"], correct_option: 2 },
+      { question_text: "Choose the correct conjunction: I wanted to go, ___ it was raining.", options: ["and", "but", "because", "so"], correct_option: 1 },
+      { question_text: "Choose the correct form: They ___ football every evening.", options: ["plays", "play", "playing", "played"], correct_option: 1 },
+      { question_text: "Identify the adverb: “She spoke softly.”", options: ["spoke", "softly", "she", "none"], correct_option: 1 },
+      { question_text: "Choose the correct future sentence.", options: ["I go tomorrow.", "I will go tomorrow.", "I went tomorrow.", "I going tomorrow."], correct_option: 1 },
+      { question_text: "Choose the correct comparative form of “tall.”", options: ["taller", "more tall", "tallest", "most tall"], correct_option: 0 },
+      { question_text: "Identify the sentence type: “Close the door.”", options: ["Declarative", "Interrogative", "Imperative", "Exclamatory"], correct_option: 2 },
+      { question_text: "Choose the correct passive voice: “The teacher teaches English.”", options: ["English is taught by the teacher.", "English was taught by the teacher.", "English taught by teacher.", "English is teaching by teacher."], correct_option: 0 },
+      { question_text: "Choose the correct question form:", options: ["Where you are going?", "Where are you going?", "Where you going are?", "Where going you are?"], correct_option: 1 },
+      { question_text: "Identify the correct spelling.", options: ["recieve", "receive", "receeve", "receve"], correct_option: 1 },
+      { question_text: "Choose the correct modal verb: You ___ respect your elders.", options: ["must", "may", "could", "might"], correct_option: 0 },
+      { question_text: "Choose the correct indirect speech: He said, “I am tired.”", options: ["He said he was tired.", "He said he is tired.", "He says he was tired.", "He said I was tired."], correct_option: 0 },
+      { question_text: "Choose the correct form: She has ___ her homework.", options: ["complete", "completed", "completing", "completes"], correct_option: 1 },
+      { question_text: "Identify the correct synonym of “happy.”", options: ["sad", "joyful", "angry", "tired"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["He is good in math.", "He is good at math.", "He is good on math.", "He is good for math."], correct_option: 1 },
+      { question_text: "Identify the subject: “The boys are making noise.”", options: ["boys", "making", "noise", "are"], correct_option: 0 },
+      { question_text: "Choose the correct conditional sentence. If it rains, we ___ stay at home.", options: ["will", "would", "shall have", "had"], correct_option: 0 },
+      { question_text: "Choose the correct degree of adjective: This is the ___ mountain in the region.", options: ["high", "higher", "highest", "most high"], correct_option: 2 },
+      { question_text: "Choose the correct form: He has lived here ___ 2015.", options: ["for", "since", "from", "at"], correct_option: 1 },
+      { question_text: "Identify the correct reported question: She said, “Where are you going?”", options: ["She asked where I was going.", "She asked where was I going.", "She asked where I am going.", "She said where I was going."], correct_option: 0 },
+      { question_text: "Choose the correct reflexive pronoun: She hurt ___ while playing.", options: ["herself", "himself", "itself", "themselves"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["Each of the boys have a book.", "Each of the boys has a book.", "Each boys have a book.", "Each boys has book."], correct_option: 1 },
+      { question_text: "Identify the correct antonym of “ancient.”", options: ["old", "modern", "past", "historic"], correct_option: 1 },
+      { question_text: "Choose the correct gerund form. ___ is good for health.", options: ["Swim", "Swimming", "Swam", "Swims"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The news are interesting.", "The news is interesting.", "News are interesting.", "News is interesting are."], correct_option: 1 },
+      { question_text: "Identify the correct clause type: “I know that he is honest.”", options: ["Noun clause", "Adverb clause", "Adjective clause", "Main clause"], correct_option: 0 },
+      { question_text: "Choose the correct preposition: She is afraid ___ snakes.", options: ["from", "of", "with", "at"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["He runs more faster than me.", "He runs faster than me.", "He run faster than me.", "He runs fastest than me."], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “He is too weak to lift the box.”", options: ["He is so weak that he cannot lift the box.", "He is very weak that he cannot lift the box.", "He is weak so he cannot lift.", "He weak cannot lift the box."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng6EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 ENGLISH MEDIUM QUESTIONS ---
+  const eng6MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 6' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng6MedCount.count < 40) {
+    console.log("Seeding Grade 6 Medium English questions...");
+    const eng6MedQuestions = [
+      { question_text: "Choose the correct tense: By the time we reached the station, the train ___ .", options: ["leaves", "has left", "had left", "left"], correct_option: 2 },
+      { question_text: "Choose the correct passive voice: “They are repairing the road.”", options: ["The road is repaired by them.", "The road is being repaired by them.", "The road was repaired by them.", "The road being repaired by them."], correct_option: 1 },
+      { question_text: "Choose the correct indirect speech: He said, “I will finish the work.”", options: ["He said that he will finish the work.", "He said that he would finish the work.", "He says he would finish the work.", "He said that I would finish the work."], correct_option: 1 },
+      { question_text: "Identify the adjective clause: “The book that you gave me is interesting.”", options: ["The book", "that you gave me", "is interesting", "you gave"], correct_option: 1 },
+      { question_text: "Choose the correct conditional sentence: If she had studied harder, she ___ the exam.", options: ["will pass", "would pass", "would have passed", "passes"], correct_option: 2 },
+      { question_text: "Choose the correct form of the verb: Neither Ali nor his friends ___ present today.", options: ["is", "are", "was", "has"], correct_option: 1 },
+      { question_text: "Choose the correct modal: You ___ submit the assignment by tomorrow. (obligation)", options: ["might", "must", "could", "may"], correct_option: 1 },
+      { question_text: "Identify the adverb clause: “She stayed at home because she was sick.”", options: ["She stayed at home", "because she was sick", "she was", "at home"], correct_option: 1 },
+      { question_text: "Choose the correct comparative form: This problem is ___ than the previous one.", options: ["difficult", "more difficult", "most difficult", "very difficult"], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “He is so tired that he cannot walk.”", options: ["He is too tired to walk.", "He is very tired to walk.", "He too tired to walk.", "He tired cannot walk."], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["The team are winning the match.", "The team is winning the match.", "The team were winning the match.", "The team have winning the match."], correct_option: 1 },
+      { question_text: "Choose the correct reported question: She said, “Why are you late?”", options: ["She asked why I was late.", "She asked why was I late.", "She said why I was late.", "She asked why am I late."], correct_option: 0 },
+      { question_text: "Choose the correct preposition: He insisted ___ paying the bill.", options: ["in", "on", "at", "for"], correct_option: 1 },
+      { question_text: "Identify the gerund in the sentence: “Swimming is my favorite hobby.”", options: ["Swimming", "favorite", "hobby", "is"], correct_option: 0 },
+      { question_text: "Choose the correct synonym of “rapid.”", options: ["slow", "quick", "weak", "silent"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Each of the players have a uniform.", "Each of the players has a uniform.", "Each players has a uniform.", "Each players have uniform."], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “They had completed the project.”", options: ["The project has been completed.", "The project had been completed.", "The project was completed.", "The project completed."], correct_option: 1 },
+      { question_text: "Choose the correct conjunction: He worked hard ___ he could succeed.", options: ["although", "so that", "because", "but"], correct_option: 1 },
+      { question_text: "Identify the noun clause: “I believe that he is honest.”", options: ["I believe", "that he is honest", "he is", "honest"], correct_option: 1 },
+      { question_text: "Choose the correct form: She has been living here ___ five years.", options: ["since", "for", "from", "at"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["He is one of the best students in the class.", "He is one of the best student in the class.", "He is one of best students in class.", "He is one of best student in the class."], correct_option: 0 },
+      { question_text: "Choose the correct indirect command: The teacher said, “Close the door.”", options: ["The teacher told to close the door.", "The teacher told us to close the door.", "The teacher said close the door.", "The teacher said that close the door."], correct_option: 1 },
+      { question_text: "Choose the correct form of the verb: If he ___ earlier, he would have caught the bus.", options: ["leaves", "left", "had left", "will leave"], correct_option: 2 },
+      { question_text: "Identify the participle in the sentence: “The broken chair was repaired.”", options: ["broken", "chair", "was", "repaired"], correct_option: 0 },
+      { question_text: "Choose the correct antonym of “expand.”", options: ["grow", "increase", "shrink", "widen"], correct_option: 2 },
+      { question_text: "Choose the correct degree: This is the ___ solution to the problem.", options: ["good", "better", "best", "very good"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["There is a few mistakes in your answer.", "There are a few mistakes in your answer.", "There are few mistake in your answer.", "There is few mistakes."], correct_option: 1 },
+      { question_text: "Choose the correct modal for permission: ___ I come in?", options: ["Must", "May", "Should", "Would"], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “As soon as he arrived, it started raining.”", options: ["No sooner had he arrived than it started raining.", "No sooner he arrived than it started raining.", "No sooner had he arrive than it started raining.", "No sooner he had arrived than it started raining."], correct_option: 0 },
+      { question_text: "Choose the correct verb agreement: A number of students ___ absent today.", options: ["is", "are", "was", "has"], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “People speak English all over the world.”", options: ["English is spoken all over the world.", "English was spoken all over the world.", "English speaks all over the world.", "English has spoken all over the world."], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["He is capable to solve the problem.", "He is capable of solving the problem.", "He capable of solve the problem.", "He capable to solving problem."], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: She said, “I have finished my work.”", options: ["She said she had finished her work.", "She said she has finished her work.", "She said she finished my work.", "She says she had finished her work."], correct_option: 0 },
+      { question_text: "Identify the independent clause: “Although it was raining, we continued the match.”", options: ["Although it was raining", "we continued the match", "it was raining", "although raining"], correct_option: 1 },
+      { question_text: "Choose the correct preposition: He is fond ___ music.", options: ["with", "of", "in", "at"], correct_option: 1 },
+      { question_text: "Choose the correct form: She looks forward to ___ you.", options: ["meet", "meeting", "met", "meets"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Hardly had he reached when it started raining.", "Hardly had he reached when it started raining.", "Hardly he had reached when it started raining.", "Hardly had he reach when it started raining."], correct_option: 1 },
+      { question_text: "Choose the correct modal (possibility): It ___ rain later.", options: ["must", "might", "shall", "ought"], correct_option: 1 },
+      { question_text: "Choose the correct conditional: If you heat water, it ___ boil.", options: ["will", "would", "boils", "boiled"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["The information are useful.", "The information is useful.", "Informations are useful.", "Information are useful."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng6MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 ENGLISH HARD QUESTIONS ---
+  const eng6HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 6' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng6HardCount.count < 40) {
+    console.log("Seeding Grade 6 Hard English questions...");
+    const eng6HardQuestions = [
+      { question_text: "Choose the correct option: Hardly ___ the meeting started when the lights went out.", options: ["did", "had", "has", "was"], correct_option: 1 },
+      { question_text: "Choose the correct mixed conditional: If she had taken the medicine, she ___ better now.", options: ["will feel", "would feel", "felt", "would have felt"], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “He is so intelligent that he can solve the puzzle.”", options: ["He is intelligent enough to solve the puzzle.", "He is very intelligent to solve the puzzle.", "He intelligent enough solve puzzle.", "He so intelligent enough."], correct_option: 0 },
+      { question_text: "Identify the error: Neither of the answers are correct.", options: ["Neither", "of", "are", "correct"], correct_option: 2 },
+      { question_text: "Choose the correct passive form: “They will have completed the work.”", options: ["The work will be completed.", "The work will have been completed.", "The work has been completed.", "The work will completed."], correct_option: 1 },
+      { question_text: "Choose the correct subjunctive form: I wish I ___ taller.", options: ["am", "was", "were", "be"], correct_option: 2 },
+      { question_text: "Choose the correct determiner: There isn’t ___ milk left in the fridge.", options: ["many", "much", "few", "several"], correct_option: 1 },
+      { question_text: "Choose the correct inversion: Never ___ such a beautiful place before.", options: ["I have seen", "have I seen", "I saw", "did I seen"], correct_option: 1 },
+      { question_text: "Identify the reduced clause: “Students studying hard will succeed.”", options: ["studying hard", "will succeed", "students", "hard"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["One of my friends are coming.", "One of my friends is coming.", "One of my friend is coming.", "One of friends is coming."], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “As soon as he saw the teacher, he stood up.”", options: ["No sooner did he see the teacher than he stood up.", "No sooner had he seen the teacher than he stood up.", "No sooner he saw the teacher than he stood up.", "No sooner had he see the teacher."], correct_option: 1 },
+      { question_text: "Choose the correct modal (deduction): He has been working all day; he ___ be tired.", options: ["might", "must", "could", "may"], correct_option: 1 },
+      { question_text: "Identify the error: Each of the players have received a medal.", options: ["Each", "players", "have", "medal"], correct_option: 2 },
+      { question_text: "Choose the correct relative pronoun: The man ___ car was stolen reported to the police.", options: ["who", "which", "whose", "whom"], correct_option: 2 },
+      { question_text: "Choose the correct conditional: If I were you, I ___ apologize immediately.", options: ["will", "would", "shall", "had"], correct_option: 1 },
+      { question_text: "Choose the correct form: He denied ___ the money.", options: ["take", "taking", "took", "to take"], correct_option: 1 },
+      { question_text: "Identify the type of clause: “Because he was tired, he went to bed early.”", options: ["Noun clause", "Adverb clause", "Adjective clause", "Main clause"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The furniture are new.", "The furniture is new.", "Furnitures are new.", "Furnitures is new."], correct_option: 1 },
+      { question_text: "Choose the correct emphatic structure: He did complete the task.", options: ["Emphasis on action", "Question", "Negative", "Conditional"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["Scarcely had he left when the phone rang.", "Scarcely he had left when the phone rang.", "Scarcely had he leave when the phone rang.", "Scarcely he left when the phone rang."], correct_option: 0 },
+      { question_text: "Choose the correct quantifier: Only ___ students passed the exam.", options: ["a little", "a few", "much", "little"], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “People believe that he is honest.”", options: ["It is believed that he is honest.", "He believed honest.", "He is believe honest.", "It believed that he is honest."], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["She suggested to go early.", "She suggested going early.", "She suggested go early.", "She suggested that go early."], correct_option: 1 },
+      { question_text: "Identify the error: He is one of the most smartest boys in the class.", options: ["one", "most", "smartest", "class"], correct_option: 2 },
+      { question_text: "Choose the correct transformation: “He is too proud to admit his mistake.”", options: ["He is so proud that he cannot admit his mistake.", "He is very proud that he cannot admit.", "He too proud cannot admit.", "He proud so cannot admit."], correct_option: 0 },
+      { question_text: "Choose the correct gerund usage: She is interested in ___ new languages.", options: ["learn", "learning", "learned", "to learn"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["The police is investigating the case.", "The police are investigating the case.", "Police is investigating the case.", "Police are investigates the case."], correct_option: 1 },
+      { question_text: "Choose the correct structure: He would rather ___ at home than go out.", options: ["stay", "staying", "to stay", "stayed"], correct_option: 0 },
+      { question_text: "Choose the correct form: She acted as if she ___ everything.", options: ["knows", "knew", "know", "knowing"], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “It is certain that he will win.”", options: ["He is certain to win.", "He certain to win.", "He is certain win.", "He is certain that win."], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["Not only he is intelligent but also hardworking.", "Not only is he intelligent but also hardworking.", "Not only he intelligent but hardworking.", "Not only is intelligent he but hardworking."], correct_option: 1 },
+      { question_text: "Choose the correct relative clause: The house ___ we bought is very old.", options: ["who", "whose", "which", "whom"], correct_option: 2 },
+      { question_text: "Identify the error: He is senior than me.", options: ["is", "senior", "than", "me"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["He prevented me to enter the room.", "He prevented me from entering the room.", "He prevented me enter the room.", "He prevented from entering me."], correct_option: 1 },
+      { question_text: "Choose the correct modal (advice): You ___ see a doctor.", options: ["should", "must", "might", "shall"], correct_option: 0 },
+      { question_text: "Choose the correct reduced form: “While he was walking, he saw an accident.”", options: ["Walking, he saw an accident.", "While walking he was saw accident.", "Walked he saw accident.", "While he walking saw accident."], correct_option: 0 },
+      { question_text: "Choose the correct transformation: “He is so weak that he cannot run fast.”", options: ["He is too weak to run fast.", "He is very weak to run fast.", "He too weak run fast.", "He weak cannot run fast."], correct_option: 0 },
+      { question_text: "Choose the correct verb form: The number of students ___ increasing every year.", options: ["are", "is", "were", "have"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She hardly ever makes mistakes.", "She hardly never makes mistakes.", "She never hardly makes mistakes.", "She hardly makes never mistakes."], correct_option: 0 },
+      { question_text: "Choose the correct structure: The sooner you start, ___ you will finish.", options: ["the soon", "the sooner", "sooner", "very soon"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng6HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 MATH EASY QUESTIONS ---
+  const math6EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 6' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math6EasyCount.count < 40) {
+    console.log("Seeding Grade 6 Easy Math questions...");
+    const math6EasyQuestions = [
+      { question_text: "What is the place value of 5 in 4,582?", options: ["5", "50", "500", "5000"], correct_option: 2 },
+      { question_text: "Find the LCM of 4 and 6.", options: ["12", "24", "6", "10"], correct_option: 0 },
+      { question_text: "What is the HCF of 12 and 18?", options: ["2", "3", "6", "9"], correct_option: 2 },
+      { question_text: "Simplify: 3/5 + 2/5", options: ["5/5", "6/10", "1/5", "5/10"], correct_option: 0 },
+      { question_text: "Convert 0.75 into a fraction.", options: ["3/4", "75/10", "7/5", "1/4"], correct_option: 0 },
+      { question_text: "What is 8 × 7?", options: ["54", "56", "64", "48"], correct_option: 1 },
+      { question_text: "Find the perimeter of a square with side 6 cm.", options: ["12 cm", "24 cm", "36 cm", "18 cm"], correct_option: 1 },
+      { question_text: "Write 2:4 in simplest form.", options: ["1:2", "2:2", "4:2", "3:2"], correct_option: 0 },
+      { question_text: "Find the value of: 15 – 9", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "What is the product of 25 and 4?", options: ["75", "100", "80", "90"], correct_option: 1 },
+      { question_text: "Find the area of a rectangle of length 8 cm and width 5 cm.", options: ["13 cm²", "26 cm²", "40 cm²", "80 cm²"], correct_option: 2 },
+      { question_text: "Which number is divisible by 3?", options: ["14", "15", "17", "19"], correct_option: 1 },
+      { question_text: "Simplify: 36 ÷ 6", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "Write 3/4 as a decimal.", options: ["0.34", "0.75", "0.43", "0.57"], correct_option: 1 },
+      { question_text: "Find the next integer after –3.", options: ["–4", "–2", "0", "3"], correct_option: 1 },
+      { question_text: "Simplify: 5 × (2 + 3)", options: ["10", "15", "25", "20"], correct_option: 2 },
+      { question_text: "What is 10% of 200?", options: ["10", "20", "25", "30"], correct_option: 1 },
+      { question_text: "If x = 4, find the value of 3x.", options: ["7", "8", "12", "16"], correct_option: 2 },
+      { question_text: "Which of the following is a prime number?", options: ["9", "15", "17", "21"], correct_option: 2 },
+      { question_text: "Simplify: 2/3 × 3", options: ["1", "2", "3", "6"], correct_option: 1 },
+      { question_text: "What is the sum of 48 and 27?", options: ["65", "75", "85", "70"], correct_option: 1 },
+      { question_text: "Round 4.67 to the nearest whole number.", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "Find the difference between 100 and 64.", options: ["36", "46", "26", "34"], correct_option: 0 },
+      { question_text: "Convert 5/10 into simplest form.", options: ["5/10", "1/2", "2/5", "3/5"], correct_option: 1 },
+      { question_text: "Which integer is smaller?", options: ["–5", "–2", "0", "3"], correct_option: 0 },
+      { question_text: "Find the value of: 7²", options: ["14", "49", "21", "28"], correct_option: 1 },
+      { question_text: "How many sides does a hexagon have?", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "What is 0.5 + 0.2?", options: ["0.6", "0.7", "0.8", "0.9"], correct_option: 1 },
+      { question_text: "Find the median of: 2, 4, 6", options: ["2", "4", "6", "5"], correct_option: 1 },
+      { question_text: "Simplify: 18 ÷ 3 × 2", options: ["6", "12", "9", "18"], correct_option: 1 },
+      { question_text: "Find the perimeter of a rectangle (length 10 cm, width 4 cm).", options: ["28 cm", "40 cm", "20 cm", "24 cm"], correct_option: 0 },
+      { question_text: "What is 1/4 of 20?", options: ["4", "5", "6", "8"], correct_option: 1 },
+      { question_text: "Find the value of: 9 + (6 ÷ 3)", options: ["11", "12", "13", "10"], correct_option: 0 },
+      { question_text: "Write 125 as a product of prime numbers.", options: ["5 × 5 × 5", "5 × 25", "25 × 5", "125 × 1"], correct_option: 0 },
+      { question_text: "If a triangle has sides 5 cm, 5 cm, and 5 cm, it is:", options: ["scalene", "isosceles", "equilateral", "right"], correct_option: 2 },
+      { question_text: "Find the value of: –4 + 7", options: ["3", "–3", "11", "–11"], correct_option: 0 },
+      { question_text: "What is the square root of 81?", options: ["8", "9", "7", "6"], correct_option: 1 },
+      { question_text: "Convert 2.5 into a fraction.", options: ["5/2", "2/5", "25/10", "1/2"], correct_option: 0 },
+      { question_text: "If 3 pens cost Rs. 60, what is the cost of 1 pen?", options: ["15", "20", "25", "30"], correct_option: 1 },
+      { question_text: "Find the value of: 6³", options: ["18", "36", "216", "108"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math6EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 MATH MEDIUM QUESTIONS ---
+  const math6MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 6' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math6MedCount.count < 40) {
+    console.log("Seeding Grade 6 Medium Math questions...");
+    const math6MedQuestions = [
+      { question_text: "Find: 3/4 + 2/3", options: ["5/7", "17/12", "6/7", "5/12"], correct_option: 1 },
+      { question_text: "Subtract: 5/6 – 1/4", options: ["7/12", "4/12", "3/12", "2/12"], correct_option: 0 },
+      { question_text: "Multiply: 2/5 × 3/4", options: ["6/20", "6/9", "5/8", "8/15"], correct_option: 0 },
+      { question_text: "Divide: 3/5 ÷ 2/3", options: ["9/10", "6/15", "5/6", "3/10"], correct_option: 0 },
+      { question_text: "Find: 4.5 + 3.75", options: ["8.25", "7.20", "8.20", "7.25"], correct_option: 0 },
+      { question_text: "Subtract: 9.6 – 4.28", options: ["5.32", "5.22", "4.32", "6.32"], correct_option: 0 },
+      { question_text: "Find the value of: –5 + (–7)", options: ["12", "–12", "2", "–2"], correct_option: 1 },
+      { question_text: "Simplify: –8 – (–3)", options: ["–11", "–5", "5", "11"], correct_option: 1 },
+      { question_text: "If the ratio of boys to girls is 3:5 and there are 24 boys, how many girls are there?", options: ["30", "35", "40", "45"], correct_option: 2 },
+      { question_text: "Find 20% of 150.", options: ["25", "30", "35", "40"], correct_option: 1 },
+      { question_text: "Solve: 3x = 21", options: ["6", "7", "8", "9"], correct_option: 1 },
+      { question_text: "Solve: x + 9 = 15", options: ["5", "6", "7", "4"], correct_option: 1 },
+      { question_text: "Find the perimeter of a rectangle (length = 12 cm, width = 7 cm).", options: ["38 cm", "84 cm", "24 cm", "19 cm"], correct_option: 0 },
+      { question_text: "Find the area of a square with side 9 cm.", options: ["18 cm", "36 cm", "81 cm", "72 cm"], correct_option: 2 },
+      { question_text: "Simplify: 5 + 3 × 4", options: ["32", "20", "17", "24"], correct_option: 2 },
+      { question_text: "Find the mean of 4, 6, 8", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "Find the LCM of 6 and 8.", options: ["12", "24", "48", "18"], correct_option: 1 },
+      { question_text: "Find the HCF of 20 and 30.", options: ["5", "10", "15", "20"], correct_option: 1 },
+      { question_text: "Convert 0.125 into a fraction.", options: ["1/8", "1/5", "1/4", "1/2"], correct_option: 0 },
+      { question_text: "If a shirt costs Rs. 800 and is sold at 10% discount, what is the discount amount?", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "Find the value of: 7² + 3", options: ["52", "49", "50", "45"], correct_option: 0 },
+      { question_text: "If 5 notebooks cost Rs. 250, what is the cost of 8 notebooks?", options: ["350", "400", "450", "300"], correct_option: 1 },
+      { question_text: "Solve: 2x + 5 = 15", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "Multiply: 1.2 × 4", options: ["4.8", "5.2", "4.2", "6.8"], correct_option: 0 },
+      { question_text: "Simplify: 24 ÷ (3 × 2)", options: ["4", "6", "12", "8"], correct_option: 0 },
+      { question_text: "Find the area of a rectangle (length = 15 m, width = 6 m).", options: ["21 m²", "90 m²", "30 m²", "45 m²"], correct_option: 1 },
+      { question_text: "What is the reciprocal of 4/7?", options: ["4/7", "7/4", "1/4", "1/7"], correct_option: 1 },
+      { question_text: "Find the value of: –3 × 6", options: ["18", "–18", "–9", "9"], correct_option: 1 },
+      { question_text: "If 40% of a number is 80, what is the number?", options: ["100", "150", "200", "250"], correct_option: 2 },
+      { question_text: "Simplify: 2³ × 2²", options: ["16", "32", "64", "8"], correct_option: 1 },
+      { question_text: "Convert 3/8 into decimal.", options: ["0.375", "0.38", "0.83", "0.35"], correct_option: 0 },
+      { question_text: "Find the difference between –2 and 5.", options: ["3", "7", "–3", "–7"], correct_option: 1 },
+      { question_text: "If a triangle has base 10 cm and height 6 cm, find its area.", options: ["30 cm²", "60 cm²", "16 cm²", "20 cm²"], correct_option: 0 },
+      { question_text: "Solve: x/4 = 5", options: ["20", "9", "15", "25"], correct_option: 0 },
+      { question_text: "Find 15% of 200.", options: ["20", "25", "30", "35"], correct_option: 2 },
+      { question_text: "Simplify: (6 + 4) ÷ 5", options: ["2", "3", "4", "5"], correct_option: 0 },
+      { question_text: "Find the prime factorization of 18.", options: ["2 × 3 × 3", "6 × 3", "9 × 2", "18 × 1"], correct_option: 0 },
+      { question_text: "If the ratio of red to blue balls is 2:3 and total balls are 25, how many are red?", options: ["10", "15", "5", "20"], correct_option: 0 },
+      { question_text: "Find the value of: 100 – 25% of 100", options: ["70", "75", "80", "85"], correct_option: 1 },
+      { question_text: "Simplify: 9 – 3²", options: ["0", "6", "3", "12"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math6MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 MATH HARD QUESTIONS ---
+  const math6HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 6' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math6HardCount.count < 40) {
+    console.log("Seeding Grade 6 Hard Math questions...");
+    const math6HardQuestions = [
+      { question_text: "A number increased by 25% becomes 125. What is the original number?", options: ["80", "90", "100", "110"], correct_option: 2 },
+      { question_text: "If the ratio of boys to girls is 4:5 and total students are 45, how many boys are there?", options: ["15", "18", "20", "25"], correct_option: 2 },
+      { question_text: "Solve: 3(x – 2) = 18", options: ["6", "8", "4", "10"], correct_option: 1 },
+      { question_text: "Find the value of: 2³ × 3²", options: ["36", "48", "72", "64"], correct_option: 2 },
+      { question_text: "A shopkeeper gives 10% discount on Rs. 1500. What is the selling price?", options: ["1350", "1400", "1450", "1300"], correct_option: 0 },
+      { question_text: "Find the area of a triangle with base 12 cm and height 9 cm.", options: ["54 cm²", "108 cm²", "21 cm²", "45 cm²"], correct_option: 0 },
+      { question_text: "Simplify: (4 + 6)²", options: ["40", "100", "20", "80"], correct_option: 1 },
+      { question_text: "If 8 workers complete a task in 6 days, how many days will 4 workers take (same rate)?", options: ["10", "12", "14", "8"], correct_option: 1 },
+      { question_text: "Find the LCM of 12, 15 and 20.", options: ["30", "60", "120", "90"], correct_option: 1 },
+      { question_text: "Solve: 5x – 7 = 18", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "A number is decreased by 20% and becomes 80. What was the original number?", options: ["90", "95", "100", "110"], correct_option: 2 },
+      { question_text: "Find the value of: –4 × (–6) + 3", options: ["21", "27", "–27", "–21"], correct_option: 1 },
+      { question_text: "The perimeter of a rectangle is 50 cm. If length is 15 cm, find width.", options: ["10 cm", "12 cm", "15 cm", "8 cm"], correct_option: 0 },
+      { question_text: "Simplify: 3/4 ÷ 2/5", options: ["15/8", "6/20", "8/15", "5/8"], correct_option: 0 },
+      { question_text: "If 40% of a number is 120, find the number.", options: ["250", "300", "280", "200"], correct_option: 1 },
+      { question_text: "Find the mean of 10, 15, 25, 30.", options: ["18", "20", "22", "25"], correct_option: 1 },
+      { question_text: "Simplify: 2x + 3x – 4 (if x = 2)", options: ["6", "8", "10", "12"], correct_option: 3 },
+      { question_text: "The HCF of two numbers is 6 and their LCM is 180. If one number is 30, find the other.", options: ["36", "42", "48", "60"], correct_option: 0 },
+      { question_text: "A train travels 60 km in 1 hour. How far will it travel in 2.5 hours?", options: ["120 km", "130 km", "150 km", "140 km"], correct_option: 2 },
+      { question_text: "Simplify: (–3)² + (–4)²", options: ["25", "–25", "7", "–7"], correct_option: 0 },
+      { question_text: "If 5 pens cost Rs. 200, what is the cost of 12 pens?", options: ["400", "480", "500", "520"], correct_option: 1 },
+      { question_text: "Find the value of: 81 ÷ 3³", options: ["3", "9", "27", "6"], correct_option: 0 },
+      { question_text: "A rectangular field is 20 m long and 15 m wide. Find its area.", options: ["300 m²", "70 m²", "35 m²", "250 m²"], correct_option: 0 },
+      { question_text: "Solve: x/5 + 3 = 7", options: ["15", "20", "10", "25"], correct_option: 1 },
+      { question_text: "Find the simple interest on Rs. 1000 at 10% for 2 years.", options: ["100", "150", "200", "250"], correct_option: 2 },
+      { question_text: "If the cost price is Rs. 500 and selling price is Rs. 550, find profit percentage.", options: ["5%", "8%", "10%", "12%"], correct_option: 2 },
+      { question_text: "Simplify: (5² × 5³)", options: ["5⁵", "25⁵", "5⁶", "125"], correct_option: 0 },
+      { question_text: "Find the value of: 2(3 + 4) – 5", options: ["9", "8", "11", "10"], correct_option: 0 },
+      { question_text: "If the ratio of two numbers is 3:7 and their sum is 100, find the smaller number.", options: ["25", "30", "35", "40"], correct_option: 0 },
+      { question_text: "A tank contains 250 litres of water. If 20% is used, how much water remains?", options: ["200 litres", "210 litres", "180 litres", "150 litres"], correct_option: 0 },
+      { question_text: "Find the area of a square whose diagonal is 10√2 cm.", options: ["100 cm²", "50 cm²", "200 cm²", "150 cm²"], correct_option: 0 },
+      { question_text: "Solve: 4x – 2 = 3x + 5", options: ["7", "5", "3", "6"], correct_option: 0 },
+      { question_text: "Find the value of: 100 – (20 + 30%) of 100", options: ["50", "40", "30", "60"], correct_option: 0 },
+      { question_text: "If a number is multiplied by 3 and 12 is added, the result is 30. Find the number.", options: ["4", "5", "6", "7"], correct_option: 2 },
+      { question_text: "A car covers 180 km in 3 hours. Find its speed.", options: ["50 km/h", "55 km/h", "60 km/h", "65 km/h"], correct_option: 2 },
+      { question_text: "Simplify: (–6 ÷ 2) + 8", options: ["5", "–5", "2", "6"], correct_option: 0 },
+      { question_text: "Find the compound value of Rs. 1000 at 10% for 1 year.", options: ["1100", "1000", "1200", "1050"], correct_option: 0 },
+      { question_text: "The angles of a triangle are in ratio 2:3:4. Find the smallest angle.", options: ["30°", "40°", "50°", "60°"], correct_option: 1 },
+      { question_text: "Find the value of: 3² + 4² – 5²", options: ["0", "1", "2", "5"], correct_option: 0 },
+      { question_text: "If 12 men can complete a work in 15 days, how many days will 20 men take?", options: ["10", "9", "12", "8"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math6HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 URDU EASY QUESTIONS ---
+  const urdu6EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 6' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu6EasyCount.count < 40) {
+    console.log("Seeding Grade 6 Easy Urdu questions...");
+    const urdu6EasyQuestions = [
+      { question_text: "درج ذیل میں اسم کی نشاندہی کریں: “بچہ کھیل رہا ہے۔”", options: ["کھیل", "بچہ", "رہا", "ہے"], correct_option: 1 },
+      { question_text: "لفظ “کتاب” کی جمع کیا ہے؟", options: ["کتابیں", "کتابان", "کتابوں", "کتابی"], correct_option: 0 },
+      { question_text: "لفظ “لڑکا” کا مؤنث کیا ہے؟", options: ["لڑکی", "لڑکے", "لڑکیاں", "لڑکپن"], correct_option: 0 },
+      { question_text: "“تیز” کا متضاد کیا ہے؟", options: ["جلدی", "آہستہ", "کم", "بڑا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ اسکول جاتے ہے۔", "وہ اسکول جاتا ہے۔", "وہ اسکول جاتی ہے۔", "وہ اسکول جاؤ ہے۔"], correct_option: 2 },
+      { question_text: "درج ذیل میں فعل کی نشاندہی کریں: “علی کتاب پڑھتا ہے۔”", options: ["علی", "کتاب", "پڑھتا", "ہے"], correct_option: 2 },
+      { question_text: "لفظ “خوش” کا مترادف کیا ہے؟", options: ["اداس", "مسرور", "ناراض", "تھکا"], correct_option: 1 },
+      { question_text: "“ہم” کون سا ضمیر ہے؟", options: ["واحد", "جمع", "مذکر", "مؤنث"], correct_option: 1 },
+      { question_text: "درج ذیل میں صفت کی نشاندہی کریں: “سرخ پھول خوبصورت ہے۔”", options: ["پھول", "خوبصورت", "سرخ", "ہے"], correct_option: 2 },
+      { question_text: "“ایماندار” کا متضاد کیا ہے؟", options: ["سچا", "جھوٹا", "بے ایمان", "محنتی"], correct_option: 2 },
+      { question_text: "درست جمع منتخب کریں: “درخت”", options: ["درختیں", "درختان", "درخت", "درختوں"], correct_option: 2 },
+      { question_text: "لفظ “بیٹا” کا مؤنث کیا ہے؟", options: ["بیٹی", "بیٹیاں", "بیٹوں", "بیٹپن"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم نے کھانا کھایا۔", "ہم نے کھانا کھائے۔", "ہم نے کھانا کھاتی۔", "ہم کھانا کھائے ہیں۔"], correct_option: 0 },
+      { question_text: "“اندھیرا” کا متضاد کیا ہے؟", options: ["روشنی", "رات", "سایہ", "دھند"], correct_option: 0 },
+      { question_text: "درج ذیل میں ضمیر کی نشاندہی کریں: “وہ گھر گیا۔”", options: ["گھر", "گیا", "وہ", "کوئی نہیں"], correct_option: 2 },
+      { question_text: "لفظ “دوست” کا مترادف کیا ہے؟", options: ["دشمن", "ساتھی", "اجنبی", "قریبی"], correct_option: 1 },
+      { question_text: "درست واحد منتخب کریں: “بچیاں”", options: ["بچی", "بچہ", "بچے", "بچیوں"], correct_option: 0 },
+      { question_text: "“اونچا” کا متضاد کیا ہے؟", options: ["لمبا", "نیچا", "بڑا", "موٹا"], correct_option: 1 },
+      { question_text: "درج ذیل میں فعل ماضی کی نشاندہی کریں:", options: ["کھاتا", "کھایا", "کھاتا ہے", "کھائے گا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کھیل رہی ہے۔", "وہ کھیل رہا ہے۔", "وہ کھیل رہی ہیں۔", "وہ کھیل رہے ہے۔"], correct_option: 0 },
+      { question_text: "“محنت” کا مترادف کیا ہے؟", options: ["کوشش", "سستی", "کھیل", "آرام"], correct_option: 0 },
+      { question_text: "“گرم” کا متضاد کیا ہے؟", options: ["ٹھنڈا", "نرم", "ہلکا", "تیز"], correct_option: 0 },
+      { question_text: "درج ذیل میں اسم جمع کی نشاندہی کریں:", options: ["لڑکا", "لڑکی", "لڑکے", "لڑکیوں"], correct_option: 2 },
+      { question_text: "لفظ “استاد” کا مؤنث کیا ہے؟", options: ["استانی", "استادہ", "استادات", "استادی"], correct_option: 0 },
+      { question_text: "درست فعل حال منتخب کریں۔", options: ["جا رہا ہے", "گیا", "جائے گا", "گیا تھا"], correct_option: 0 },
+      { question_text: "“بہادر” کا مترادف کیا ہے؟", options: ["ڈرپوک", "نڈر", "کمزور", "خاموش"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: “چڑیا”", options: ["چڑیاں", "چڑیوں", "چڑیاں", "چڑیو"], correct_option: 0 },
+      { question_text: "“سچ” کا متضاد کیا ہے؟", options: ["حقیقت", "جھوٹ", "بات", "دلیل"], correct_option: 1 },
+      { question_text: "درج ذیل میں صفت کی نشاندہی کریں: “لمبا لڑکا دوڑ رہا ہے۔”", options: ["لڑکا", "دوڑ", "لمبا", "رہا"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["میں نے کتاب پڑھی۔", "میں نے کتاب پڑھا۔", "میں کتاب پڑھی ہے۔", "میں نے کتاب پڑھتی۔"], correct_option: 0 },
+      { question_text: "“صبح” کا متضاد کیا ہے؟", options: ["شام", "دن", "روشنی", "سورج"], correct_option: 0 },
+      { question_text: "درج ذیل میں فعل مستقبل کی نشاندہی کریں:", options: ["جائے گا", "گیا", "جا رہا ہے", "جاتا ہے"], correct_option: 0 },
+      { question_text: "“صاف” کا مترادف کیا ہے؟", options: ["گندا", "شفاف", "ہلکا", "بھاری"], correct_option: 1 },
+      { question_text: "درست واحد منتخب کریں: “کتابیں”", options: ["کتاب", "کتابی", "کتابوں", "کتابیں"], correct_option: 0 },
+      { question_text: "“طاقتور” کا متضاد کیا ہے؟", options: ["بہادر", "کمزور", "مضبوط", "بڑا"], correct_option: 1 },
+      { question_text: "درج ذیل میں اسم کی نشاندہی کریں: “استاد سبق پڑھا رہے ہیں۔”", options: ["پڑھا", "استاد", "رہے", "ہیں"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہے ہیں۔", "بچے کھیل رہا ہے۔", "بچہ کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔"], correct_option: 0 },
+      { question_text: "“روشنی” کا متضاد کیا ہے؟", options: ["اندھیرا", "سایہ", "چمک", "دن"], correct_option: 0 },
+      { question_text: "درج ذیل میں ضمیر جمع منتخب کریں۔", options: ["وہ", "ہم", "یہ", "وہی"], correct_option: 1 },
+      { question_text: "“پیار” کا مترادف کیا ہے؟", options: ["نفرت", "محبت", "غصہ", "دشمنی"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu6EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 URDU MEDIUM QUESTIONS ---
+  const urdu6MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 6' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu6MedCount.count < 40) {
+    console.log("Seeding Grade 6 Medium Urdu questions...");
+    const urdu6MedQuestions = [
+      { question_text: "درست املا منتخب کریں۔", options: ["زمہ داری", "ذمہ داری", "زمداری", "زمہداری"], correct_option: 1 },
+      { question_text: "جملے کی درستی منتخب کریں۔", options: ["وہ کل بازار جائے گا۔", "وہ کل بازار گیا گا۔", "وہ کل بازار جاتا گا۔", "وہ کل بازار جارہا گا۔"], correct_option: 0 },
+      { question_text: "“آسمان سے باتیں کرنا” کا مفہوم کیا ہے؟", options: ["اونچا ہونا", "باتیں کرنا", "چیخنا", "ہنسنا"], correct_option: 0 },
+      { question_text: "درج ذیل میں فعل مستقبل کی نشاندہی کریں:", options: ["لکھا", "لکھتا ہے", "لکھے گا", "لکھ رہا تھا"], correct_option: 2 },
+      { question_text: "“مشکل” کا مترادف کیا ہے؟", options: ["آسان", "دشوار", "نرم", "تیز"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: “مسئلہ”", options: ["مسائل", "مسئلے", "مسئلہ جات", "مسئلات"], correct_option: 0 },
+      { question_text: "جملہ مکمل کریں: “اگر تم محنت کرو گے تو ____”", options: ["کامیاب ہوگئے", "کامیاب ہو جاؤ گے", "کامیاب تھا", "کامیاب ہو"], correct_option: 1 },
+      { question_text: "“جلدی” کا متضاد کیا ہے؟", options: ["تیز", "فوراً", "دیر", "تیزی"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: [" ہمیں سچ بولنا چاہیے۔", "ہمیں سچ بولنی چاہیے۔", "ہمیں سچ بولنے چاہیے۔", "ہمیں سچ بولنا چاہئے ہیں۔"], correct_option: 0 },
+      { question_text: "درج ذیل میں مرکب جملہ کون سا ہے؟", options: ["علی سو رہا ہے۔", "علی سو رہا ہے اور احمد کھیل رہا ہے۔", "علی آیا۔", "احمد گیا۔"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["تعلیم", "تعلئم", "تعلِم", "تعلیم "], correct_option: 3 },
+      { question_text: "“دل چھوٹا کرنا” کا مفہوم کیا ہے؟", options: ["خوفزدہ ہونا", "مایوس ہونا", "غصہ کرنا", "رونا"], correct_option: 1 },
+      { question_text: "فعل حال کی مثال منتخب کریں۔", options: ["گیا", "جا رہا ہے", "جائے گا", "گیا تھا"], correct_option: 1 },
+      { question_text: "“حاضر” کا متضاد کیا ہے؟", options: ["موجود", "غیر حاضر", "قریب", "تیار"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھ رہی تھی۔", "وہ کتاب پڑھ رہا تھی۔", "وہ کتاب پڑھ رہی تھا۔", "وہ کتاب پڑھ رہے تھی۔"], correct_option: 0 },
+      { question_text: "“حیران” کا مترادف کیا ہے؟", options: ["متعجب", "خوش", "غمگین", "ناراض"], correct_option: 0 },
+      { question_text: "جملہ مکمل کریں: “چونکہ بارش ہو رہی تھی، اس لیے ____”", options: ["ہم باہر گئے۔", "ہم باہر نہیں گئے۔", "ہم کھیلتے رہے۔", "ہم ہنسے۔"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["احتیاط", "احتیات", "احتیاط ", "احتیاۃ"], correct_option: 2 },
+      { question_text: "“گہرا” کا متضاد کیا ہے؟", options: ["لمبا", "ہلکا", "اتھلا", "موٹا"], correct_option: 2 },
+      { question_text: "درج ذیل میں صفت کی نشاندہی کریں: “محنتی طالب علم کامیاب ہوتا ہے۔”", options: ["طالب", "علم", "محنتی", "ہوتا"], correct_option: 2 },
+      { question_text: "درست جمع منتخب کریں: “شہر”", options: ["شہروں", "شہرین", "شہرات", "شہریاں"], correct_option: 0 },
+      { question_text: "“خاموش” کا مترادف کیا ہے؟", options: ["چپ", "شور", "غصہ", "تیز"], correct_option: 0 },
+      { question_text: "جملے کی درستی منتخب کریں۔", options: ["وہ اسکول جاتے ہیں۔", "وہ اسکول جاتا ہیں۔", "وہ اسکول جاتے ہے۔", "وہ اسکول جاتے ہے۔ "], correct_option: 0 },
+      { question_text: "“ہاتھ پیر پھول جانا” کا مفہوم کیا ہے؟", options: ["خوش ہونا", "گھبرا جانا", "دوڑنا", "گر جانا"], correct_option: 1 },
+      { question_text: "فعل ماضی کی مثال منتخب کریں۔", options: ["پڑھتا ہے", "پڑھ رہا ہے", "پڑھا", "پڑھے گا"], correct_option: 2 },
+      { question_text: "“غلط” کا متضاد کیا ہے؟", options: ["درست", "خراب", "مشکل", "بڑا"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["کامیابی", "کامیابیی", "کامیابئ", "کامیابئی"], correct_option: 0 },
+      { question_text: "مرکب جملہ منتخب کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "وہ آیا۔", "وہ بیٹھا۔", "وہ گیا۔"], correct_option: 0 },
+      { question_text: "“قریب” کا متضاد کیا ہے؟", options: ["پاس", "نزدیک", "دور", "ساتھ"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: [" ہمیں وقت کی قدر کرنی چاہیے۔", "ہمیں وقت کی قدر کرنا چاہیے ہیں۔", "ہمیں وقت کی قدر کرے۔", "ہمیں وقت کی قدر کرنی چاہیے ہیں۔"], correct_option: 0 },
+      { question_text: "“امید” کا مترادف کیا ہے؟", options: ["آس", "خوف", "غم", "شکست"], correct_option: 0 },
+      { question_text: "درج ذیل میں ضمیر کی نشاندہی کریں: “یہ میرا قلم ہے۔”", options: ["قلم", "میرا", "یہ", "ہے"], correct_option: 2 },
+      { question_text: "درست جمع منتخب کریں: “استاد”", options: ["استادان", "اساتذہ", "استادیں", "استادوں"], correct_option: 1 },
+      { question_text: "“نرم” کا متضاد کیا ہے؟", options: ["سخت", "ہلکا", "صاف", "تیز"], correct_option: 0 },
+      { question_text: "فعل مستقبل کی مثال منتخب کریں۔", options: ["جائے گا", "گیا", "جا رہا ہے", "جاتا تھا"], correct_option: 0 },
+      { question_text: "“صاف دل” کا مفہوم کیا ہے؟", options: ["ایماندار", "ناراض", "غصے والا", "ڈرپوک"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے میدان میں کھیل رہے تھے۔", "بچے میدان میں کھیل رہا تھے۔", "بچہ میدان میں کھیل رہے تھے۔", "بچے میدان میں کھیل رہی تھے۔"], correct_option: 0 },
+      { question_text: "“سخت” کا مترادف کیا ہے؟", options: ["نرم", "کڑا", "ہلکا", "کمزور"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ذمے داری", "ذمہ داری", "زمہداری", "زمداری"], correct_option: 1 },
+      { question_text: "“نقصان” کا متضاد کیا ہے؟", options: ["خسارہ", "فائدہ", "کمی", "خرابی"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu6MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 6 URDU HARD QUESTIONS ---
+  const urdu6HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 6' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu6HardCount.count < 40) {
+    console.log("Seeding Grade 6 Hard Urdu questions...");
+    const urdu6HardQuestions = [
+      { question_text: "جملہ “علی نے خط لکھا” کو مجہول میں تبدیل کریں۔", options: ["خط علی نے لکھا", "خط لکھا گیا", "علی خط لکھ رہا ہے", "علی خط لکھے گا"], correct_option: 1 },
+      { question_text: "“وہ کام کر رہا ہے” کس زمانے کی مثال ہے؟", options: ["ماضی", "حال استمراری", "مستقبل", "حال مطلق"], correct_option: 1 },
+      { question_text: "محاورہ “کان کھڑے ہونا” کا مفہوم کیا ہے؟", options: ["سننا", "چونک جانا", "دوڑنا", "ہنسنا"], correct_option: 1 },
+      { question_text: "درست مرکب جملہ منتخب کریں۔", options: ["وہ آیا۔", "وہ آیا اور بیٹھ گیا۔", "وہ بیٹھا۔", "وہ سو گیا۔"], correct_option: 1 },
+      { question_text: "“دیانتدار” کا متضاد کیا ہے؟", options: ["ایماندار", "بددیانت", "سچا", "صاف"], correct_option: 1 },
+      { question_text: "جملہ مکمل کریں: “اگر تم سچ بولو گے تو لوگ ____”", options: ["ناراض ہوں گے", "تم پر اعتبار کریں گے", "تم سے دور ہوں گے", "ہنسیں گے"], correct_option: 1 },
+      { question_text: "درج ذیل میں صفت نسبتی کی مثال منتخب کریں۔", options: ["بڑا", "بڑا تر", "سب سے بڑا", "بڑائی"], correct_option: 1 },
+      { question_text: "“وقت کی قدر نہ کرنا” کس انجام کا باعث بنتا ہے؟", options: ["کامیاب", "نقصان", "خوشی", "ترقی"], correct_option: 1 },
+      { question_text: "جملہ “کتاب پڑھی گئی” کس ساخت کی مثال ہے؟", options: ["معلوم", "مجہول", "امر", "استفہامیہ"], correct_option: 1 },
+      { question_text: "“تنگ دست” کا مفہوم کیا ہے؟", options: ["امیر", "غریب", "خوشحال", "بہادر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچوں نے درخت لگایا۔", "بچوں نے درخت لگائے۔", "بچے نے درخت لگائے۔", "بچوں نے درخت لگاتا۔"], correct_option: 1 },
+      { question_text: "فعل لازم کی مثال منتخب کریں۔", options: ["اس نے دروازہ کھولا۔", "دروازہ کھلا۔", "اس نے خط لکھا۔", "اس نے کتاب پڑھی۔"], correct_option: 1 },
+      { question_text: "“دستِ سوال دراز کرنا” کا مفہوم کیا ہے؟", options: ["سوال پوچھنا", "بھیک مانگنا", "ہاتھ اٹھانا", "دعا کرنا"], correct_option: 1 },
+      { question_text: "“خاموشی” کس نوع کا اسم ہے؟", options: ["اسم ذات", "اسم کیفیت", "اسم معرفہ", "اسم ضمیر"], correct_option: 1 },
+      { question_text: "جملہ منفی میں تبدیل کریں: “وہ اسکول جاتا ہے۔”", options: ["وہ اسکول گیا۔", "وہ اسکول نہیں جاتا ہے۔", "وہ اسکول جا رہا ہے۔", "وہ اسکول جائے گا۔"], correct_option: 1 },
+      { question_text: "“غفلت” کا مترادف کیا ہے؟", options: ["لاپرواہی", "محنت", "توجہ", "احتیاط"], correct_option: 0 },
+      { question_text: "مرکب جملہ منتخب کریں۔", options: ["میں پڑھتا ہوں۔", "میں پڑھتا ہوں کیونکہ امتحان ہے۔", "وہ آیا۔", "ہم گئے۔"], correct_option: 1 },
+      { question_text: "“شجاع” کا مترادف کیا ہے؟", options: ["بہادر", "ڈرپوک", "غصہ", "کمزور"], correct_option: 0 },
+      { question_text: "درج ذیل میں اسم فاعل کی مثال منتخب کریں۔", options: ["لکھا", "لکھنے والا", "لکھا گیا", "لکھے گا"], correct_option: 1 },
+      { question_text: "“پھولوں کی سی خوشبو” کس صنعت کی مثال ہے؟", options: ["تشبیہ", "استعارہ", "مبالغہ", "تضاد"], correct_option: 0 },
+      { question_text: "جملہ درست کریں:", options: [" ہمیں اپنے والدین کی عزت کرنا چاہیے۔", "ہمیں اپنے والدین کی عزت کرنی چاہیے ہیں۔", "ہمیں اپنے والدین کی عزت کریں۔", "ہمیں اپنے والدین کی عزت کرتا چاہیے۔"], correct_option: 0 },
+      { question_text: "“مستقبل” کا متضاد کیا ہے؟", options: ["حال", "ماضی", "آنے والا", "کل"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["وہ ہنسا اور چلا گیا۔", "جب بارش ہوئی تو ہم گھر میں رہے۔", "وہ آیا۔", "وہ بیٹھا۔"], correct_option: 1 },
+      { question_text: "“زبان درازی کرنا” کا مفہوم کیا ہے؟", options: ["زیادہ بولنا", "بدتمیزی کرنا", "تقریر کرنا", "سوال کرنا"], correct_option: 1 },
+      { question_text: "اسم صفت کی مثال منتخب کریں۔", options: ["خوبصورت لڑکی", "لڑکی", "خوبصورتی", "لڑکیاں"], correct_option: 0 },
+      { question_text: "“حسین” کا متضاد کیا ہے؟", options: ["خوبصورت", "بدصورت", "نرم", "اچھا"], correct_option: 1 },
+      { question_text: "جملہ “دروازہ بند کیا گیا” کس کی مثال ہے؟", options: ["معلوم", "مجہول", "فعل لازم", "امر"], correct_option: 1 },
+      { question_text: "“قلیل” کا مترادف کیا ہے؟", options: ["کم", "زیادہ", "وسیع", "بڑا"], correct_option: 0 },
+      { question_text: "فعل امر کی مثال منتخب کریں۔", options: ["وہ گیا", "جاؤ", "جائے گا", "جا رہا ہے"], correct_option: 1 },
+      { question_text: "“سنگدل” کا مفہوم کیا ہے؟", options: ["نرم دل", "سخت دل", "مہربان", "خوش مزاج"], correct_option: 1 },
+      { question_text: "درج ذیل میں اسم مصدر منتخب کریں۔", options: ["دوڑنا", "دوڑا", "دوڑتا", "دوڑے گا"], correct_option: 0 },
+      { question_text: "“روشنی” کس قسم کا اسم ہے؟", options: ["اسم ذات", "اسم کیفیت", "اسم ضمیر", "اسم معرفہ"], correct_option: 1 },
+      { question_text: "“وقت ضائع کرنا” کس انجام کا باعث بنتا ہے؟", options: ["ترقی", "ناکامی", "عزت", "خوشی"], correct_option: 1 },
+      { question_text: "“بلند” کا مترادف کیا ہے؟", options: ["اونچا", "نیچا", "نرم", "سخت"], correct_option: 0 },
+      { question_text: "جملہ استفہامیہ منتخب کریں۔", options: ["وہ اسکول جاتا ہے۔", "کیا وہ اسکول جاتا ہے؟", "وہ اسکول گیا۔", "وہ اسکول جائے گا۔"], correct_option: 1 },
+      { question_text: "“سخاوت” کا مفہوم کیا ہے؟", options: ["بخل", "فیاضی", "سختی", "کمزوری"], correct_option: 1 },
+      { question_text: "“دل لگانا” کا مفہوم کیا ہے؟", options: ["خوش ہونا", "توجہ دینا", "غصہ کرنا", "سونا"], correct_option: 1 },
+      { question_text: "“وسیع” کا متضاد کیا ہے؟", options: ["کشادہ", "تنگ", "بڑا", "کھلا"], correct_option: 1 },
+      { question_text: "فعل متعدی کی مثال منتخب کریں۔", options: ["وہ سو گیا۔", "اس نے دروازہ کھولا۔", "وہ ہنسا۔", "وہ آیا۔"], correct_option: 1 },
+      { question_text: "“علم کی روشنی” کس صنعت کی مثال ہے؟", options: ["استعارہ", "تشبیہ", "تضاد", "تکرار"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu6HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 6'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 6', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 ENGLISH EASY QUESTIONS ---
+  const eng7EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 7' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng7EasyCount.count < 40) {
+    console.log("Seeding Grade 7 Easy English questions...");
+    const eng7EasyQuestions = [
+      { question_text: "Identify the noun in the sentence: “The children are playing in the park.”", options: ["playing", "children", "are", "in"], correct_option: 1 },
+      { question_text: "Choose the correct form of the verb: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
+      { question_text: "Identify the adjective: “He bought a new bicycle.”", options: ["bought", "bicycle", "new", "he"], correct_option: 2 },
+      { question_text: "Choose the correct synonym of “brave.”", options: ["afraid", "bold", "weak", "shy"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["They was happy.", "They were happy.", "They is happy.", "They be happy."], correct_option: 1 },
+      { question_text: "Choose the correct antonym of “early.”", options: ["late", "soon", "fast", "quick"], correct_option: 0 },
+      { question_text: "Identify the pronoun: “Ali said he would come.”", options: ["Ali", "said", "he", "come"], correct_option: 2 },
+      { question_text: "Fill in the blank with correct modal verb: You ___ respect your elders.", options: ["should", "can", "may", "will"], correct_option: 0 },
+      { question_text: "Choose the correct plural form of “leaf.”", options: ["leafs", "leaves", "leafes", "leavs"], correct_option: 1 },
+      { question_text: "Identify the verb in the sentence: “She sings beautifully.”", options: ["she", "sings", "beautifully", "song"], correct_option: 1 },
+      { question_text: "Choose the correct past tense of “write.”", options: ["written", "wrote", "writing", "writes"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["He don’t like milk.", "He doesn’t like milk.", "He not like milk.", "He didn’t likes milk."], correct_option: 1 },
+      { question_text: "Identify the adverb: “She ran quickly.”", options: ["ran", "quickly", "she", "run"], correct_option: 1 },
+      { question_text: "Choose the correct synonym of “honest.”", options: ["truthful", "lazy", "rude", "selfish"], correct_option: 0 },
+      { question_text: "Fill in the blank: There ___ many students in the class.", options: ["is", "are", "was", "be"], correct_option: 1 },
+      { question_text: "Identify the preposition: “The book is on the table.”", options: ["book", "on", "table", "is"], correct_option: 1 },
+      { question_text: "Choose the correct future tense form: They ___ visit us tomorrow.", options: ["will", "are", "did", "were"], correct_option: 0 },
+      { question_text: "Choose the correct antonym of “kind.”", options: ["gentle", "cruel", "polite", "friendly"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["She has finished her work.", "She have finished her work.", "She had finish her work.", "She finishing her work."], correct_option: 0 },
+      { question_text: "Identify the conjunction: “He was tired but he continued working.”", options: ["tired", "but", "continued", "he"], correct_option: 1 },
+      { question_text: "Choose the correct comparative form of “tall.”", options: ["taller", "tall", "tallest", "more tall"], correct_option: 0 },
+      { question_text: "Fill in the blank: She is afraid ___ dogs.", options: ["from", "of", "with", "on"], correct_option: 1 },
+      { question_text: "Identify the subject: “The birds are flying.”", options: ["flying", "birds", "are", "the"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["I have two brother.", "I have two brothers.", "I has two brothers.", "I having two brothers."], correct_option: 1 },
+      { question_text: "Choose the correct synonym of “begin.”", options: ["end", "start", "stop", "finish"], correct_option: 1 },
+      { question_text: "Identify the tense: “She is reading a book.”", options: ["Past tense", "Present continuous", "Future tense", "Past continuous"], correct_option: 1 },
+      { question_text: "Select the correct article: He is ___ honest man.", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Choose the correct antonym of “strong.”", options: ["powerful", "weak", "brave", "heavy"], correct_option: 1 },
+      { question_text: "Identify the object: “Ali kicked the ball.”", options: ["Ali", "kicked", "ball", "the"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["We was playing.", "We were playing.", "We is playing.", "We be playing."], correct_option: 1 },
+      { question_text: "Fill in the blank: She ___ already completed her homework.", options: ["have", "has", "had", "having"], correct_option: 1 },
+      { question_text: "Identify the correct spelling.", options: ["recieve", "receive", "receeve", "receve"], correct_option: 1 },
+      { question_text: "Choose the correct question form.", options: ["Where you are going?", "Where are you going?", "Where going you are?", "Where you going are?"], correct_option: 1 },
+      { question_text: "Identify the helping verb: “She has eaten the food.”", options: ["eaten", "has", "food", "she"], correct_option: 1 },
+      { question_text: "Choose the correct superlative form of “good.”", options: ["gooder", "better", "best", "more good"], correct_option: 2 },
+      { question_text: "Fill in the blank: I prefer tea ___ coffee.", options: ["than", "to", "from", "with"], correct_option: 1 },
+      { question_text: "Choose the correct synonym of “silent.”", options: ["noisy", "quiet", "loud", "talkative"], correct_option: 1 },
+      { question_text: "Identify the type of sentence: “Please close the door.”", options: ["Declarative", "Interrogative", "Imperative", "Exclamatory"], correct_option: 2 },
+      { question_text: "Choose the correct passive form: “They cleaned the room.”", options: ["The room cleaned.", "The room was cleaned.", "The room is cleaned.", "The room cleaning."], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["He is more smarter than me.", "He is smarter than me.", "He is smartest than me.", "He smarter than me."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng7EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 ENGLISH MEDIUM QUESTIONS ---
+  const eng7MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 7' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng7MedCount.count < 40) {
+    console.log("Seeding Grade 7 Medium English questions...");
+    const eng7MedQuestions = [
+      { question_text: "Choose the correct passive voice: “They are building a bridge.”", options: ["A bridge was built.", "A bridge is being built.", "A bridge has been built.", "A bridge builds."], correct_option: 1 },
+      { question_text: "Select the correct indirect speech: He said, “I am tired.”", options: ["He said that he was tired.", "He said that I am tired.", "He said he is tired.", "He said that he tired."], correct_option: 0 },
+      { question_text: "Identify the subordinate clause: “I will call you when I reach home.”", options: ["I will call you", "when I reach home", "I reach", "will call"], correct_option: 1 },
+      { question_text: "Choose the correct conditional sentence: If it rains, we ___ stay inside.", options: ["stayed", "will stay", "staying", "stays"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["She has ate the food.", "She has eaten the food.", "She have eaten the food.", "She eating the food."], correct_option: 1 },
+      { question_text: "Choose the correct modal verb: You ___ wear a helmet while riding a bike.", options: ["may", "should", "could", "might"], correct_option: 1 },
+      { question_text: "Identify the main clause: “Although he was tired, he finished his work.”", options: ["Although he was tired", "he finished his work", "was tired", "he was"], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: She said, “We are going to school.”", options: ["She said that they were going to school.", "She said we are going to school.", "She said that we was going to school.", "She said that they are going to school."], correct_option: 0 },
+      { question_text: "Select the correct comparative sentence.", options: ["This book is more better than that one.", "This book is better than that one.", "This book is best than that one.", "This book better than that one."], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “They have completed the work.”", options: ["The work has been completed.", "The work is completed.", "The work completed.", "The work was completed."], correct_option: 0 },
+      { question_text: "Identify the error: “He don’t understand the lesson.”", options: ["He", "don’t", "understand", "lesson"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Neither Ali nor Ahmed are present.", "Neither Ali nor Ahmed is present.", "Neither Ali nor Ahmed were present.", "Neither Ali nor Ahmed be present."], correct_option: 1 },
+      { question_text: "Select the correct tense: “She had left before I arrived.”", options: ["Present perfect", "Past continuous", "Past perfect", "Future perfect"], correct_option: 2 },
+      { question_text: "Choose the correct indirect speech: He said, “I will help you.”", options: ["He said that he will help me.", "He said that he would help me.", "He said he helps me.", "He said he would helps me."], correct_option: 1 },
+      { question_text: "Identify the conjunction: “I stayed home because it was raining.”", options: ["stayed", "because", "raining", "home"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["She is good in mathematics.", "She is good at mathematics.", "She is good on mathematics.", "She is good with mathematics."], correct_option: 1 },
+      { question_text: "Select the correct passive form: “People speak English all over the world.”", options: ["English is spoken all over the world.", "English was spoken all over the world.", "English spoken all over the world.", "English is speak all over the world."], correct_option: 0 },
+      { question_text: "Choose the correct conditional sentence (Type 1): If you study hard, you ___ pass the exam.", options: ["will", "would", "had", "passed"], correct_option: 0 },
+      { question_text: "Identify the relative clause: “The boy who is playing is my brother.”", options: ["The boy", "who is playing", "is my brother", "playing"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["She asked where was I going.", "She asked where I was going.", "She asked where I am going.", "She asked where was going I."], correct_option: 1 },
+      { question_text: "Choose the correct modal of ability (past): He ___ swim when he was five.", options: ["can", "could", "may", "shall"], correct_option: 1 },
+      { question_text: "Identify the tense: “They have been waiting for an hour.”", options: ["Present perfect continuous", "Present continuous", "Past perfect", "Future continuous"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["Too much students are absent.", "Too many students are absent.", "Too many student is absent.", "Much students are absent."], correct_option: 1 },
+      { question_text: "Select the correct transformation: “She is so tired that she cannot walk.”", options: ["She is too tired to walk.", "She is very tired to walk.", "She is tired to walk.", "She is enough tired to walk."], correct_option: 0 },
+      { question_text: "Choose the correct passive voice: “Someone has stolen my bag.”", options: ["My bag has been stolen.", "My bag is stolen.", "My bag was stolen.", "My bag stolen."], correct_option: 0 },
+      { question_text: "Identify the independent clause: “While I was studying, my brother was watching TV.”", options: ["While I was studying", "my brother was watching TV", "was studying", "watching TV"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Each of the boys have a book.", "Each of the boys has a book.", "Each of the boys are a book.", "Each boys has a book."], correct_option: 1 },
+      { question_text: "Select the correct indirect speech: She said, “Do you like tea?”", options: ["She asked if I liked tea.", "She asked do I like tea.", "She asked that I like tea.", "She asked if do I like tea."], correct_option: 0 },
+      { question_text: "Choose the correct use of “enough.”", options: ["He is enough tall.", "He is tall enough.", "He enough is tall.", "He is tall too enough."], correct_option: 1 },
+      { question_text: "Identify the gerund: “Swimming is good exercise.”", options: ["Swimming", "good", "exercise", "is"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["The news are interesting.", "The news is interesting.", "The news were interesting.", "The news be interesting."], correct_option: 1 },
+      { question_text: "Select the correct conditional: If she ___ earlier, she would have caught the bus.", options: ["left", "leaves", "leaving", "leave"], correct_option: 0 },
+      { question_text: "Choose the correct comparative structure: This exercise is not as ___ as that one.", options: ["easy", "easier", "easiest", "more easy"], correct_option: 0 },
+      { question_text: "Identify the participle: “The broken window was repaired.”", options: ["broken", "window", "repaired", "was"], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["He insisted to go.", "He insisted on going.", "He insisted go.", "He insisted for going."], correct_option: 1 },
+      { question_text: "Select the correct reported speech: Ali said, “I have finished my homework.”", options: ["Ali said that he had finished his homework.", "Ali said that he has finished his homework.", "Ali said he finish his homework.", "Ali said that he finished his homework."], correct_option: 0 },
+      { question_text: "Choose the correct use of “since.”", options: ["I have lived here since five years.", "I have lived here since 2020.", "I live here since 2020.", "I lived here since 2020."], correct_option: 1 },
+      { question_text: "Identify the infinitive: “She wants to learn English.”", options: ["wants", "to learn", "English", "she"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Hardly had he arrived when it started raining.", "Hardly he had arrived when it started raining.", "Hardly he arrived when it started raining.", "Hardly had he arrive when it started raining."], correct_option: 0 },
+      { question_text: "Select the correct passive form: “They will announce the results tomorrow.”", options: ["The results will be announced tomorrow.", "The results are announced tomorrow.", "The results announced tomorrow.", "The results will announced tomorrow."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng7MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 ENGLISH HARD QUESTIONS ---
+  const eng7HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 7' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng7HardCount.count < 40) {
+    console.log("Seeding Grade 7 Hard English questions...");
+    const eng7HardQuestions = [
+      { question_text: "Choose the correct passive form: “They must finish the work today.”", options: ["The work must finished today.", "The work must be finished today.", "The work must been finished today.", "The work must finishing today."], correct_option: 1 },
+      { question_text: "Select the correct transformation: “He is too weak to lift the box.”", options: ["He is so weak that he cannot lift the box.", "He is very weak to lift the box.", "He is enough weak to lift the box.", "He is weak that he can lift the box."], correct_option: 0 },
+      { question_text: "Identify the complex sentence.", options: ["She came and sat down.", "She came because I called her.", "She came.", "She sat down."], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: He said, “I had completed the task.”", options: ["He said that he had completed the task.", "He said that he has completed the task.", "He said he completed the task.", "He said that I had completed the task."], correct_option: 0 },
+      { question_text: "Select the correct conditional sentence (Type 2): If I were you, I ___ apologize.", options: ["will", "would", "shall", "can"], correct_option: 1 },
+      { question_text: "Choose the correct sentence with proper parallel structure.", options: ["She likes reading, to write, and painting.", "She likes reading, writing, and painting.", "She likes to read, writing, and painting.", "She likes read, write, and painting."], correct_option: 1 },
+      { question_text: "Identify the figurative expression.", options: ["The sun rises in the east.", "He runs fast.", "Time flies quickly.", "She is reading a book."], correct_option: 2 },
+      { question_text: "Choose the correct passive voice: “They had completed the project.”", options: ["The project had been completed.", "The project has been completed.", "The project was completed.", "The project completed."], correct_option: 0 },
+      { question_text: "Select the correct sentence.", options: ["Neither of the boys have arrived.", "Neither of the boys has arrived.", "Neither of the boys are arrived.", "Neither of the boys were arrived."], correct_option: 1 },
+      { question_text: "Identify the adverbial clause. “He left after he finished his work.”", options: ["He left", "after he finished his work", "he finished", "finished his work"], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “As soon as he reached, it started raining.”", options: ["No sooner had he reached than it started raining.", "No sooner he reached than it started raining.", "No sooner did he reach when it started raining.", "No sooner had he reach when it started raining."], correct_option: 0 },
+      { question_text: "Select the correct indirect speech: She said, “I may come tomorrow.”", options: ["She said that she might come the next day.", "She said that she may come tomorrow.", "She said she might comes the next day.", "She said that she might come tomorrow."], correct_option: 0 },
+      { question_text: "Choose the correct sentence.", options: ["The teacher, along with the students, are present.", "The teacher, along with the students, is present.", "The teacher along with the students are present.", "The teacher along with the students were present."], correct_option: 1 },
+      { question_text: "Identify the relative pronoun. “The book that you gave me is interesting.”", options: ["book", "that", "gave", "interesting"], correct_option: 1 },
+      { question_text: "Choose the correct conditional (Type 3): If he had studied, he ___ passed the exam.", options: ["will have", "would have", "would", "will"], correct_option: 1 },
+      { question_text: "Select the correct sentence.", options: ["She is one of the best students who has won the prize.", "She is one of the best students who have won the prize.", "She is one of the best student who have won the prize.", "She is one of the best student who has won the prize."], correct_option: 1 },
+      { question_text: "Choose the correct passive form: “They are going to announce the results.”", options: ["The results are going to be announced.", "The results going to be announced.", "The results are going to announced.", "The results will announce."], correct_option: 0 },
+      { question_text: "Identify the metaphor.", options: ["He is as brave as a lion.", "He is a lion in the battlefield.", "He fights bravely.", "He is very brave."], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Hardly had I reached when the train left.", "Hardly had I reached than the train left.", "Hardly had I reached when the train left. ", "Hardly I had reached when the train left."], correct_option: 0 },
+      { question_text: "Select the correct reported question: He said, “Where are you going?”", options: ["He asked where was I going.", "He asked where I was going.", "He asked where am I going.", "He asked where I am going."], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["Scarcely had he entered when the bell rang.", "Scarcely he had entered when the bell rang.", "Scarcely had he entered than the bell rang.", "Scarcely he entered when the bell rang."], correct_option: 0 },
+      { question_text: "Identify the noun clause. “I know that he is honest.”", options: ["I know", "that he is honest", "he is", "honest"], correct_option: 1 },
+      { question_text: "Choose the correct transformation: “He is so intelligent that he can solve the problem.”", options: ["He is intelligent enough to solve the problem.", "He is too intelligent to solve the problem.", "He is very intelligent to solve the problem.", "He is intelligent that he solve the problem."], correct_option: 0 },
+      { question_text: "Select the correct sentence.", options: ["Each of the players have their own locker.", "Each of the players has his own locker.", "Each of the players have his own locker.", "Each of the players has their own locker."], correct_option: 1 },
+      { question_text: "Choose the correct participial phrase.", options: ["Running fast, he caught the bus.", "He running fast caught the bus.", "Running he fast caught the bus.", "He caught running fast the bus."], correct_option: 0 },
+      { question_text: "Identify the correct use of “despite.”", options: ["Despite he was tired, he worked.", "Despite being tired, he worked.", "Despite of being tired, he worked.", "Despite he tired, he worked."], correct_option: 1 },
+      { question_text: "Choose the correct passive form: “They will have completed the task.”", options: ["The task will have been completed.", "The task will have completed.", "The task will completed.", "The task will have complete."], correct_option: 0 },
+      { question_text: "Select the correct sentence.", options: ["No sooner did he reach than it started raining.", "No sooner had he reached than it started raining.", "No sooner had he reach when it started raining.", "No sooner he had reached than it started raining."], correct_option: 1 },
+      { question_text: "Identify the rhetorical question.", options: ["What time is it?", "Who knows the answer?", "Isn’t honesty the best policy?", "Where are you going?"], correct_option: 2 },
+      { question_text: "Choose the correct sentence.", options: ["The number of students are increasing.", "The number of students is increasing.", "The number of student are increasing.", "The number students is increasing."], correct_option: 1 },
+      { question_text: "Select the correct indirect speech: She said, “Let us go.”", options: ["She suggested that they should go.", "She said let us go.", "She told they to go.", "She asked to go."], correct_option: 0 },
+      { question_text: "Choose the correct clause type: “Whatever he says is true.”", options: ["Adjective clause", "Adverb clause", "Noun clause", "Independent clause"], correct_option: 2 },
+      { question_text: "Identify the correct use of “unless.”", options: ["Unless you hurry, you will miss the bus.", "Unless you will hurry, you miss the bus.", "Unless you hurried, you will miss the bus.", "Unless you hurry, you would miss the bus."], correct_option: 0 },
+      { question_text: "Choose the correct transformation: “He was so tired that he fell asleep.”", options: ["He was too tired to fall asleep.", "He was tired enough to fall asleep.", "He was so tired as to fall asleep.", "He was very tired to fall asleep."], correct_option: 2 },
+      { question_text: "Select the correct sentence.", options: ["The jury has given their verdict.", "The jury have given its verdict.", "The jury has given its verdict.", "The jury have given their verdicts."], correct_option: 2 },
+      { question_text: "Choose the correct passive form: “People consider him honest.”", options: ["He is considered honest.", "He considered honest.", "He is consider honest.", "He was consider honest."], correct_option: 0 },
+      { question_text: "Identify the correct sentence.", options: ["Not only he is intelligent but also hardworking.", "Not only is he intelligent but also hardworking.", "Not only he is intelligent but hardworking also.", "Not only is he intelligent but hardworking."], correct_option: 1 },
+      { question_text: "Choose the correct inference: “If he had left earlier, he would not have been late.” This sentence suggests:", options: ["He left early.", "He was late.", "He was on time.", "He will be late."], correct_option: 1 },
+      { question_text: "Select the correct cohesive connector: He was tired; ___, he continued working.", options: ["because", "however", "although", "unless"], correct_option: 1 },
+      { question_text: "Choose the correct sentence.", options: ["So difficult was the question that no one could answer it.", "So difficult the question was that no one could answer it.", "So the question was difficult that no one could answer it.", "So difficult question was that no one could answer it."], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng7HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 MATH EASY QUESTIONS ---
+  const math7EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 7' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math7EasyCount.count < 40) {
+    console.log("Seeding Grade 7 Easy Math questions...");
+    const math7EasyQuestions = [
+      { question_text: "What is −7 + 3?", options: ["−4", "4", "−10", "10"], correct_option: 0 },
+      { question_text: "What is 12 − (−5)?", options: ["7", "−7", "17", "−17"], correct_option: 2 },
+      { question_text: "Simplify: 4 × (−3)", options: ["12", "−12", "7", "−7"], correct_option: 1 },
+      { question_text: "What is 3/4 + 1/4?", options: ["1", "2/4", "4/8", "3/8"], correct_option: 0 },
+      { question_text: "Convert 0.25 into fraction.", options: ["1/2", "1/4", "1/5", "2/5"], correct_option: 1 },
+      { question_text: "Find 20% of 50.", options: ["5", "10", "15", "20"], correct_option: 1 },
+      { question_text: "Solve: x + 5 = 12", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "If the ratio of boys to girls is 2:3, how many girls are there if boys are 6?", options: ["6", "9", "12", "3"], correct_option: 1 },
+      { question_text: "Perimeter of a square with side 5 cm is:", options: ["10 cm", "15 cm", "20 cm", "25 cm"], correct_option: 2 },
+      { question_text: "Area of rectangle = ?", options: ["l + w", "l × w", "2l + 2w", "l − w"], correct_option: 1 },
+      { question_text: "What is the mean of 4, 6, 8?", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "Simplify: 2x + 3x", options: ["5x", "6x", "x", "2x³"], correct_option: 0 },
+      { question_text: "What is 5²?", options: ["10", "20", "25", "15"], correct_option: 2 },
+      { question_text: "Find the value of x: 2x = 14", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "Convert 3/5 into decimal.", options: ["0.6", "0.5", "0.3", "0.8"], correct_option: 0 },
+      { question_text: "What is 15% of 200?", options: ["20", "25", "30", "40"], correct_option: 2 },
+      { question_text: "An angle of 90° is called:", options: ["Acute", "Right angle", "Obtuse", "Straight"], correct_option: 1 },
+      { question_text: "If one angle of a linear pair is 60°, the other is:", options: ["60°", "90°", "120°", "180°"], correct_option: 2 },
+      { question_text: "Simplify: 18 ÷ 3", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "What is −4 × −6?", options: ["−24", "24", "−10", "10"], correct_option: 1 },
+      { question_text: "Write 0.75 as a fraction.", options: ["3/4", "1/4", "2/3", "4/5"], correct_option: 0 },
+      { question_text: "Solve: x − 9 = 3", options: ["6", "12", "−6", "−12"], correct_option: 1 },
+      { question_text: "The sum of angles in a triangle is:", options: ["90°", "180°", "360°", "270°"], correct_option: 1 },
+      { question_text: "Find perimeter of rectangle: length = 6 cm, width = 4 cm", options: ["20 cm", "24 cm", "10 cm", "12 cm"], correct_option: 0 },
+      { question_text: "What is 2³?", options: ["6", "8", "9", "12"], correct_option: 1 },
+      { question_text: "If 5 pencils cost Rs. 50, what is cost of 1 pencil?", options: ["5", "8", "10", "15"], correct_option: 2 },
+      { question_text: "Simplify: 7x − 2x", options: ["5x", "9x", "14x", "x"], correct_option: 0 },
+      { question_text: "Convert 1.5 into fraction.", options: ["3/2", "1/2", "2/3", "5/3"], correct_option: 0 },
+      { question_text: "An angle less than 90° is called:", options: ["Right angle", "Acute angle", "Obtuse angle", "Reflex angle"], correct_option: 1 },
+      { question_text: "Find the value: 9 × 7", options: ["56", "63", "72", "81"], correct_option: 1 },
+      { question_text: "What is 25% of 80?", options: ["10", "15", "20", "25"], correct_option: 2 },
+      { question_text: "Solve: 3x = 21", options: ["6", "7", "8", "9"], correct_option: 1 },
+      { question_text: "If a triangle has angles 50° and 60°, the third angle is:", options: ["60°", "70°", "80°", "90°"], correct_option: 1 },
+      { question_text: "What is −10 + (−5)?", options: ["−15", "15", "−5", "5"], correct_option: 0 },
+      { question_text: "Simplify: 1/2 + 1/3", options: ["2/5", "5/6", "3/5", "1/5"], correct_option: 1 },
+      { question_text: "Area of square with side 8 cm is:", options: ["16", "32", "64", "48"], correct_option: 2 },
+      { question_text: "What is the value of 4² + 1?", options: ["15", "16", "17", "18"], correct_option: 2 },
+      { question_text: "If x = 4, find 2x + 3", options: ["8", "10", "11", "12"], correct_option: 2 },
+      { question_text: "Which number is a prime number?", options: ["9", "15", "17", "21"], correct_option: 2 },
+      { question_text: "If a book costs Rs. 200 and discount is 10%, how much is the discount?", options: ["10", "15", "20", "25"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math7EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 MATH MEDIUM QUESTIONS ---
+  const math7MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 7' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math7MedCount.count < 40) {
+    console.log("Seeding Grade 7 Medium Math questions...");
+    const math7MedQuestions = [
+      { question_text: "Simplify: −3/4 + 5/8", options: ["1/8", "−1/8", "2/8", "−2/8"], correct_option: 1 },
+      { question_text: "Find the product: (−2/3) × (9/4)", options: ["−3/2", "3/2", "−6/4", "6/4"], correct_option: 0 },
+      { question_text: "Solve: 3x − 5 = 16", options: ["6", "7", "8", "9"], correct_option: 1 },
+      { question_text: "Expand: 4(x + 3)", options: ["4x + 3", "4x + 12", "x + 12", "7x"], correct_option: 1 },
+      { question_text: "Simplify: 5x + 3x − 2", options: ["8x − 2", "8x + 2", "5x − 2", "3x − 2"], correct_option: 0 },
+      { question_text: "If the ratio of 3 numbers is 2:3:5 and their sum is 50, the largest number is:", options: ["10", "15", "25", "30"], correct_option: 2 },
+      { question_text: "Find 12% of 250.", options: ["25", "30", "35", "40"], correct_option: 1 },
+      { question_text: "A shirt costs Rs. 800. It is sold at 10% profit. What is selling price?", options: ["860", "880", "900", "820"], correct_option: 1 },
+      { question_text: "Perimeter of a rectangle is 50 cm. Length is 15 cm. Width is:", options: ["10 cm", "12 cm", "15 cm", "20 cm"], correct_option: 0 },
+      { question_text: "Area of triangle = 1/2 × base × height. If base = 10 cm and height = 6 cm, area is:", options: ["30 cm²", "60 cm²", "16 cm²", "20 cm²"], correct_option: 0 },
+      { question_text: "Solve: 5x = 3x + 12", options: ["4", "5", "6", "7"], correct_option: 2 },
+      { question_text: "If 8 workers complete a job in 6 days, how many days will 4 workers take?", options: ["10", "12", "14", "16"], correct_option: 1 },
+      { question_text: "Find the mean of 5, 10, 15, 20", options: ["12", "12.5", "13", "14"], correct_option: 1 },
+      { question_text: "Simplify: (2x + 3) + (4x − 5)", options: ["6x − 2", "6x + 2", "2x − 2", "4x − 2"], correct_option: 0 },
+      { question_text: "Find the value of x: 7 + 2x = 19", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "If 3 pens cost Rs. 45, what is cost of 7 pens?", options: ["90", "100", "105", "110"], correct_option: 2 },
+      { question_text: "The angles of a triangle are in ratio 2:3:4. Largest angle is:", options: ["60°", "70°", "80°", "90°"], correct_option: 2 },
+      { question_text: "Find: −8 ÷ 2", options: ["−4", "4", "−6", "6"], correct_option: 0 },
+      { question_text: "Simplify: (−5)²", options: ["−25", "25", "−10", "10"], correct_option: 1 },
+      { question_text: "If cost price = Rs. 500 and selling price = Rs. 450, loss % is:", options: ["5%", "8%", "10%", "12%"], correct_option: 2 },
+      { question_text: "Find the area of a square whose perimeter is 40 cm.", options: ["80", "90", "100", "120"], correct_option: 2 },
+      { question_text: "Solve: x/4 = 5", options: ["10", "15", "20", "25"], correct_option: 2 },
+      { question_text: "Convert 2.75 into fraction.", options: ["11/4", "7/4", "9/4", "5/4"], correct_option: 0 },
+      { question_text: "Find the value: 3² + 4²", options: ["12", "20", "25", "49"], correct_option: 2 },
+      { question_text: "If 20% of a number is 40, the number is:", options: ["100", "150", "200", "250"], correct_option: 2 },
+      { question_text: "Simplify: 6a − 2a + 3", options: ["4a + 3", "8a + 3", "4a − 3", "6a + 3"], correct_option: 0 },
+      { question_text: "Two supplementary angles are 110° and:", options: ["60°", "70°", "80°", "90°"], correct_option: 1 },
+      { question_text: "Find: 5/6 − 1/3", options: ["1/6", "1/3", "1/2", "2/3"], correct_option: 2 },
+      { question_text: "Solve: 2(x − 3) = 10", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "If a number is increased by 15%, it becomes 230. Original number is:", options: ["180", "190", "200", "210"], correct_option: 2 },
+      { question_text: "Find perimeter of triangle with sides 5 cm, 6 cm, 7 cm.", options: ["16", "17", "18", "19"], correct_option: 2 },
+      { question_text: "What is reciprocal of 3/5?", options: ["5/3", "3/5", "2/3", "3/2"], correct_option: 0 },
+      { question_text: "Simplify: 9x − (4x − 2)", options: ["5x − 2", "5x + 2", "13x − 2", "13x + 2"], correct_option: 1 },
+      { question_text: "If speed = 60 km/h, distance covered in 3 hours is:", options: ["120 km", "150 km", "180 km", "200 km"], correct_option: 2 },
+      { question_text: "Find 75% of 80.", options: ["50", "55", "60", "65"], correct_option: 2 },
+      { question_text: "Solve: 4x + 3 = 19", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "Area of rectangle: length 12 cm, width 9 cm", options: ["96", "100", "108", "120"], correct_option: 2 },
+      { question_text: "The sum of interior angles of a quadrilateral is:", options: ["180°", "270°", "360°", "540°"], correct_option: 2 },
+      { question_text: "If 6 notebooks cost Rs. 240, cost of 9 notebooks is:", options: ["300", "320", "360", "400"], correct_option: 2 },
+      { question_text: "Find the value: 10 − (−6)", options: ["4", "16", "−4", "−16"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math7MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 MATH HARD QUESTIONS ---
+  const math7HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 7' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math7HardCount.count < 40) {
+    console.log("Seeding Grade 7 Hard Math questions...");
+    const math7HardQuestions = [
+      { question_text: "Solve: 3(2x − 4) = 18", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "Simplify: −3/5 + 7/10 − 1/2", options: ["0", "−1/10", "1/10", "−2/10"], correct_option: 1 },
+      { question_text: "If 15% of a number is 45, the number is:", options: ["250", "275", "300", "325"], correct_option: 2 },
+      { question_text: "A shopkeeper buys an item for Rs. 1200 and sells it at 20% profit. Selling price is:", options: ["1400", "1420", "1440", "1500"], correct_option: 2 },
+      { question_text: "The angles of a triangle are in ratio 3:4:5. Largest angle is:", options: ["60°", "75°", "90°", "120°"], correct_option: 1 },
+      { question_text: "Solve: 5x − 3 = 2x + 12", options: ["4", "5", "6", "7"], correct_option: 1 },
+      { question_text: "Area of circle (π = 22/7), radius = 7 cm", options: ["132 cm²", "144 cm²", "154 cm²", "164 cm²"], correct_option: 2 },
+      { question_text: "Find the value of: (−4)³", options: ["64", "−64", "16", "−16"], correct_option: 1 },
+      { question_text: "If 8 men can do a work in 12 days, how many days will 6 men take?", options: ["14", "16", "18", "20"], correct_option: 1 },
+      { question_text: "Simplify: 4a + 3b − 2a + b", options: ["2a + 4b", "6a + 4b", "2a + 2b", "4a + 2b"], correct_option: 0 },
+      { question_text: "Find the mean of first 5 even numbers.", options: ["5", "6", "7", "8"], correct_option: 1 },
+      { question_text: "Solve: x/3 + 5 = 11", options: ["15", "16", "18", "20"], correct_option: 2 },
+      { question_text: "Perimeter of rectangle is 64 cm. Length is 20 cm. Width is:", options: ["10 cm", "12 cm", "14 cm", "16 cm"], correct_option: 1 },
+      { question_text: "Simplify: 6 − (−4) + (−3)", options: ["5", "7", "−1", "1"], correct_option: 1 },
+      { question_text: "If the ratio of two numbers is 5:7 and their sum is 96, smaller number is:", options: ["30", "35", "40", "45"], correct_option: 2 },
+      { question_text: "A number increased by 25% becomes 100. Original number is:", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "Find: 2² × 3²", options: ["18", "36", "12", "24"], correct_option: 1 },
+      { question_text: "If selling price = Rs. 540 and profit = 8%, cost price is:", options: ["480", "500", "520", "530"], correct_option: 1 },
+      { question_text: "Simplify: (x + 4)(2)", options: ["2x + 4", "2x + 8", "x + 8", "2x − 8"], correct_option: 1 },
+      { question_text: "Sum of interior angles of a pentagon is:", options: ["360°", "450°", "540°", "720°"], correct_option: 2 },
+      { question_text: "Solve: 2x − 7 = 3x − 12", options: ["5", "−5", "7", "−7"], correct_option: 0 },
+      { question_text: "Find reciprocal of −7/9", options: ["7/9", "−9/7", "9/7", "−7/9"], correct_option: 1 },
+      { question_text: "If 12 books cost Rs. 360, cost of 20 books is:", options: ["500", "550", "600", "650"], correct_option: 2 },
+      { question_text: "Find area of square whose side is 13 cm", options: ["156", "169", "182", "196"], correct_option: 1 },
+      { question_text: "Simplify: 8x − (3x − 4)", options: ["5x − 4", "5x + 4", "11x − 4", "11x + 4"], correct_option: 1 },
+      { question_text: "If speed = 72 km/h, distance in 2.5 hours is:", options: ["150 km", "160 km", "180 km", "200 km"], correct_option: 2 },
+      { question_text: "Find 12.5% of 640", options: ["60", "70", "80", "90"], correct_option: 2 },
+      { question_text: "Solve: 4(x − 2) + 3 = 19", options: ["4", "5", "6", "7"], correct_option: 2 },
+      { question_text: "Two supplementary angles are in ratio 2:7. Smaller angle is:", options: ["30°", "40°", "50°", "60°"], correct_option: 1 },
+      { question_text: "Simplify: (−2)² + (−3)²", options: ["13", "−13", "25", "5"], correct_option: 0 },
+      { question_text: "If CP = 900 and SP = 810, loss % is:", options: ["8%", "9%", "10%", "12%"], correct_option: 2 },
+      { question_text: "Solve: 7x + 4 = 3x + 28", options: ["4", "5", "6", "7"], correct_option: 2 },
+      { question_text: "Find perimeter of circle with radius 14 cm (π = 22/7)", options: ["66 cm", "77 cm", "88 cm", "99 cm"], correct_option: 2 },
+      { question_text: "Simplify: 5a − 2a + 7 − 3", options: ["3a + 4", "3a + 10", "7a + 4", "3a − 4"], correct_option: 0 },
+      { question_text: "If 18 workers complete work in 5 days, how many workers are needed for 3 days?", options: ["25", "30", "32", "35"], correct_option: 1 },
+      { question_text: "Find value: 9² − 4²", options: ["45", "65", "77", "81"], correct_option: 1 },
+      { question_text: "If 40% of a number is 120, the number is:", options: ["200", "250", "300", "350"], correct_option: 2 },
+      { question_text: "Simplify: 3(x + 5) − 2x", options: ["x + 15", "x + 5", "3x + 5", "5x + 5"], correct_option: 0 },
+      { question_text: "Area of triangle: base 14 cm, height 9 cm", options: ["56", "63", "72", "81"], correct_option: 1 },
+      { question_text: "Solve: x/5 − 3 = 7", options: ["45", "50", "55", "60"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math7HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 URDU EASY QUESTIONS ---
+  const urdu7EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 7' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu7EasyCount.count < 40) {
+    console.log("Seeding Grade 7 Easy Urdu questions...");
+    const urdu7EasyQuestions = [
+      { question_text: "جملے میں اسم کی نشاندہی کریں: \"علی اسکول گیا۔\"", options: ["علی", "گیا", "اسکول گیا", "گیا تھا"], correct_option: 0 },
+      { question_text: "لفظ \"خوش\" کی ضد کیا ہے؟", options: ["غمگین", "مسرور", "مطمئن", "ہنستا"], correct_option: 0 },
+      { question_text: "درست جمع منتخب کریں: کتاب", options: ["کتابیں", "کتابان", "کتابوں", "کتابات"], correct_option: 0 },
+      { question_text: "فعل کی نشاندہی کریں:", options: ["لڑکا", "کھیلتا", "میدان", "گیند"], correct_option: 1 },
+      { question_text: "لفظ \"بڑا\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتا ہوں۔", "وہ کتاب پڑھتی ہوں۔", "وہ کتاب پڑھیں۔"], correct_option: 0 },
+      { question_text: "لفظ \"ہم\" کیا ہے؟", options: ["اسم", "صفت", "ضمیر", "فعل"], correct_option: 2 },
+      { question_text: "\"رات\" کی ضد کیا ہے؟", options: ["دن", "شام", "سحر", "وقت"], correct_option: 0 },
+      { question_text: "درست واحد منتخب کریں: دروازے", options: ["دروازہ", "دروازگان", "دروازوں", "دروازات"], correct_option: 0 },
+      { question_text: "جملے کا زمانہ پہچانیں: \"وہ کل آیا تھا۔\"", options: ["حال", "مستقبل", "ماضی", "حال استمراری"], correct_option: 2 },
+      { question_text: "\"تیز\" کا مترادف کیا ہے؟", options: ["سست", "جلدی", "نرم", "آہستہ"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["بچے کھیل رہی ہیں۔", "بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔"], correct_option: 2 },
+      { question_text: "\"پہاڑ\" کس قسم کا اسم ہے؟", options: ["اسم خاص", "اسم عام", "ضمیر", "فعل"], correct_option: 1 },
+      { question_text: "جملے میں صفت کی نشاندہی کریں: \"یہ خوبصورت پھول ہے۔\"", options: ["یہ", "پھول", "خوبصورت", "ہے"], correct_option: 2 },
+      { question_text: "درست مستقبل کا جملہ منتخب کریں:", options: ["وہ کل آئے گا۔", "وہ کل آیا۔", "وہ کل آتا ہے۔", "وہ کل آیا تھا۔"], correct_option: 0 },
+      { question_text: "\"محنتی\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "لفظ \"اونچا\" کی ضد کیا ہے؟", options: ["لمبا", "نیچا", "بڑا", "تیز"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: لڑکا", options: ["لڑکے", "لڑکگان", "لڑکوں", "لڑککات"], correct_option: 0 },
+      { question_text: "فعل کی درست شکل منتخب کریں: وہ کتاب ___ رہا ہے۔", options: ["پڑھ", "پڑھنا", "پڑھتا", "پڑھیں"], correct_option: 0 },
+      { question_text: "\"میں\" کیا ہے؟", options: ["اسم", "ضمیر", "فعل", "صفت"], correct_option: 1 },
+      { question_text: "\"سچ\" کی ضد کیا ہے؟", options: ["جھوٹ", "غلط", "کم", "سخت"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["لڑکی اسکول جاتا ہے۔", "لڑکی اسکول جاتی ہے۔", "لڑکی اسکول جاتے ہیں۔", "لڑکی اسکول گیا۔"], correct_option: 1 },
+      { question_text: "\"صاف\" کس قسم کا لفظ ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 1 },
+      { question_text: "جملے میں ضمیر کی نشاندہی کریں: \"وہ بازار گیا۔\"", options: ["بازار", "گیا", "وہ", "بازار گیا"], correct_option: 2 },
+      { question_text: "درست واحد منتخب کریں: درختوں", options: ["درخت", "درختان", "درختے", "درختات"], correct_option: 0 },
+      { question_text: "\"گرم\" کی ضد کیا ہے؟", options: ["نرم", "ٹھنڈا", "سخت", "تیز"], correct_option: 1 },
+      { question_text: "درست حال کا جملہ منتخب کریں:", options: ["وہ کھیلتا ہے۔", "وہ کھیلا۔", "وہ کھیلے گا۔", "وہ کھیل چکا۔"], correct_option: 0 },
+      { question_text: "\"استاد\" کس قسم کا اسم ہے؟", options: ["اسم عام", "اسم خاص", "ضمیر", "صفت"], correct_option: 0 },
+      { question_text: "درست جمع منتخب کریں: استاد", options: ["استادان", "استادوں", "اساتذہ", "استادے"], correct_option: 2 },
+      { question_text: "\"لمبا\" کی ضد کیا ہے؟", options: ["چھوٹا", "بڑا", "اونچا", "چوڑا"], correct_option: 0 },
+      { question_text: "جملے میں فعل کی نشاندہی کریں: \"بچہ ہنس رہا ہے۔\"", options: ["بچہ", "ہنس رہا ہے", "رہا", "ہے"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["ہم کتاب پڑھتا ہیں۔", "ہم کتاب پڑھتے ہیں۔", "ہم کتاب پڑھتی ہیں۔", "ہم کتاب پڑھوں۔"], correct_option: 1 },
+      { question_text: "\"پھول\" کی جمع کیا ہے؟", options: ["پھولان", "پھولوں", "پھول", "پھولے"], correct_option: 2 },
+      { question_text: "لفظ \"سست\" کا مترادف کیا ہے؟", options: ["آہستہ", "تیز", "جلدی", "اونچا"], correct_option: 0 },
+      { question_text: "درست ماضی کا جملہ منتخب کریں:", options: ["وہ آیا۔", "وہ آتا ہے۔", "وہ آئے گا۔", "وہ آ رہا ہے۔"], correct_option: 0 },
+      { question_text: "\"میں نے کھانا کھایا۔\" یہ کون سا زمانہ ہے؟", options: ["حال", "مستقبل", "ماضی", "حال استمراری"], correct_option: 2 },
+      { question_text: "\"نرم\" کی ضد کیا ہے؟", options: ["سخت", "ہلکا", "گرم", "ٹھنڈا"], correct_option: 0 },
+      { question_text: "درست جمع منتخب کریں: شہر", options: ["شہروں", "شہرے", "شہران", "شہرات"], correct_option: 0 },
+      { question_text: "\"کتاب پڑھنا اچھی عادت ہے۔\" یہاں \"اچھی\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["وہ اچھا لڑکی ہے۔", "وہ اچھی لڑکی ہے۔", "وہ اچھے لڑکی ہے۔", "وہ اچھوں لڑکی ہے۔"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu7EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 URDU MEDIUM QUESTIONS ---
+  const urdu7MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 7' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu7MedCount.count < 40) {
+    console.log("Seeding Grade 7 Medium Urdu questions...");
+    const urdu7MedQuestions = [
+      { question_text: "جملے میں فاعل کی نشاندہی کریں: \"علی نے کتاب پڑھی۔\"", options: ["علی", "کتاب", "پڑھی", "نے"], correct_option: 0 },
+      { question_text: "جملے میں مفعول کون سا ہے؟ \"استاد نے سبق سمجھایا۔\"", options: ["استاد", "نے", "سبق", "سمجھایا"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["بچے کھیل رہی ہے۔", "بچے کھیل رہا ہیں۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔"], correct_option: 2 },
+      { question_text: "محاورہ \"آنکھوں کا تارا\" کا مفہوم کیا ہے؟", options: ["آنکھ کا حصہ", "بہت عزیز", "بیمار شخص", "اندھا"], correct_option: 1 },
+      { question_text: "\"وہ کل اسکول جائے گا۔\" یہ کون سا زمانہ ہے؟", options: ["حال", "ماضی", "مستقبل", "حال استمراری"], correct_option: 2 },
+      { question_text: "مرکب جملہ منتخب کریں:", options: ["علی اسکول گیا۔", "علی اسکول گیا اور سبق پڑھا۔", "علی پڑھتا ہے۔", "علی آیا۔"], correct_option: 1 },
+      { question_text: "لفظ \"مشکل\" کا مترادف کیا ہے؟", options: ["آسان", "دشوار", "ہلکا", "نرم"], correct_option: 1 },
+      { question_text: "جملے کی اصلاح کریں: \"وہ کتاب پڑھتی ہے تھا۔\"", options: ["وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا تھا۔", "وہ کتاب پڑھتی تھی۔", "وہ کتاب پڑھتے تھے۔"], correct_option: 2 },
+      { question_text: "محاورہ \"ہاتھ پاؤں پھول جانا\" کا مطلب ہے:", options: ["خوش ہونا", "گھبرا جانا", "دوڑنا", "سونا"], correct_option: 1 },
+      { question_text: "جملے میں فعل کی نشاندہی کریں: \"بچے میدان میں کھیل رہے ہیں۔\"", options: ["بچے", "میدان", "کھیل رہے ہیں", "میں"], correct_option: 2 },
+      { question_text: "درست متضاد منتخب کریں: \"آغاز\"", options: ["ابتدا", "انجام", "شروع", "ترقی"], correct_option: 1 },
+      { question_text: "\"ہم نے کھانا کھایا۔\" یہاں \"ہم\" کیا ہے؟", options: ["اسم", "صفت", "ضمیر", "فعل"], correct_option: 2 },
+      { question_text: "محاورہ \"کان کھڑے ہونا\" کا مطلب ہے:", options: ["سننا", "خبردار ہونا", "بولنا", "ہنسنا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["لڑکی اسکول جاتے ہیں۔", "لڑکی اسکول جاتا ہے۔", "لڑکی اسکول جاتی ہے۔", "لڑکی اسکول گیا۔"], correct_option: 2 },
+      { question_text: "\"وہ کھیل رہا تھا۔\" یہ کون سا زمانہ ہے؟", options: ["حال", "ماضی استمراری", "مستقبل", "حال مکمل"], correct_option: 1 },
+      { question_text: "جملے میں مفعول کی نشاندہی کریں: \"ماں نے بچے کو بلایا۔\"", options: ["ماں", "بچے کو", "بلایا", "نے"], correct_option: 1 },
+      { question_text: "لفظ \"تیز\" کا متضاد کیا ہے؟", options: ["جلدی", "سست", "نرم", "ہلکا"], correct_option: 1 },
+      { question_text: "محاورہ \"ناک میں دم کرنا\" کا مطلب ہے:", options: ["خوش کرنا", "تنگ کرنا", "رونا", "سونا"], correct_option: 1 },
+      { question_text: "مرکب جملہ کی مثال کون سی ہے؟", options: ["وہ آیا اور بیٹھ گیا۔", "وہ آیا۔", "وہ بیٹھا۔", "وہ سو رہا ہے۔"], correct_option: 0 },
+      { question_text: "\"استاد پڑھا رہا ہے۔\" یہ کون سا زمانہ ہے؟", options: ["حال استمراری", "ماضی", "مستقبل", "حال مکمل"], correct_option: 0 },
+      { question_text: "جملے کی درست صورت منتخب کریں:", options: ["ہم کل بازار جائے گا۔", "ہم کل بازار جائیں گے۔", "ہم کل بازار گیا۔", "ہم کل بازار جاتے ہیں۔"], correct_option: 1 },
+      { question_text: "لفظ \"خوبصورت\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "محاورہ \"آسمان سر پر اٹھانا\" کا مطلب ہے:", options: ["شور مچانا", "خوش ہونا", "رونا", "بھاگنا"], correct_option: 0 },
+      { question_text: "\"بچہ کتاب پڑھ رہا ہے۔\" یہاں فاعل کون ہے؟", options: ["بچہ", "کتاب", "پڑھ", "رہا ہے"], correct_option: 0 },
+      { question_text: "درست مترادف منتخب کریں: \"خوشی\"", options: ["مسرت", "غم", "دکھ", "تکلیف"], correct_option: 0 },
+      { question_text: "\"وہ کل آیا تھا۔\" یہ کون سا زمانہ ہے؟", options: ["حال", "مستقبل", "ماضی کامل", "حال استمراری"], correct_option: 2 },
+      { question_text: "جملے کی اصلاح کریں: \"لڑکے کھیل رہی ہیں۔\"", options: ["لڑکے کھیل رہا ہے۔", "لڑکے کھیل رہی ہے۔", "لڑکے کھیل رہے ہیں۔", "لڑکے کھیلتا ہے۔"], correct_option: 2 },
+      { question_text: "محاورہ \"ہاتھ ملنا\" کا مطلب ہے:", options: ["خوش ہونا", "افسوس کرنا", "ملنا", "لڑنا"], correct_option: 1 },
+      { question_text: "\"میں اسکول جا رہا ہوں۔\" یہ کون سا زمانہ ہے؟", options: ["حال استمراری", "ماضی", "مستقبل", "حال مکمل"], correct_option: 0 },
+      { question_text: "لفظ \"اندھیرا\" کا متضاد کیا ہے؟", options: ["رات", "سایہ", "روشنی", "چمک"], correct_option: 2 },
+      { question_text: "جملے میں مفعول کی نشاندہی کریں: \"علی نے پانی پیا۔\"", options: ["علی", "پانی", "پیا", "نے"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتے ہوں۔", "وہ کتاب پڑھتا ہیں۔"], correct_option: 1 },
+      { question_text: "محاورہ \"کانوں کان خبر نہ ہونا\" کا مطلب ہے:", options: ["سب کو پتا ہونا", "کسی کو خبر نہ ہونا", "شور مچانا", "سننا"], correct_option: 1 },
+      { question_text: "\"استاد کلاس میں آیا اور سبق شروع کیا۔\" یہ کون سا جملہ ہے؟", options: ["سادہ", "مرکب", "مفرد", "سوالیہ"], correct_option: 1 },
+      { question_text: "لفظ \"قریب\" کا متضاد کیا ہے؟", options: ["دور", "پاس", "ساتھ", "سامنے"], correct_option: 0 },
+      { question_text: "جملے کی درست صورت منتخب کریں:", options: ["وہ اچھی لڑکا ہے۔", "وہ اچھا لڑکی ہے۔", "وہ اچھی لڑکی ہے۔", "وہ اچھوں لڑکی ہے۔"], correct_option: 2 },
+      { question_text: "\"ہم سبق پڑھ چکے ہیں۔\" یہ کون سا زمانہ ہے؟", options: ["حال مکمل", "حال استمراری", "ماضی", "مستقبل"], correct_option: 0 },
+      { question_text: "محاورہ \"دل لگانا\" کا مطلب ہے:", options: ["کام میں دلچسپی لینا", "رونا", "لڑنا", "سونا"], correct_option: 0 },
+      { question_text: "جملے میں فعل کی نشاندہی کریں: \"ماں کھانا بنا رہی ہے۔\"", options: ["ماں", "کھانا", "بنا رہی ہے", "ہے"], correct_option: 2 },
+      { question_text: "\"وہ کل امتحان دے گا۔\" اس جملے کا زمانہ کیا ہے؟", options: ["حال", "ماضی", "مستقبل", "حال مکمل"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu7MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 7 URDU HARD QUESTIONS ---
+  const urdu7HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 7' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu7HardCount.count < 40) {
+    console.log("Seeding Grade 7 Hard Urdu questions...");
+    const urdu7HardQuestions = [
+      { question_text: "جملہ کی نوعیت بتائیں: \"جب بارش ہوئی تو ہم گھر چلے گئے۔\"", options: ["سادہ", "مرکب", "پیچیدہ", "سوالیہ"], correct_option: 2 },
+      { question_text: "جملے میں مفعول فیہ کی نشاندہی کریں: \"وہ صبح اسکول گیا۔\"", options: ["وہ", "اسکول", "صبح", "گیا"], correct_option: 2 },
+      { question_text: "ضرب المثل \"اونٹ کے منہ میں زیرہ\" کا مفہوم ہے:", options: ["بہت زیادہ", "بہت کم", "برابر", "مکمل"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["اگر وہ آتا تو ہم ملتے۔", "اگر وہ آیا تو ہم ملتے۔", "اگر وہ آئے تو ہم ملتے تھے۔", "اگر وہ آتا ہے تو ہم ملتے۔"], correct_option: 0 },
+      { question_text: "\"اس نے خط لکھ کر بھیجا۔\" یہاں \"لکھ کر\" کیا ظاہر کرتا ہے؟", options: ["سبب", "شرط", "سوال", "نفی"], correct_option: 0 },
+      { question_text: "محاورہ \"ہاتھ کنگن کو آرسی کیا\" کا مطلب ہے:", options: ["ثبوت کی ضرورت نہیں", "خوش ہونا", "رونا", "بھاگنا"], correct_option: 0 },
+      { question_text: "جملے میں فاعل کی درست نشاندہی کریں: \"استاد نے طالب علم کو انعام دیا۔\"", options: ["طالب علم", "استاد", "انعام", "دیا"], correct_option: 1 },
+      { question_text: "درست پیچیدہ جملہ منتخب کریں:", options: ["وہ آیا اور بیٹھ گیا۔", "وہ آیا۔", "جب وہ آیا تو ہم خوش ہوئے۔", "وہ بیٹھ گیا۔"], correct_option: 2 },
+      { question_text: "\"ہم کھیل چکے تھے۔\" یہ کون سا زمانہ ہے؟", options: ["حال مکمل", "ماضی مکمل", "حال استمراری", "مستقبل"], correct_option: 1 },
+      { question_text: "محاورہ \"کانوں میں تیل ڈالنا\" کا مطلب ہے:", options: ["سننا", "نظر انداز کرنا", "بولنا", "شور کرنا"], correct_option: 1 },
+      { question_text: "جملے کی اصلاح کریں: \"وہ کتاب پڑھ رہے ہے۔\"", options: ["وہ کتاب پڑھ رہا ہے۔", "وہ کتاب پڑھ رہے ہیں۔", "وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا ہوں۔"], correct_option: 1 },
+      { question_text: "\"اگر تم محنت کرو گے تو کامیاب ہو جاؤ گے۔\" یہ جملہ کس نوعیت کا ہے؟", options: ["سادہ", "مرکب", "شرطیہ پیچیدہ", "سوالیہ"], correct_option: 2 },
+      { question_text: "لفظ \"باعث\" کا مفہوم کیا ہے؟", options: ["سبب", "نتیجہ", "سوال", "جواب"], correct_option: 0 },
+      { question_text: "جملے میں مفعول کی نشاندہی کریں: \"علی نے خط لکھا۔\"", options: ["علی", "خط", "لکھا", "نے"], correct_option: 1 },
+      { question_text: "ضرب المثل \"دیر آید درست آید\" کا مفہوم ہے:", options: ["دیر سے آنا غلط ہے", "دیر سے آنا بہتر ہے", "دیر سے صحیح آنا بہتر ہے", "جلدی آنا ضروری ہے"], correct_option: 2 },
+      { question_text: "درست اسلوب والا جملہ منتخب کریں:", options: ["مجھے اس سے ملنا ہے۔", "مجھے اس کو ملنا ہے۔", "مجھے اس کے ملنا ہے۔", "مجھے اس میں ملنا ہے۔"], correct_option: 0 },
+      { question_text: "\"وہ کل تک کام مکمل کر چکا ہوگا۔\" یہ کون سا زمانہ ہے؟", options: ["مستقبل کامل", "حال کامل", "ماضی کامل", "حال استمراری"], correct_option: 0 },
+      { question_text: "محاورہ \"منہ کی کھانا\" کا مطلب ہے:", options: ["کھانا کھانا", "شکست کھانا", "بولنا", "ہنسنا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["مجھے کتاب چاہیے۔", "مجھے کتاب چاہیے ہے۔", "مجھے کتاب چاہیے ہوں۔", "مجھے کتاب چاہیے تھے۔"], correct_option: 0 },
+      { question_text: "\"وہ تھکا ہوا تھا کیونکہ وہ دوڑ رہا تھا۔\" یہاں \"کیونکہ\" کیا ظاہر کرتا ہے؟", options: ["شرط", "سبب", "سوال", "حکم"], correct_option: 1 },
+      { question_text: "جملے کی نوعیت بتائیں: \"وہ آیا اور ہم چلے گئے۔\"", options: ["سادہ", "مرکب", "پیچیدہ", "سوالیہ"], correct_option: 1 },
+      { question_text: "لفظ \"بصیرت\" کا مترادف کیا ہے؟", options: ["دانائی", "کمزوری", "غفلت", "نادانی"], correct_option: 0 },
+      { question_text: "\"تم کیوں نہیں آئے؟\" یہ کون سا جملہ ہے؟", options: ["خبریہ", "سوالیہ", "امری", "تمنائی"], correct_option: 1 },
+      { question_text: "محاورہ \"ناک کٹ جانا\" کا مطلب ہے:", options: ["زخمی ہونا", "بے عزتی ہونا", "خوش ہونا", "رونا"], correct_option: 1 },
+      { question_text: "جملے میں صفت کی نشاندہی کریں: \"وہ ذہین طالب علم ہے۔\"", options: ["وہ", "طالب علم", "ذہین", "ہے"], correct_option: 2 },
+      { question_text: "\"ہم امتحان کی تیاری کر رہے تھے۔\" یہ کون سا زمانہ ہے؟", options: ["حال استمراری", "ماضی استمراری", "حال کامل", "مستقبل"], correct_option: 1 },
+      { question_text: "درست محاورہ منتخب کریں:", options: ["دل لگانا", "دل کھانا", "دل بیٹھنا جانا", "دل کرنا تھا"], correct_option: 0 },
+      { question_text: "جملے کی اصلاح کریں: \"وہ اچھی لڑکا ہے۔\"", options: ["وہ اچھا لڑکا ہے۔", "وہ اچھی لڑکی ہے۔", "وہ اچھے لڑکا ہے۔", "وہ اچھوں لڑکا ہے۔"], correct_option: 0 },
+      { question_text: "\"اس نے محنت کی تاکہ وہ کامیاب ہو۔\" یہ جملہ کس نوعیت کا ہے؟", options: ["سادہ", "مرکب", "غائی پیچیدہ", "سوالیہ"], correct_option: 2 },
+      { question_text: "لفظ \"توقع\" کا مفہوم کیا ہے؟", options: ["امید", "مایوسی", "غصہ", "دکھ"], correct_option: 0 },
+      { question_text: "جملے میں مفعول کی درست نشاندہی کریں: \"ماں نے بچے کو بلایا۔\"", options: ["ماں", "بچے کو", "بلایا", "نے"], correct_option: 1 },
+      { question_text: "ضرب المثل \"ایک ہاتھ سے تالی نہیں بجتی\" کا مطلب ہے:", options: ["اکیلا کچھ نہیں کر سکتا", "ہاتھ ضروری ہیں", "شور مچانا", "خوش ہونا"], correct_option: 0 },
+      { question_text: "درست اسلوب منتخب کریں:", options: ["مجھے تم پر بھروسا ہے۔", "مجھے تم میں بھروسا ہے۔", "مجھے تم کو بھروسا ہے۔", "مجھے تم سے بھروسا ہے۔"], correct_option: 0 },
+      { question_text: "\"اگر بارش ہوگی تو ہم نہیں جائیں گے۔\" یہ جملہ کس نوعیت کا ہے؟", options: ["شرطیہ پیچیدہ", "مرکب", "سادہ", "امری"], correct_option: 0 },
+      { question_text: "لفظ \"منفرد\" کا مترادف کیا ہے؟", options: ["عام", "خاص", "الگ", "برابر"], correct_option: 2 },
+      { question_text: "\"وہ صبح سے پڑھ رہا ہے۔\" یہ کون سا زمانہ ہے؟", options: ["حال استمراری کامل", "ماضی", "مستقبل", "حال مکمل"], correct_option: 0 },
+      { question_text: "محاورہ \"پیٹ میں چوہے دوڑنا\" کا مطلب ہے:", options: ["بیمار ہونا", "بہت بھوک لگنا", "دوڑنا", "ہنسنا"], correct_option: 1 },
+      { question_text: "جملے کی اصلاح کریں: \"ہم کل بازار گیا تھا۔\"", options: ["ہم کل بازار گئے تھے۔", "ہم کل بازار گیا تھے۔", "ہم کل بازار جاتی تھے۔", "ہم کل بازار جاتا تھا۔"], correct_option: 0 },
+      { question_text: "\"وہ اس لیے کامیاب ہوا کہ اس نے محنت کی۔\" یہاں \"کہ\" کیا ظاہر کرتا ہے؟", options: ["سبب", "سوال", "شرط", "حکم"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں:", options: ["اسے میری بات پر یقین ہے۔", "اسے میری بات میں یقین ہے۔", "اسے میری بات کو یقین ہے۔", "اسے میری بات سے یقین ہے۔"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu7HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 7'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 7', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 ENGLISH EASY QUESTIONS ---
+  const eng8EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 8' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (eng8EasyCount.count < 40) {
+    console.log("Seeding Grade 8 Easy English questions...");
+    const eng8EasyQuestions = [
+      { question_text: "Identify the adjective: “She wore a beautiful dress.”", options: ["wore", "beautiful", "dress", "she"], correct_option: 1 },
+      { question_text: "Choose the correct form: He ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “They clean the room.”", options: ["The room was cleaned.", "The room is cleaned.", "The room cleaned.", "The room has cleaned."], correct_option: 1 },
+      { question_text: "Choose the synonym of “ancient”:", options: ["modern", "old", "new", "fresh"], correct_option: 1 },
+      { question_text: "Choose the correct article: He is ___ honest man.", options: ["a", "an", "the", "no article"], correct_option: 1 },
+      { question_text: "Identify the verb: “The birds are flying.”", options: ["birds", "flying", "are", "the"], correct_option: 1 },
+      { question_text: "Choose the antonym of “brave”:", options: ["bold", "strong", "cowardly", "fearless"], correct_option: 2 },
+      { question_text: "Choose the correct sentence:", options: ["She don’t like tea.", "She doesn’t like tea.", "She not like tea.", "She didn’t likes tea."], correct_option: 1 },
+      { question_text: "Identify the conjunction:", options: ["because", "quickly", "table", "happy"], correct_option: 0 },
+      { question_text: "Choose the correct preposition: He is good ___ mathematics.", options: ["in", "on", "at", "to"], correct_option: 2 },
+      { question_text: "Choose the correct reported speech: He said, “I am tired.”", options: ["He said that he is tired.", "He said that he was tired.", "He said he tired.", "He said that I was tired."], correct_option: 1 },
+      { question_text: "Choose the correct tense: She ___ her homework already.", options: ["finished", "has finished", "finishing", "finishes"], correct_option: 1 },
+      { question_text: "Identify the pronoun:", options: ["Ahmed", "they", "teacher", "quickly"], correct_option: 1 },
+      { question_text: "Choose the correct plural:", options: ["phenomenon", "phenomenons", "phenomena", "phenomenas"], correct_option: 2 },
+      { question_text: "Choose the correct sentence:", options: ["There is many books.", "There are many books.", "There was many books.", "There be many books."], correct_option: 1 },
+      { question_text: "Choose the synonym of “rapid”:", options: ["slow", "quick", "lazy", "late"], correct_option: 1 },
+      { question_text: "Identify the subject: “The students solved the problem.”", options: ["students", "solved", "problem", "the"], correct_option: 0 },
+      { question_text: "Choose the correct future tense: We ___ visit Lahore next week.", options: ["visited", "will", "visiting", "visits"], correct_option: 1 },
+      { question_text: "Choose the antonym of “expand”:", options: ["increase", "grow", "reduce", "enlarge"], correct_option: 2 },
+      { question_text: "Choose the correct question form:", options: ["Where you are going?", "Where are you going?", "Where you going are?", "Where going you are?"], correct_option: 1 },
+      { question_text: "Identify the adverb:", options: ["quickly", "quick", "quicker", "quickest"], correct_option: 0 },
+      { question_text: "Choose the correct comparative form of “good”:", options: ["gooder", "better", "best", "more good"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He has went home.", "He has gone home.", "He have gone home.", "He gone home."], correct_option: 1 },
+      { question_text: "Choose the correct modal: You ___ respect your parents.", options: ["should", "might", "could", "would"], correct_option: 0 },
+      { question_text: "Identify the object: “She wrote a letter.”", options: ["She", "wrote", "letter", "a"], correct_option: 2 },
+      { question_text: "Choose the correct preposition: The cat is hiding ___ the bed.", options: ["in", "under", "on", "over"], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["Each student have a book.", "Each student has a book.", "Each student have books.", "Each student having a book."], correct_option: 1 },
+      { question_text: "Choose the synonym of “begin”:", options: ["end", "start", "close", "stop"], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “He wrote a letter.”", options: ["A letter is written by him.", "A letter was written by him.", "A letter has written by him.", "A letter wrote by him."], correct_option: 1 },
+      { question_text: "Choose the correct form: She is taller ___ her sister.", options: ["than", "then", "from", "to"], correct_option: 0 },
+      { question_text: "Choose the correct conditional: If it rains, we ___ stay home.", options: ["will", "would", "stayed", "staying"], correct_option: 0 },
+      { question_text: "Identify the helping verb: “They have completed the task.”", options: ["completed", "have", "task", "they"], correct_option: 1 },
+      { question_text: "Choose the antonym of “honest”:", options: ["truthful", "sincere", "dishonest", "loyal"], correct_option: 2 },
+      { question_text: "Choose the correct sentence:", options: ["He is afraid from dogs.", "He is afraid of dogs.", "He is afraid with dogs.", "He afraid of dogs."], correct_option: 1 },
+      { question_text: "Choose the correct superlative form of “high”:", options: ["higher", "highest", "more high", "most high"], correct_option: 1 },
+      { question_text: "Identify the type of sentence: “Close the door.”", options: ["Declarative", "Interrogative", "Imperative", "Exclamatory"], correct_option: 2 },
+      { question_text: "Choose the correct reported speech: She said, “I will come.”", options: ["She said she will come.", "She said she would come.", "She said she comes.", "She said she came."], correct_option: 1 },
+      { question_text: "Choose the correct form: The news ___ very interesting.", options: ["are", "is", "were", "be"], correct_option: 1 },
+      { question_text: "Choose the correct phrase: He is interested ___ science.", options: ["in", "on", "at", "for"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["She enjoys to read books.", "She enjoys reading books.", "She enjoy reading books.", "She enjoyed to read books."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng8EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Easy', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 ENGLISH MEDIUM QUESTIONS ---
+  const eng8MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 8' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (eng8MedCount.count < 40) {
+    console.log("Seeding Grade 8 Medium English questions...");
+    const eng8MedQuestions = [
+      { question_text: "Identify the type of clause: “I know that he is honest.”", options: ["Adjective clause", "Noun clause", "Adverb clause", "Conditional clause"], correct_option: 1 },
+      { question_text: "Choose the correct passive voice: “They are repairing the road.”", options: ["The road repaired.", "The road is repaired.", "The road is being repaired.", "The road was repaired."], correct_option: 2 },
+      { question_text: "Choose the correct reported speech: He said, “Where are you going?”", options: ["He asked where I am going.", "He asked where I was going.", "He said where I was going.", "He asked where was I going."], correct_option: 1 },
+      { question_text: "Identify the adjective clause:", options: ["because he was late", "that I bought yesterday", "if it rains", "when he arrived"], correct_option: 1 },
+      { question_text: "Choose the correct conditional: If you heat water to 100°C, it ___ boil.", options: ["will", "would", "boils", "boiled"], correct_option: 2 },
+      { question_text: "Choose the correct sentence:", options: ["Neither Ali nor his friends was present.", "Neither Ali nor his friends were present.", "Neither Ali nor his friends is present.", "Neither Ali nor his friends be present."], correct_option: 1 },
+      { question_text: "Choose the correct transformation: He is too weak to walk.", options: ["He is so weak that he can walk.", "He is so weak that he cannot walk.", "He is very weak and he walks.", "He is weak but he walks."], correct_option: 1 },
+      { question_text: "Choose the correct modal for advice: You ___ see a doctor.", options: ["must", "should", "might", "can"], correct_option: 1 },
+      { question_text: "Choose the correct indirect speech: She said, “I have finished my work.”", options: ["She said she has finished her work.", "She said she had finished her work.", "She said she finished her work.", "She said she finishes her work."], correct_option: 1 },
+      { question_text: "Identify the adverb clause:", options: ["who lives next door", "that she likes", "because it was raining", "the red car"], correct_option: 2 },
+      { question_text: "Choose the correct passive: “He will complete the task.”", options: ["The task will completed.", "The task will be completed.", "The task is completed.", "The task has completed."], correct_option: 1 },
+      { question_text: "Choose the correct comparative sentence:", options: ["This book is more better than that.", "This book is better than that.", "This book is best than that.", "This book better than that."], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["Everyone have done their work.", "Everyone has done his work.", "Everyone have done his work.", "Everyone has done their works."], correct_option: 1 },
+      { question_text: "Identify the noun clause:", options: ["that he passed the exam", "when he came", "because he was tired", "who is my friend"], correct_option: 0 },
+      { question_text: "Choose the correct conditional sentence: If she studies hard, she ___ pass the exam.", options: ["would", "will", "would have", "passed"], correct_option: 1 },
+      { question_text: "Choose the correct preposition: He is responsible ___ the project.", options: ["of", "for", "to", "with"], correct_option: 1 },
+      { question_text: "Choose the correct reported command: The teacher said, “Close the door.”", options: ["The teacher said close the door.", "The teacher told us to close the door.", "The teacher asked close the door.", "The teacher says close the door."], correct_option: 1 },
+      { question_text: "Choose the correct transformation: He is so tired that he cannot walk.", options: ["He is too tired to walk.", "He is tired and walk.", "He is very tired and walks.", "He is tired to walk."], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["The number of students are increasing.", "The number of students is increasing.", "The number of students increase.", "The number of students were increasing."], correct_option: 1 },
+      { question_text: "Identify the adjective clause: “The boy who is playing is my brother.”", options: ["The boy", "who is playing", "is my brother", "playing"], correct_option: 1 },
+      { question_text: "Choose the correct modal for obligation: You ___ wear a helmet while riding a bike.", options: ["must", "may", "could", "might"], correct_option: 0 },
+      { question_text: "Choose the correct indirect question: She said, “Why are you late?”", options: ["She asked why was I late.", "She asked why I was late.", "She said why I was late.", "She asked why am I late."], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He denied to help me.", "He denied helping me.", "He denied help me.", "He denied helped me."], correct_option: 1 },
+      { question_text: "Choose the correct passive: “They have completed the project.”", options: ["The project has been completed.", "The project was completed.", "The project completed.", "The project is completed."], correct_option: 0 },
+      { question_text: "Choose the correct conjunction: He failed ___ he worked hard.", options: ["although", "because", "if", "so"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["Hardly had he reached when it started raining.", "Hardly had he reached than it started raining.", "Hardly he had reached than it started raining.", "Hardly he reached when it started raining."], correct_option: 1 },
+      { question_text: "Choose the correct transformation (affirmative to negative): Everyone liked the movie.", options: ["No one liked the movie.", "Nobody disliked the movie.", "Someone liked the movie.", "None liked the movie."], correct_option: 1 },
+      { question_text: "Identify the adverb clause of time:", options: ["when the bell rang", "who is absent", "that he wrote", "the red shirt"], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["He is capable to solve the problem.", "He is capable of solving the problem.", "He is capable for solving the problem.", "He capable of solving the problem."], correct_option: 1 },
+      { question_text: "Choose the correct modal for possibility: It ___ rain today.", options: ["must", "should", "might", "shall"], correct_option: 2 },
+      { question_text: "Choose the correct passive: “People speak English worldwide.”", options: ["English is spoken worldwide.", "English spoken worldwide.", "English was spoken worldwide.", "English has spoken worldwide."], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["She suggested to go home.", "She suggested going home.", "She suggested go home.", "She suggest going home."], correct_option: 1 },
+      { question_text: "Identify the type of sentence: “What a beautiful scene!”", options: ["Interrogative", "Imperative", "Exclamatory", "Declarative"], correct_option: 2 },
+      { question_text: "Choose the correct reported speech: He said, “I can solve this.”", options: ["He said he could solve that.", "He said he can solve that.", "He said he could solve this.", "He said he can solve this."], correct_option: 0 },
+      { question_text: "Choose the correct sentence:", options: ["A lot of water have been wasted.", "A lot of water has been wasted.", "A lot of water were wasted.", "A lot of water waste."], correct_option: 1 },
+      { question_text: "Choose the correct conditional: If you work hard, you ___ succeed.", options: ["will", "would", "should", "shall"], correct_option: 0 },
+      { question_text: "Identify the noun clause:", options: ["what he said", "when he came", "who is absent", "because he was tired"], correct_option: 0 },
+      { question_text: "Choose the correct transformation (active to passive): “She is reading a novel.”", options: ["A novel is read by her.", "A novel is being read by her.", "A novel was read by her.", "A novel has read by her."], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He insisted to leave early.", "He insisted on leaving early.", "He insisted leaving early.", "He insisted for leaving early."], correct_option: 1 },
+      { question_text: "Choose the correct sentence structure:", options: ["Not only he sings but also dances.", "Not only does he sing but also dance.", "Not only does he sing but also dances.", "Not only he sing but also dances."], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng8MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Medium', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 ENGLISH HARD QUESTIONS ---
+  const eng8HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'English' AND class_level = 'Grade 8' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (eng8HardCount.count < 40) {
+    console.log("Seeding Grade 8 Hard English questions...");
+    const eng8HardQuestions = [
+      { question_text: "Choose the correct mixed conditional sentence: If she had studied hard, she ___ the exam now.", options: ["would pass", "would have passed", "would be passing", "will pass"], correct_option: 2 },
+      { question_text: "Choose the correct passive voice: “They will have completed the work by tomorrow.”", options: ["The work will have been completed by tomorrow.", "The work will be completed by tomorrow.", "The work has been completed by tomorrow.", "The work will completed by tomorrow."], correct_option: 0 },
+      { question_text: "Choose the correct reported speech: He said, “I am writing a letter.”", options: ["He said that he was writing a letter.", "He said that he is writing a letter.", "He said he has written a letter.", "He said he wrote a letter."], correct_option: 0 },
+      { question_text: "Identify the function of the clause in bold: “I am happy that you passed the exam.”", options: ["Adverb clause", "Adjective clause", "Noun clause", "Conditional clause"], correct_option: 2 },
+      { question_text: "Choose the correct transformation (simple to complex): He was too tired to walk.", options: ["He was so tired that he could not walk.", "He was very tired and walked.", "He was tired but walked.", "He was tired to walk."], correct_option: 0 },
+      { question_text: "Choose the correct sentence: Each of the players have finished.", options: ["Each of the players have finished.", "Each of the players has finished.", "Each of the players have finish.", "Each of the players are finished."], correct_option: 1 },
+      { question_text: "Choose the correct conditional: If I ___ you, I would apologize.", options: ["am", "were", "was", "had been"], correct_option: 1 },
+      { question_text: "Choose the correct indirect question: She asked, “Do you know the answer?”", options: ["She asked if I know the answer.", "She asked if I knew the answer.", "She asked do I know the answer.", "She asked whether do I know the answer."], correct_option: 1 },
+      { question_text: "Choose the correct sentence with parallel structure:", options: ["She likes reading, swimming and to dance.", "She likes reading, swimming and dancing.", "She likes read, swim and dancing.", "She likes to reading, swimming and dance."], correct_option: 1 },
+      { question_text: "Identify the error: Neither of the boys were present.", options: ["Neither", "boys", "were", "present"], correct_option: 2 },
+      { question_text: "Choose the correct passive: “They are going to announce the results.”", options: ["The results are going to be announced.", "The results are going announced.", "The results going to be announced.", "The results have been announced."], correct_option: 0 },
+      { question_text: "Choose the correct reported command: The teacher said, “Don’t waste time.”", options: ["The teacher told us not waste time.", "The teacher told us not to waste time.", "The teacher said not waste time.", "The teacher said don’t waste time."], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He succeeded despite of difficulties.", "He succeeded despite difficulties.", "He succeeded although difficulties.", "He succeeded because difficulties."], correct_option: 1 },
+      { question_text: "Choose the correct transformation (positive to negative without changing meaning): As soon as he arrived, it started raining.", options: ["No sooner had he arrived than it started raining.", "No sooner he arrived than it started raining.", "No sooner had he arrived when it started raining.", "No sooner he had arrived than it started raining."], correct_option: 0 },
+      { question_text: "Choose the correct modal for deduction: She ___ be at home; the lights are on.", options: ["might", "must", "should", "could"], correct_option: 1 },
+      { question_text: "Identify the type of sentence: “If it rains, we will stay inside.”", options: ["Compound", "Complex", "Simple", "Interrogative"], correct_option: 1 },
+      { question_text: "Choose the correct sentence: The furniture are new.", options: ["The furniture are new.", "The furniture is new.", "The furnitures are new.", "The furniture were new."], correct_option: 1 },
+      { question_text: "Choose the correct reported exclamation: He said, “What a beautiful day!”", options: ["He exclaimed that it was a beautiful day.", "He said what a beautiful day.", "He exclaimed what beautiful day.", "He said it is a beautiful day."], correct_option: 0 },
+      { question_text: "Choose the correct conditional: If they had left earlier, they ___ the train.", options: ["would catch", "would have caught", "will catch", "had caught"], correct_option: 1 },
+      { question_text: "Choose the correct transformation (comparative to superlative): No other student is as intelligent as Ali.", options: ["Ali is more intelligent than any student.", "Ali is the most intelligent student.", "Ali is very intelligent.", "Ali is intelligent than others."], correct_option: 1 },
+      { question_text: "Choose the correct sentence:", options: ["He prevented me to go.", "He prevented me from going.", "He prevented from going me.", "He prevented me going."], correct_option: 1 },
+      { question_text: "Identify the noun clause:", options: ["whatever you decide", "when he came", "because he was ill", "who is my friend"], correct_option: 0 },
+      { question_text: "Choose the correct sentence: It is high time we leave.", options: ["It is high time we leave.", "It is high time we left.", "It is high time we have left.", "It is high time we leaving."], correct_option: 1 },
+      { question_text: "Choose the correct passive: “They had repaired the car.”", options: ["The car had been repaired.", "The car was repaired.", "The car has repaired.", "The car repaired."], correct_option: 0 },
+      { question_text: "Choose the correct conjunction: He worked hard ___ he could succeed.", options: ["so that", "although", "because", "unless"], correct_option: 0 },
+      { question_text: "Choose the correct transformation (assertive to interrogative): You completed the work.", options: ["Did you complete the work?", "You did complete the work?", "Completed you the work?", "Do you completed the work?"], correct_option: 0 },
+      { question_text: "Choose the correct sentence: One of my friends are coming.", options: ["One of my friends are coming.", "One of my friends is coming.", "One of my friend is coming.", "One of my friends were coming."], correct_option: 1 },
+      { question_text: "Identify the adverb clause of reason:", options: ["because he was tired", "when he arrived", "who is absent", "that he bought"], correct_option: 0 },
+      { question_text: "Choose the correct sentence: I look forward to see you.", options: ["I look forward to see you.", "I look forward to seeing you.", "I look forward seeing you.", "I look forward for seeing you."], correct_option: 1 },
+      { question_text: "Choose the correct sentence: Hardly had he entered when the phone rang.", options: ["Hardly had he entered when the phone rang.", "Hardly had he entered than the phone rang.", "Hardly he had entered than the phone rang.", "Hardly he entered when the phone rang."], correct_option: 0 },
+      { question_text: "Choose the correct transformation (direct to indirect): She said, “I will help you.”", options: ["She said she would help me.", "She said she will help me.", "She said she would help you.", "She said she helps me."], correct_option: 0 },
+      { question_text: "Choose the correct sentence: Scarcely had he finished when the bell rang.", options: ["Scarcely had he finished when the bell rang.", "Scarcely he had finished when the bell rang.", "Scarcely had he finished than the bell rang.", "Scarcely he finished when the bell rang."], correct_option: 0 },
+      { question_text: "Choose the correct conditional: If you had informed me, I ___ helped you.", options: ["would", "would have", "will", "had"], correct_option: 1 },
+      { question_text: "Identify the complex sentence:", options: ["She sings and dances.", "She sings beautifully.", "When she sings, everyone listens.", "Sing loudly."], correct_option: 2 },
+      { question_text: "Choose the correct sentence: He is superior than me.", options: ["He is superior than me.", "He is superior to me.", "He is superior over me.", "He is superior from me."], correct_option: 1 },
+      { question_text: "Choose the correct transformation (active to passive): “People consider him honest.”", options: ["He is considered honest.", "He considered honest.", "He was considered honesty.", "He is consider honest."], correct_option: 0 },
+      { question_text: "Choose the correct modal for weak possibility: It ___ snow tonight.", options: ["must", "might", "shall", "ought"], correct_option: 1 },
+      { question_text: "Choose the correct sentence: The news are shocking.", options: ["The news are shocking.", "The news is shocking.", "The news were shocking.", "The news shock."], correct_option: 1 },
+      { question_text: "Choose the correct reported speech: He said, “I have lost my keys.”", options: ["He said that he had lost his keys.", "He said that he has lost his keys.", "He said that he lost his keys.", "He said that he had lost my keys."], correct_option: 0 },
+      { question_text: "Choose the correct transformation (degree of comparison): Very few cities are as beautiful as Paris.", options: ["Paris is more beautiful than many cities.", "Paris is one of the most beautiful cities.", "Paris is the most beautiful city.", "Paris is beautiful city."], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of eng8HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('English', 'Hard', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 MATH EASY QUESTIONS ---
+  const math8EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 8' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (math8EasyCount.count < 40) {
+    console.log("Seeding Grade 8 Easy Math questions...");
+    const math8EasyQuestions = [
+      { question_text: "Which of the following is a rational number?", options: ["√5", "π", "3/4", "√7"], correct_option: 2 },
+      { question_text: "Simplify: 2³", options: ["6", "8", "9", "12"], correct_option: 1 },
+      { question_text: "Solve: 5x = 25", options: ["3", "4", "5", "6"], correct_option: 2 },
+      { question_text: "Which of the following is a linear equation?", options: ["x² + 2 = 0", "3x + 5 = 11", "x³ = 4", "√x = 3"], correct_option: 1 },
+      { question_text: "Find 25% of 200.", options: ["40", "45", "50", "60"], correct_option: 2 },
+      { question_text: "Simplify: 3² + 2²", options: ["9", "13", "12", "10"], correct_option: 1 },
+      { question_text: "If the ratio of boys to girls is 2:3, how many girls are there if boys are 10?", options: ["12", "15", "18", "20"], correct_option: 1 },
+      { question_text: "What is the square of 15?", options: ["200", "215", "225", "250"], correct_option: 2 },
+      { question_text: "Simplify: (-3) × 4", options: ["12", "-12", "7", "-7"], correct_option: 1 },
+      { question_text: "Find the value of x: x + 7 = 15", options: ["6", "7", "8", "9"], correct_option: 2 },
+      { question_text: "Which of the following is a perfect square?", options: ["18", "20", "25", "30"], correct_option: 2 },
+      { question_text: "Simplify: 4⁰", options: ["0", "1", "4", "16"], correct_option: 1 },
+      { question_text: "Convert 0.5 into fraction.", options: ["1/5", "1/2", "2/5", "5/10"], correct_option: 1 },
+      { question_text: "If a triangle has angles 60°, 60°, 60°, it is:", options: ["Right triangle", "Scalene triangle", "Equilateral triangle", "Obtuse triangle"], correct_option: 2 },
+      { question_text: "Find the perimeter of a square of side 6 cm.", options: ["12 cm", "18 cm", "24 cm", "36 cm"], correct_option: 2 },
+      { question_text: "Solve: 8 ÷ 2²", options: ["16", "4", "2", "8"], correct_option: 2 },
+      { question_text: "Which number is greater?", options: ["-5", "-3", "-8", "-10"], correct_option: 1 },
+      { question_text: "Simplify: 7x + 3x", options: ["10", "10x", "21x", "7x"], correct_option: 1 },
+      { question_text: "What is 10% of 150?", options: ["10", "12", "15", "20"], correct_option: 2 },
+      { question_text: "If 3 pencils cost Rs. 30, what is the cost of 1 pencil?", options: ["5", "8", "10", "15"], correct_option: 2 },
+      { question_text: "The sum of interior angles of a triangle is:", options: ["90°", "180°", "270°", "360°"], correct_option: 1 },
+      { question_text: "Simplify: 5 × (-2)", options: ["10", "-10", "-7", "7"], correct_option: 1 },
+      { question_text: "Solve: x/4 = 5", options: ["9", "10", "15", "20"], correct_option: 3 },
+      { question_text: "Which is an even number?", options: ["17", "19", "22", "25"], correct_option: 2 },
+      { question_text: "Find the square root of 49.", options: ["6", "7", "8", "9"], correct_option: 1 },
+      { question_text: "Simplify: 2x + 5 when x = 3", options: ["8", "9", "10", "11"], correct_option: 3 },
+      { question_text: "Convert 3/5 into decimal.", options: ["0.3", "0.6", "0.8", "0.5"], correct_option: 1 },
+      { question_text: "If a rectangle has length 8 cm and width 5 cm, its area is:", options: ["13 cm²", "26 cm²", "40 cm²", "80 cm²"], correct_option: 2 },
+      { question_text: "Simplify: 10 - (-4)", options: ["6", "-6", "14", "-14"], correct_option: 2 },
+      { question_text: "Which of the following is an irrational number?", options: ["1/3", "0.75", "√2", "2"], correct_option: 2 },
+      { question_text: "Solve: 3x = 21", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "Find 50% of 80.", options: ["30", "35", "40", "45"], correct_option: 2 },
+      { question_text: "Simplify: (2 + 3)²", options: ["10", "25", "15", "20"], correct_option: 1 },
+      { question_text: "If the diameter of a circle is 14 cm, the radius is:", options: ["14 cm", "28 cm", "7 cm", "6 cm"], correct_option: 2 },
+      { question_text: "Which is a multiple of 9?", options: ["27", "28", "29", "30"], correct_option: 0 },
+      { question_text: "Solve: x - 9 = 6", options: ["12", "13", "14", "15"], correct_option: 3 },
+      { question_text: "Simplify: 4 × 3 + 2", options: ["20", "14", "18", "12"], correct_option: 1 },
+      { question_text: "Which of the following represents a proportion?", options: ["2 + 3 = 5", "2:3 = 4:6", "4 × 2 = 8", "7 - 2 = 5"], correct_option: 1 },
+      { question_text: "Find the value of: 9²", options: ["18", "72", "81", "90"], correct_option: 2 },
+      { question_text: "If the mean of 4, 6, 8 is:", options: ["5", "6", "7", "8"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math8EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Easy', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 MATH MEDIUM QUESTIONS ---
+  const math8MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 8' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (math8MedCount.count < 40) {
+    console.log("Seeding Grade 8 Medium Math questions...");
+    const math8MedQuestions = [
+      { question_text: "Simplify: 2³ × 2²", options: ["2⁵", "2⁶", "4⁵", "8⁵"], correct_option: 0 },
+      { question_text: "Simplify: (−3/4) + (1/4)", options: ["−1/2", "1/2", "−1", "1"], correct_option: 0 },
+      { question_text: "Solve: 3x − 5 = 16", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "Simplify: (x²)³", options: ["x⁵", "x⁶", "x³", "x⁹"], correct_option: 1 },
+      { question_text: "A price of Rs. 800 increases by 10%. New price is:", options: ["820", "860", "880", "900"], correct_option: 2 },
+      { question_text: "Solve: 5(x − 2) = 20", options: ["4", "5", "6", "7"], correct_option: 2 },
+      { question_text: "Simplify: 4a + 3a − 2a", options: ["5a", "7a", "9a", "a"], correct_option: 0 },
+      { question_text: "Find the square root of 144.", options: ["10", "11", "12", "14"], correct_option: 2 },
+      { question_text: "If 6 pens cost Rs. 90, how much do 10 pens cost?", options: ["120", "140", "150", "180"], correct_option: 2 },
+      { question_text: "The sum of interior angles of a quadrilateral is:", options: ["180°", "270°", "360°", "540°"], correct_option: 2 },
+      { question_text: "Simplify: (5/6) × (3/4)", options: ["15/24", "5/8", "15/20", "3/8"], correct_option: 1 },
+      { question_text: "Solve: x/3 + 4 = 10", options: ["15", "18", "20", "24"], correct_option: 1 },
+      { question_text: "Simplify: 10⁵ ÷ 10²", options: ["10³", "10²", "10⁷", "10⁵"], correct_option: 0 },
+      { question_text: "A number increases from 200 to 250. Percentage increase is:", options: ["20%", "25%", "30%", "40%"], correct_option: 1 },
+      { question_text: "Simplify: 3(2x + 5)", options: ["6x + 5", "6x + 15", "5x + 15", "6x + 10"], correct_option: 1 },
+      { question_text: "If the ratio of 4:5 equals x:20, then x =", options: ["12", "14", "16", "18"], correct_option: 2 },
+      { question_text: "Find the cube of 4.", options: ["12", "16", "64", "32"], correct_option: 2 },
+      { question_text: "Solve: 7x + 3 = 24", options: ["2", "3", "4", "5"], correct_option: 1 },
+      { question_text: "The area of a triangle is:", options: ["½ × base × height", "base × height", "2 × base × height", "base + height"], correct_option: 0 },
+      { question_text: "Simplify: (−5)²", options: ["−25", "25", "−10", "10"], correct_option: 1 },
+      { question_text: "If a number decreases from 300 to 240, percentage decrease is:", options: ["10%", "15%", "20%", "25%"], correct_option: 2 },
+      { question_text: "Solve: 2x + 5 = x + 9", options: ["2", "3", "4", "5"], correct_option: 2 },
+      { question_text: "Simplify: (a² × a³) ÷ a²", options: ["a³", "a²", "a⁵", "a"], correct_option: 0 },
+      { question_text: "Find the mean of 5, 10, 15, 20.", options: ["10", "12.5", "15", "20"], correct_option: 1 },
+      { question_text: "The exterior angle of a triangle equals:", options: ["Sum of all angles", "Sum of two interior opposite angles", "Half of interior angle", "Double of interior angle"], correct_option: 1 },
+      { question_text: "Simplify: (3/5) ÷ (9/10)", options: ["2/3", "3/2", "5/9", "9/5"], correct_option: 0 },
+      { question_text: "Solve: 4(x + 1) − 3 = 13", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "Which is a perfect cube?", options: ["18", "27", "36", "45"], correct_option: 1 },
+      { question_text: "If 20% of a number is 40, the number is:", options: ["150", "180", "200", "220"], correct_option: 2 },
+      { question_text: "Simplify: (2x)(3x²)", options: ["6x²", "5x³", "6x³", "3x³"], correct_option: 2 },
+      { question_text: "Solve: x − 3/2 = 5/2", options: ["3", "4", "5", "6"], correct_option: 1 },
+      { question_text: "The diagonal of a rectangle divides it into:", options: ["Two squares", "Two equal triangles", "Two rectangles", "Four triangles"], correct_option: 1 },
+      { question_text: "Simplify: (−2)³", options: ["8", "−6", "−8", "6"], correct_option: 2 },
+      { question_text: "If the average of 4 numbers is 12, their total sum is:", options: ["36", "40", "44", "48"], correct_option: 3 },
+      { question_text: "Solve: 3(x − 4) = 9", options: ["5", "6", "7", "8"], correct_option: 2 },
+      { question_text: "Simplify: (16)¹ᐟ²", options: ["2", "3", "4", "8"], correct_option: 2 },
+      { question_text: "If the ratio of two numbers is 3:4 and their sum is 35, the numbers are:", options: ["12 & 16", "15 & 20", "10 & 25", "14 & 21"], correct_option: 1 },
+      { question_text: "Simplify: (5a²)(2a³)", options: ["10a⁵", "7a⁶", "10a⁶", "5a⁵"], correct_option: 0 },
+      { question_text: "The median of 3, 7, 9, 11, 15 is:", options: ["7", "9", "11", "15"], correct_option: 1 },
+      { question_text: "Solve: 6x − 4 = 2x + 12", options: ["2", "3", "4", "5"], correct_option: 2 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math8MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Medium', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 MATH HARD QUESTIONS ---
+  const math8HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Math' AND class_level = 'Grade 8' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (math8HardCount.count < 40) {
+    console.log("Seeding Grade 8 Hard Math questions...");
+    const math8HardQuestions = [
+      { question_text: "Simplify: (2³ × 2⁴) ÷ 2²", options: ["2³", "2⁴", "2⁵", "2⁶"], correct_option: 2 },
+      { question_text: "Solve: 4x − 7 = 3x + 9", options: ["14", "15", "16", "17"], correct_option: 2 },
+      { question_text: "Factorize: x² − 9", options: ["(x − 3)(x + 3)", "(x − 9)(x + 1)", "(x − 1)(x + 9)", "(x − 3)²"], correct_option: 0 },
+      { question_text: "If 15% of a number is 45, the number is:", options: ["250", "275", "300", "320"], correct_option: 2 },
+      { question_text: "Simplify: (3x²y)(2xy²)", options: ["6x²y²", "5x³y³", "6x³y³", "6x⁴y²"], correct_option: 2 },
+      { question_text: "The sum of interior angles of a hexagon is:", options: ["540°", "720°", "900°", "1080°"], correct_option: 1 },
+      { question_text: "Solve: x/3 + x/6 = 9", options: ["12", "15", "18", "21"], correct_option: 2 },
+      { question_text: "Find the value of: (−2)⁴ × (−2)", options: ["16", "−16", "32", "−32"], correct_option: 3 },
+      { question_text: "If the cost price is Rs. 500 and profit is 20%, the selling price is:", options: ["550", "580", "600", "620"], correct_option: 2 },
+      { question_text: "Solve: 5(2x − 1) = 3(3x + 4)", options: ["13", "14", "15", "17"], correct_option: 3 },
+      { question_text: "Factorize: x² + 5x + 6", options: ["(x + 2)(x + 3)", "(x + 1)(x + 6)", "(x − 2)(x − 3)", "(x + 3)²"], correct_option: 0 },
+      { question_text: "If the average of 6 numbers is 15 and five of them sum to 70, the sixth number is:", options: ["10", "15", "20", "25"], correct_option: 2 },
+      { question_text: "Simplify: (4a³b²) ÷ (2ab)", options: ["2a²b", "2a³b", "4a²b", "a²b²"], correct_option: 0 },
+      { question_text: "If two angles are supplementary and one is 65°, the other is:", options: ["105°", "110°", "115°", "120°"], correct_option: 2 },
+      { question_text: "Solve: 3x + 2 = 2x − 5", options: ["−7", "7", "−5", "5"], correct_option: 0 },
+      { question_text: "Find the cube root of 343.", options: ["6", "7", "8", "9"], correct_option: 1 },
+      { question_text: "Simplify using identity: ( a + b )² − ( a − b )²", options: ["2ab", "4ab", "a² + b²", "2a²"], correct_option: 1 },
+      { question_text: "If the ratio of two numbers is 5:7 and their difference is 20, the numbers are:", options: ["40 & 60", "50 & 70", "30 & 50", "45 & 65"], correct_option: 1 },
+      { question_text: "Solve: 2(x − 3) + 4 = 3x − 2", options: ["4", "6", "8", "10"], correct_option: 2 },
+      { question_text: "The diagonals of a rectangle are:", options: ["Unequal", "Perpendicular", "Equal", "Parallel"], correct_option: 2 },
+      { question_text: "Simplify: (9x²y³) ÷ (3xy)", options: ["3xy²", "3x²y²", "6xy²", "3x²y"], correct_option: 0 },
+      { question_text: "If a number increases by 25% and becomes 125, the original number was:", options: ["90", "95", "100", "110"], correct_option: 2 },
+      { question_text: "Solve: x/5 − 3 = 7", options: ["40", "45", "50", "55"], correct_option: 2 },
+      { question_text: "Factorize: x² − 5x − 6", options: ["(x − 6)(x + 1)", "(x − 3)(x − 2)", "(x + 6)(x − 1)", "(x − 1)(x − 6)"], correct_option: 0 },
+      { question_text: "The mean of 10 numbers is 8. If one number 20 is removed, the new mean is:", options: ["6", "7", "8", "6.67"], correct_option: 3 },
+      { question_text: "Simplify: (2⁵ ÷ 2³) × 2²", options: ["4", "8", "16", "32"], correct_option: 2 },
+      { question_text: "Solve: 4x + 5 = 2(2x + 3)", options: ["No solution", "x = 1", "x = 2", "x = 3"], correct_option: 0 },
+      { question_text: "If each interior angle of a regular polygon is 120°, the polygon has:", options: ["5 sides", "6 sides", "7 sides", "8 sides"], correct_option: 1 },
+      { question_text: "Simplify: (5a²b)(−2ab³)", options: ["−10a³b⁴", "10a³b⁴", "−7a³b³", "−10a²b³"], correct_option: 0 },
+      { question_text: "Solve: 3x/4 = 9", options: ["10", "11", "12", "13"], correct_option: 2 },
+      { question_text: "Find the area of a trapezium with parallel sides 10 cm and 14 cm and height 6 cm.", options: ["60 cm²", "72 cm²", "84 cm²", "96 cm²"], correct_option: 1 },
+      { question_text: "Simplify: (−3)² + (−4)²", options: ["7", "25", "−7", "49"], correct_option: 1 },
+      { question_text: "If 8 workers complete a job in 12 days, how many days will 6 workers take (same rate)?", options: ["14", "15", "16", "18"], correct_option: 2 },
+      { question_text: "Factorize: a² − b² − 2b + 1", options: ["(a − b − 1)(a + b + 1)", "(a − b)(a + b)", "(a − 1)(a + 1)", "(a − b + 1)(a + b − 1)"], correct_option: 0 },
+      { question_text: "Solve: 5x − 3( x − 2 ) = 4x + 6", options: ["0", "1", "2", "3"], correct_option: 0 },
+      { question_text: "Find the value of: √(169)", options: ["11", "12", "13", "14"], correct_option: 2 },
+      { question_text: "If the sum of two numbers is 30 and their ratio is 2:3, the numbers are:", options: ["10 & 20", "12 & 18", "14 & 16", "15 & 15"], correct_option: 1 },
+      { question_text: "Simplify: (7x²)(−3x³)", options: ["−21x⁵", "21x⁵", "−10x⁶", "−21x⁶"], correct_option: 0 },
+      { question_text: "If the mean of 5 numbers is 18, their total sum is:", options: ["80", "85", "90", "95"], correct_option: 2 },
+      { question_text: "Solve: x − 4/3 = 5/3", options: ["2", "3", "4", "5"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of math8HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('Math', 'Hard', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 URDU EASY QUESTIONS ---
+  const urdu8EasyCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 8' AND difficulty = 'Easy'").get() as { count: number };
+
+  if (urdu8EasyCount.count < 40) {
+    console.log("Seeding Grade 8 Easy Urdu questions...");
+    const urdu8EasyQuestions = [
+      { question_text: "لفظ \"استاد\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 2 },
+      { question_text: "\"لڑکی\" کی جمع کیا ہے؟", options: ["لڑکیوں", "لڑکیاں", "لڑکے", "لڑکی"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہیں۔", "بچے کھیلتا ہے۔"], correct_option: 1 },
+      { question_text: "لفظ \"خوبصورت\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "\"کتاب\" کی جنس کیا ہے؟", options: ["مذکر", "مونث", "دونوں", "کوئی نہیں"], correct_option: 1 },
+      { question_text: "لفظ \"ہم\" کیا ہے؟", options: ["اسم", "ضمیر", "فعل", "صفت"], correct_option: 1 },
+      { question_text: "\"اُڑنا\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 2 },
+      { question_text: "لفظ \"اندھیرا\" کی ضد کیا ہے؟", options: ["روشنی", "سایہ", "رات", "چمک"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["زمداری", "زمیداری", "ذمہ داری", "زمہ داری"], correct_option: 2 },
+      { question_text: "\"باغ\" کی جمع کیا ہے؟", options: ["باغات", "باغوں", "باغیاں", "باغ"], correct_option: 0 },
+      { question_text: "لفظ \"تیز\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 1 },
+      { question_text: "\"بچہ\" کی مونث کیا ہے؟", options: ["بچی", "بچیاں", "بچے", "بچہ"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ اسکول جاتا ہیں۔", "وہ اسکول جاتی ہے۔", "وہ اسکول جاتے ہے۔", "وہ اسکول گئی ہیں۔"], correct_option: 1 },
+      { question_text: "لفظ \"محنت\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 0 },
+      { question_text: "\"اونچا\" کی ضد کیا ہے؟", options: ["لمبا", "نیچا", "چھوٹا", "بڑا"], correct_option: 1 },
+      { question_text: "\"میں\" کیا ہے؟", options: ["اسم", "ضمیر", "فعل", "صفت"], correct_option: 1 },
+      { question_text: "درست جمع منتخب کریں: \"طالب علم\"", options: ["طالب علموں", "طلبہ", "طالبین", "طلب"], correct_option: 1 },
+      { question_text: "لفظ \"دوڑنا\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["تعلییم", "تعلیم", "تعلیم", "تعلیّم"], correct_option: 1 },
+      { question_text: "\"گرم\" کی ضد کیا ہے؟", options: ["ٹھنڈا", "تیز", "سخت", "ہلکا"], correct_option: 0 },
+      { question_text: "لفظ \"بہادر\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
+      { question_text: "\"پھول\" کی جمع کیا ہے؟", options: ["پھولیں", "پھولوں", "پھول", "پھولان"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کتاب پڑھتی ہے۔", "بچے کتاب پڑھتا ہے۔", "بچہ کتاب پڑھتا ہے۔", "بچہ کتاب پڑھتی ہے۔"], correct_option: 2 },
+      { question_text: "لفظ \"سچ\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 0 },
+      { question_text: "\"سفید\" کی ضد کیا ہے؟", options: ["نیلا", "کالا", "سبز", "پیلا"], correct_option: 1 },
+      { question_text: "\"ہم\" کی قسم کیا ہے؟", options: ["اسم", "ضمیر", "فعل", "صفت"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["کامیابی", "کاميابی", "کامیبي", "کامیابیی"], correct_option: 0 },
+      { question_text: "لفظ \"چلنا\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 2 },
+      { question_text: "\"دوست\" کی جمع کیا ہے؟", options: ["دوستوں", "دوستاں", "دوست", "دوستی"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھ رہے ہیں۔", "وہ کتاب پڑھ رہا ہیں۔", "وہ کتاب پڑھتی ہیں۔", "وہ کتاب پڑھ رہے ہے۔"], correct_option: 0 },
+      { question_text: "لفظ \"خوشی\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 2 },
+      { question_text: "\"بزرگ\" کیا ہے؟", options: ["اسم", "صفت", "فعل", "ضمیر"], correct_option: 1 },
+      { question_text: "درست ضد منتخب کریں: \"سچا\"", options: ["ایماندار", "جھوٹا", "بہادر", "نیک"], correct_option: 1 },
+      { question_text: "لفظ \"کھانا\" (عمل کے طور پر) کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 1 },
+      { question_text: "\"دروازہ\" کی جمع کیا ہے؟", options: ["دروازوں", "دروازہ", "دروازے", "دروازان"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں۔", options: ["احتیاط", "احتياط", "احتیات", "احتیاطی"], correct_option: 0 },
+      { question_text: "لفظ \"چمکدار\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 2 },
+      { question_text: "\"بیٹا\" کی مونث کیا ہے؟", options: ["بیٹی", "بیٹیاں", "بیٹوں", "بیٹا"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم کھیل رہا ہے۔", "ہم کھیل رہے ہیں۔", "ہم کھیل رہی ہیں۔", "ہم کھیلتے ہے۔"], correct_option: 1 },
+      { question_text: "لفظ \"ایمانداری\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 0 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu8EasyQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Easy', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 URDU MEDIUM QUESTIONS ---
+  const urdu8MedCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 8' AND difficulty = 'Medium'").get() as { count: number };
+
+  if (urdu8MedCount.count < 40) {
+    console.log("Seeding Grade 8 Medium Urdu questions...");
+    const urdu8MedQuestions = [
+      { question_text: "جملے میں فاعل کی نشاندہی کریں: \"علی نے خط لکھا۔\"", options: ["علی", "خط", "لکھا", "نے"], correct_option: 0 },
+      { question_text: "جملے میں مفعول کیا ہے؟ \"استاد نے سبق سمجھایا۔\"", options: ["استاد", "سبق", "سمجھایا", "نے"], correct_option: 1 },
+      { question_text: "فعل متعدی کی مثال منتخب کریں۔", options: ["بچہ سو رہا ہے۔", "علی کتاب پڑھتا ہے۔", "پرندہ اُڑتا ہے۔", "سورج نکلتا ہے۔"], correct_option: 1 },
+      { question_text: "فعل لازم کی مثال منتخب کریں۔", options: ["احمد نے پانی پیا۔", "لڑکا ہنسا۔", "ماں نے کھانا پکایا۔", "اس نے دروازہ کھولا۔"], correct_option: 1 },
+      { question_text: "محاورہ \"ہاتھ پر ہاتھ دھرے بیٹھنا\" کا مفہوم کیا ہے؟", options: ["کام کرنا", "انتظار کرنا", "فارغ بیٹھنا", "ہاتھ باندھنا"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ لوگ آیا۔", "وہ لوگ آئے۔", "وہ لوگ آئی۔", "وہ لوگ آتا ہے۔"], correct_option: 1 },
+      { question_text: "واحد سے جمع بنائیں: \"کرسی\"", options: ["کرسیاں", "کرسیوں", "کرسیاں", "کرسیاں"], correct_option: 0 },
+      { question_text: "مذکر سے مونث بنائیں: \"شاعر\"", options: ["شاعرانہ", "شاعری", "شاعرہ", "شاعروں"], correct_option: 2 },
+      { question_text: "درست املا منتخب کریں۔", options: ["زمیندار", "زميندار", "زمیندار", "زمین دار"], correct_option: 2 },
+      { question_text: "جملے میں خبر کی نشاندہی کریں: \"وہ بہت ذہین ہے۔\"", options: ["وہ", "بہت", "ذہین ہے", "ہے"], correct_option: 2 },
+      { question_text: "مرکب جملہ منتخب کریں۔", options: ["علی اسکول گیا۔", "علی اسکول گیا اور سبق پڑھا۔", "علی تیز ہے۔", "علی سو رہا ہے۔"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["میں گھر گیا اور سو گیا۔", "جب بارش ہوئی تو ہم گھر گئے۔", "وہ ہنسا۔", "میں آیا۔"], correct_option: 1 },
+      { question_text: "محاورہ \"ناک میں دم کرنا\" کا مفہوم کیا ہے؟", options: ["سانس لینا", "پریشان کرنا", "چیخنا", "دوڑنا"], correct_option: 1 },
+      { question_text: "متضاد منتخب کریں: \"کامیابی\"", options: ["خوشی", "ناکامی", "ترقی", "محنت"], correct_option: 1 },
+      { question_text: "مترادف منتخب کریں: \"خوش\"", options: ["ناراض", "مسرور", "غمگین", "تھکا"], correct_option: 1 },
+      { question_text: "جملے کی درستی کریں:", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہیں۔", "بچے کھیلتا ہے۔"], correct_option: 1 },
+      { question_text: "فعل کی قسم بتائیں: \"علی نے کتاب خریدی۔\"", options: ["لازم", "متعدی", "ناقص", "مرکب"], correct_option: 1 },
+      { question_text: "محاورہ \"آنکھوں کا تارا\" کا مفہوم کیا ہے؟", options: ["آنکھ کی بیماری", "بہت پیارا", "روشن چیز", "آنسو"], correct_option: 1 },
+      { question_text: "واحد بنائیں: \"کتابیں\"", options: ["کتاب", "کتابی", "کتابوں", "کتب"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["हमें سچ بولنا چاہیے۔", "ہمیں سچ بولنا چاہیےں۔", "ہمیں سچ بولنی چاہیے۔", "ہمیں سچ بولنا چاہیے ہے۔"], correct_option: 0 },
+      { question_text: "جملے میں مفعول کی نشاندہی کریں: \"اس نے پانی پیا۔\"", options: ["اس", "نے", "پانی", "پیا"], correct_option: 2 },
+      { question_text: "مرکب جملہ کی پہچان کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "وہ آیا۔", "وہ تیز ہے۔", "وہ سو رہا ہے۔"], correct_option: 0 },
+      { question_text: "محاورہ \"کان کھڑے ہونا\" کا مفہوم کیا ہے؟", options: ["سننا", "چونک جانا", "شور کرنا", "بھاگنا"], correct_option: 1 },
+      { question_text: "متضاد منتخب کریں: \"دوستی\"", options: ["محبت", "دشمنی", "رشتہ", "بھائی چارہ"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ہدایت", "حدایت", "ہدایئت", "ہدائت"], correct_option: 0 },
+      { question_text: "جملے میں فاعل منتخب کریں: \"بچے نے گیند پھینکی۔\"", options: ["بچے", "گیند", "پھینکی", "نے"], correct_option: 0 },
+      { question_text: "فعل لازم منتخب کریں۔", options: ["اس نے دروازہ بند کیا۔", "وہ ہنسا۔", "ماں نے کھانا بنایا۔", "اس نے خط لکھا۔"], correct_option: 1 },
+      { question_text: "مذکر بنائیں: \"استانی\"", options: ["استاد", "استادات", "استانیہ", "استانی"], correct_option: 0 },
+      { question_text: "محاورہ \"آسمان سے باتیں کرنا\" کا مفہوم کیا ہے؟", options: ["دعا کرنا", "بہت اونچا ہونا", "چیخنا", "گانا"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھتی ہیں۔", "وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتے ہے۔"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["میں گیا اور وہ آیا۔", "اگر تم محنت کرو گے تو کامیاب ہو جاؤ گے۔", "وہ ہنسا۔", "علی آیا۔"], correct_option: 1 },
+      { question_text: "مترادف منتخب کریں: \"غم\"", options: ["خوشی", "دکھ", "محبت", "مسکراہٹ"], correct_option: 1 },
+      { question_text: "واحد منتخب کریں: \"طلبہ\"", options: ["طالب علم", "طالبین", "طلب", "طالب"], correct_option: 0 },
+      { question_text: "محاورہ \"منہ کی کھانا\" کا مفہوم کیا ہے؟", options: ["کھانا کھانا", "شرمندہ ہونا", "مسکرانا", "چیخنا"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ضرورت", "زروت", "ضرورتہ", "ضرروت"], correct_option: 0 },
+      { question_text: "جملے میں خبر منتخب کریں: \"یہ کتاب بہت دلچسپ ہے۔\"", options: ["یہ", "کتاب", "بہت دلچسپ ہے", "ہے"], correct_option: 2 },
+      { question_text: "فعل متعدی منتخب کریں۔", options: ["بچہ سو گیا۔", "علی نے خط لکھا۔", "سورج نکلا۔", "وہ ہنسا۔"], correct_option: 1 },
+      { question_text: "متضاد منتخب کریں: \"آغاز\"", options: ["ابتدا", "انجام", "کوشش", "ترقی"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["ہم کل بازار گیا۔", "ہم کل بازار گئے۔", "ہم کل بازار گئی۔", "ہم کل بازار جاتا ہے۔"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ کی پہچان کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "جب میں گھر پہنچا تو بارش ہو رہی تھی۔", "وہ ہنسا۔", "وہ گیا۔"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu8MedQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Medium', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+
+  // --- GRADE 8 URDU HARD QUESTIONS ---
+  const urdu8HardCount = db.prepare("SELECT COUNT(*) as count FROM questions WHERE subject = 'Urdu' AND class_level = 'Grade 8' AND difficulty = 'Hard'").get() as { count: number };
+
+  if (urdu8HardCount.count < 40) {
+    console.log("Seeding Grade 8 Hard Urdu questions...");
+    const urdu8HardQuestions = [
+      { question_text: "جملہ معلوم سے مجہول میں تبدیل کریں: \"استاد نے سبق سمجھایا۔\"", options: ["سبق استاد نے سمجھایا گیا۔", "سبق سمجھایا گیا۔", "استاد سبق سمجھایا گیا۔", "سبق سمجھاتا گیا۔"], correct_option: 1 },
+      { question_text: "جملے میں متمم کی نشاندہی کریں: \"وہ شام کو پارک میں گیا۔\"", options: ["وہ", "شام کو", "پارک میں", "گیا"], correct_option: 2 },
+      { question_text: "مرکبِ مرکب جملہ منتخب کریں۔", options: ["علی آیا اور بیٹھ گیا۔", "جب بارش ہوئی تو ہم گھر گئے اور دروازہ بند کر دیا۔", "وہ ہنسا۔", "میں اسکول گیا۔"], correct_option: 1 },
+      { question_text: "فعل لازم کی درست مثال منتخب کریں۔", options: ["اس نے پانی پیا۔", "درخت گر گیا۔", "علی نے کتاب پڑھی۔", "ماں نے کھانا پکایا۔"], correct_option: 1 },
+      { question_text: "محاورہ \"ہاتھ پاؤں پھول جانا\" کا درست استعمال منتخب کریں۔", options: ["وہ باغ میں ہاتھ پاؤں پھول گیا۔", "امتحان دیکھ کر اس کے ہاتھ پاؤں پھول گئے۔", "وہ ہاتھ پاؤں دھو رہا تھا۔", "اس نے ہاتھ پاؤں ہلائے۔"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ذمداری", "زمہ داری", "ذمہ داری", "زمہ داری"], correct_option: 2 },
+      { question_text: "جملے میں خبر منتخب کریں: \"میرے والد ایک ڈاکٹر ہیں۔\"", options: ["میرے", "والد", "ایک ڈاکٹر ہیں", "ہیں"], correct_option: 2 },
+      { question_text: "فعل متعدی کی نشاندہی کریں۔ \"علی نے دروازہ کھولا۔\"", options: ["علی", "دروازہ", "کھولا", "نے"], correct_option: 2 },
+      { question_text: "واحد سے جمع میں درست تبدیلی منتخب کریں: \"شخص\"", options: ["اشخاص", "شخصوں", "شخصیت", "شخصیات"], correct_option: 0 },
+      { question_text: "مذکر سے مونث میں درست تبدیلی منتخب کریں: \"منتظم\"", options: ["تنظیم", "منتظمہ", "منظم", "منتظمین"], correct_option: 1 },
+      { question_text: "محاورہ \"منہ میں پانی بھر آنا\" کا مفہوم کیا ہے؟", options: ["رونا", "لالچ پیدا ہونا", "ڈر جانا", "چیخنا"], correct_option: 1 },
+      { question_text: "جملہ مجہول منتخب کریں۔", options: ["علی نے خط لکھا۔", "خط لکھا گیا۔", "علی خط لکھ رہا ہے۔", "علی لکھتا ہے۔"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "اگر تم سچ بولو گے تو سب تم پر یقین کریں گے۔", "وہ سو گیا۔", "علی ہنسا۔"], correct_option: 1 },
+      { question_text: "متضاد منتخب کریں: \"وقار\"", options: ["عزت", "ذلت", "محبت", "فخر"], correct_option: 1 },
+      { question_text: "مترادف منتخب کریں: \"جرأت\"", options: ["خوف", "بہادری", "کمزوری", "شرم"], correct_option: 1 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["طلبہ نے اپنا کام مکمل کیا۔", "طلبہ نے اپنے کام مکمل کیا۔", "طلبہ نے اپنا کام مکمل کئے۔", "طلبہ نے اپنا کام مکمل کی۔"], correct_option: 0 },
+      { question_text: "جملے میں فاعل کی نشاندہی کریں: \"کتاب میز پر رکھی ہے۔\"", options: ["کتاب", "میز", "رکھی", "ہے"], correct_option: 0 },
+      { question_text: "محاورہ \"کانوں کان خبر نہ ہونا\" کا مفہوم کیا ہے؟", options: ["سننا", "خفیہ رہنا", "چیخنا", "بات کرنا"], correct_option: 1 },
+      { question_text: "مرکب جملہ منتخب کریں۔", options: ["میں نے دروازہ کھولا اور باہر چلا گیا۔", "میں سو گیا۔", "وہ تیز ہے۔", "علی ہنسا۔"], correct_option: 0 },
+      { question_text: "درست املا منتخب کریں۔", options: ["ماحول", "ماھول", "معول", "محول"], correct_option: 0 },
+      { question_text: "جملہ معلوم میں تبدیل کریں: \"سبق پڑھایا گیا۔\"", options: ["استاد نے سبق پڑھایا۔", "سبق پڑھا گیا تھا۔", "سبق پڑھتا ہے۔", "سبق پڑھایا جاتا۔"], correct_option: 0 },
+      { question_text: "فعل لازم منتخب کریں۔", options: ["بچے نے گیند پھینکی۔", "دروازہ کھلا۔", "علی نے خط لکھا۔", "ماں نے کھانا بنایا۔"], correct_option: 1 },
+      { question_text: "محاورہ \"آنکھیں دکھانا\" کا مفہوم کیا ہے؟", options: ["دیکھنا", "ڈرانا", "رونا", "مسکرانا"], correct_option: 1 },
+      { question_text: "متضاد منتخب کریں: \"وسعت\"", options: ["کشادگی", "تنگی", "وسعتی", "پھیلاؤ"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["وہ آیا。", "جب میں پہنچا تو وہ جا چکا تھا۔", "وہ ہنسا。", "وہ بیٹھ گیا۔"], correct_option: 1 },
+      { question_text: "واحد منتخب کریں: \"مشاہیر\"", options: ["مشہور", "مشہر", "مشہور شخص", "مشہورین"], correct_option: 2 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["हमें وقت کی قدر کرنا چاہیے۔", "ہمیں وقت کی قدر کرنی چاہیے ہے۔", "ہمیں وقت کی قدر کرنا چاہیے ہے۔", "ہمیں وقت کی قدر کرتے چاہیے۔"], correct_option: 0 },
+      { question_text: "متمم کی نشاندہی کریں: \"وہ خوشی سے مسکرایا۔\"", options: ["وہ", "خوشی سے", "مسکرایا", "سے"], correct_option: 1 },
+      { question_text: "محاورہ \"ہاتھ ملنا\" کا مفہوم کیا ہے؟", options: ["خوش ہونا", "پچھتانا", "کھیلنا", "لڑنا"], correct_option: 1 },
+      { question_text: "فعل متعدی منتخب کریں۔", options: ["بچہ سو گیا۔", "علی نے درخت لگایا۔", "سورج نکلا۔", "وہ ہنسا۔"], correct_option: 1 },
+      { question_text: "درست املا منتخب کریں۔", options: ["تاثیر", "تاسیر", "تاثير", "تاصیر"], correct_option: 0 },
+      { question_text: "مرکبِ مرکب جملہ منتخب کریں۔", options: ["علی آیا۔", "جب وہ آیا تو میں گھر پر تھا اور ہم نے بات کی۔", "وہ بیٹھ گیا۔", "میں ہنسا۔"], correct_option: 1 },
+      { question_text: "مترادف منتخب کریں: \"حکمت\"", options: ["دانائی", "کمزوری", "غصہ", "جہالت"], correct_option: 0 },
+      { question_text: "متضاد منتخب کریں: \"نرمی\"", options: ["سختی", "ملائمت", "رحم", "محبت"], correct_option: 0 },
+      { question_text: "جملے میں خبر منتخب کریں: \"یہ مسئلہ بہت اہم ہے۔\"", options: ["یہ", "مسئلہ", " بہت اہم ہے", "ہے"], correct_option: 2 },
+      { question_text: "معلوم جملہ منتخب کریں۔", options: ["خط لکھا گیا۔", "دروازہ کھولا گیا۔", "علی نے خط لکھا۔", "سبق پڑھایا گیا۔"], correct_option: 2 },
+      { question_text: "محاورہ \"دانت کھٹے کرنا\" کا مفہوم کیا ہے؟", options: ["دانت صاف کرنا", "شکست دینا", "مسکرانا", "چیخنا"], correct_option: 1 },
+      { question_text: "واحد سے جمع منتخب کریں: \"موقع\"", options: ["مواقع", "موقعے", "موقعوں", "موقعین"], correct_option: 0 },
+      { question_text: "درست جملہ منتخب کریں۔", options: ["اس نے مجھے مشورہ دی۔", "اس نے مجھے مشورہ دیا۔", "اس نے مجھے مشورہ دیے۔", "اس نے مجھے مشورہ دیئے"], correct_option: 1 },
+      { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "اگر بارش ہوگی تو ہم گھر میں رہیں گے۔", "وہ ہنسا。", "وہ گیا۔"], correct_option: 1 }
+    ];
+
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of urdu8HardQuestions) {
+      const exists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = 'Grade 8'").get(q.question_text);
+      if (!exists) {
+        insert.run('Urdu', 'Hard', 'Grade 8', q.question_text, JSON.stringify(q.options), q.correct_option);
+      }
+    }
+  }
+}
