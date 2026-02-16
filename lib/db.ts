@@ -22,8 +22,12 @@ export function getDb() {
       db = new Database(dbPath, { verbose: (msg) => console.log(`[SQL] ${msg}`) });
       db.pragma('journal_mode = WAL');
       console.log(`[DB] Connection successful. Initializing tables...`);
-      initDb(db);
-      console.log(`[DB] Database initialization complete.`);
+
+      // Use a transaction for the entire initialization
+      db.transaction(() => {
+        initDb(db!);
+        console.log(`[DB] Database initialization complete.`);
+      })();
     } catch (error: any) {
       console.error(`[DB] CRITICAL ERROR during initialization:`, error);
       // During build phase, we might not have access to the volume.
