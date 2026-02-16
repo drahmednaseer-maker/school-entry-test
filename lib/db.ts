@@ -4,6 +4,7 @@ import fs from 'fs';
 import { allSeedData } from './seedData';
 
 let db: Database.Database | undefined;
+let isSeeding = false;
 
 export function getDb() {
   if (!db) {
@@ -21,10 +22,20 @@ export function getDb() {
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
 
-      db.transaction(() => {
-        initDb(db!);
-      })();
-      console.log(`[DB] Database initialization complete.`);
+      // 1. Initialize Tables Synchronously (Fast)
+      initTables(db);
+
+      // 2. Defer Seeding (Heavy) to prevent blocking startup
+      if (process.env.NEXT_PHASE !== 'phase-production-build') {
+        console.log("[DB] Deferring seed data population for 5 seconds to ensure fast startup...");
+        setTimeout(() => {
+          if (db) {
+            seedQuestionsAsync(db);
+          }
+        }, 5000);
+      }
+
+      console.log(`[DB] Initial connection and table check complete.`);
     } catch (error: any) {
       console.error(`[DB] CRITICAL ERROR during initialization:`, error);
       if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -37,157 +48,170 @@ export function getDb() {
   return db;
 }
 
-function initDb(db: Database.Database) {
-  // Questions Table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      subject TEXT CHECK(subject IN ('English', 'Urdu', 'Math')) NOT NULL,
-      difficulty TEXT CHECK(difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
-      class_level TEXT,
-      question_text TEXT NOT NULL,
-      options TEXT NOT NULL, -- JSON array of strings
-      correct_option INTEGER NOT NULL, -- Index of correct option
-      image_path TEXT
-    )
-  `);
+function initTables(db: Database.Database) {
+  db.transaction(() => {
+    // Questions Table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject TEXT CHECK(subject IN ('English', 'Urdu', 'Math')) NOT NULL,
+        difficulty TEXT CHECK(difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
+        class_level TEXT,
+        question_text TEXT NOT NULL,
+        options TEXT NOT NULL,
+        correct_option INTEGER NOT NULL,
+        image_path TEXT
+      )
+    `);
 
-  // Ensure columns exist
-  const questionCols = db.pragma("table_info(questions)") as any[];
-  if (!questionCols.find(c => c.name === 'class_level')) {
-    db.exec("ALTER TABLE questions ADD COLUMN class_level TEXT");
-  }
-  if (!questionCols.find(c => c.name === 'image_path')) {
-    db.exec("ALTER TABLE questions ADD COLUMN image_path TEXT");
-  }
+    // Ensure columns exist
+    const questionCols = db.pragma("table_info(questions)") as any[];
+    if (!questionCols.find(c => c.name === 'class_level')) {
+      db.exec("ALTER TABLE questions ADD COLUMN class_level TEXT");
+    }
+    if (!questionCols.find(c => c.name === 'image_path')) {
+      db.exec("ALTER TABLE questions ADD COLUMN image_path TEXT");
+    }
 
-  // Students Table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS students (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      access_code TEXT UNIQUE NOT NULL,
-      name TEXT,
-      father_name TEXT,
-      class_level TEXT,
-      status TEXT CHECK(status IN ('pending', 'started', 'completed')) DEFAULT 'pending',
-      score INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+    // Students Table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS students (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        access_code TEXT UNIQUE NOT NULL,
+        name TEXT,
+        father_name TEXT,
+        class_level TEXT,
+        status TEXT CHECK(status IN ('pending', 'started', 'completed')) DEFAULT 'pending',
+        score INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  const studentCols = db.pragma("table_info(students)") as any[];
-  if (!studentCols.find(c => c.name === 'father_name')) {
-    db.exec("ALTER TABLE students ADD COLUMN father_name TEXT");
-  }
+    const studentCols = db.pragma("table_info(students)") as any[];
+    if (!studentCols.find(c => c.name === 'father_name')) {
+      db.exec("ALTER TABLE students ADD COLUMN father_name TEXT");
+    }
 
-  // Test Sessions Table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS test_sessions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      student_id INTEGER NOT NULL,
-      question_ids TEXT NOT NULL,
-      answers TEXT,
-      start_time DATETIME,
-      end_time DATETIME,
-      FOREIGN KEY (student_id) REFERENCES students(id)
-    )
-  `);
+    // Test Sessions
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS test_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER NOT NULL,
+        question_ids TEXT NOT NULL,
+        answers TEXT,
+        start_time DATETIME,
+        end_time DATETIME,
+        FOREIGN KEY (student_id) REFERENCES students(id)
+      )
+    `);
 
-  // Admin Users
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS admin_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL
-    )
-  `);
+    // Admin Users
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL
+      )
+    `);
 
-  // Settings
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy',
-      easy_percent INTEGER NOT NULL DEFAULT 40,
-      medium_percent INTEGER NOT NULL DEFAULT 40,
-      hard_percent INTEGER NOT NULL DEFAULT 20,
-      english_questions INTEGER NOT NULL DEFAULT 10,
-      urdu_questions INTEGER NOT NULL DEFAULT 10,
-      math_questions INTEGER NOT NULL DEFAULT 10
-    )
-  `);
+    // Settings
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy',
+        easy_percent INTEGER NOT NULL DEFAULT 40,
+        medium_percent INTEGER NOT NULL DEFAULT 40,
+        hard_percent INTEGER NOT NULL DEFAULT 20,
+        english_questions INTEGER NOT NULL DEFAULT 10,
+        urdu_questions INTEGER NOT NULL DEFAULT 10,
+        math_questions INTEGER NOT NULL DEFAULT 10
+      )
+    `);
 
-  const settingsCols = db.pragma("table_info(settings)") as any[];
-  if (!settingsCols.find(c => c.name === 'english_questions')) {
-    db.exec("ALTER TABLE settings ADD COLUMN english_questions INTEGER NOT NULL DEFAULT 10");
-  }
-  if (!settingsCols.find(c => c.name === 'urdu_questions')) {
-    db.exec("ALTER TABLE settings ADD COLUMN urdu_questions INTEGER NOT NULL DEFAULT 10");
-  }
-  if (!settingsCols.find(c => c.name === 'math_questions')) {
-    db.exec("ALTER TABLE settings ADD COLUMN math_questions INTEGER NOT NULL DEFAULT 10");
-  }
+    const settingsCols = db.pragma("table_info(settings)") as any[];
+    if (!settingsCols.find(c => c.name === 'english_questions')) {
+      db.exec("ALTER TABLE settings ADD COLUMN english_questions INTEGER NOT NULL DEFAULT 10");
+    }
+    if (!settingsCols.find(c => c.name === 'urdu_questions')) {
+      db.exec("ALTER TABLE settings ADD COLUMN urdu_questions INTEGER NOT NULL DEFAULT 10");
+    }
+    if (!settingsCols.find(c => c.name === 'math_questions')) {
+      db.exec("ALTER TABLE settings ADD COLUMN math_questions INTEGER NOT NULL DEFAULT 10");
+    }
 
-  const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings").get() as { count: number };
-  if (settingsCount.count === 0) {
-    db.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
-  }
+    const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings").get() as { count: number };
+    if (settingsCount.count === 0) {
+      db.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
+    }
 
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_questions_lookup ON questions (subject, class_level, difficulty);
-    CREATE INDEX IF NOT EXISTS idx_students_access ON students (access_code);
-    CREATE INDEX IF NOT EXISTS idx_test_sessions_student ON test_sessions (student_id);
-  `);
-
-  seedQuestions(db);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_questions_lookup ON questions (subject, class_level, difficulty);
+      CREATE INDEX IF NOT EXISTS idx_students_access ON students (access_code);
+      CREATE INDEX IF NOT EXISTS idx_test_sessions_student ON test_sessions (student_id);
+    `);
+  })();
 }
 
-function seedQuestions(db: Database.Database) {
-  console.log("[DB] Checking for missing questions...");
+function seedQuestionsAsync(db: Database.Database) {
+  if (isSeeding) return;
+  isSeeding = true;
 
-  const insert = db.prepare(`
-    INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
+  try {
+    console.log("[DB] Background seed check starting...");
 
-  const checkExists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = ?");
+    const insert = db.prepare(`
+      INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
 
-  for (const [arrayName, questions] of Object.entries(allSeedData)) {
-    let subject = 'Math';
-    let difficulty = 'Easy';
-    let classLevel = 'Grade 1';
+    const checkExists = db.prepare("SELECT id FROM questions WHERE question_text = ? AND class_level = ?");
 
-    if (arrayName === 'easyQuestions') { }
-    else if (arrayName === 'mediumQuestions') { difficulty = 'Medium'; }
-    else if (arrayName === 'hardQuestions') { difficulty = 'Hard'; }
-    else if (arrayName === 'engEasyQuestions') { subject = 'English'; }
-    else if (arrayName === 'engMedQuestions') { subject = 'English'; difficulty = 'Medium'; }
-    else if (arrayName === 'engHardQuestions') { subject = 'English'; difficulty = 'Hard'; }
-    else if (arrayName === 'urduEasyQuestions') { subject = 'Urdu'; }
-    else if (arrayName === 'urduMedQuestions') { subject = 'Urdu'; difficulty = 'Medium'; }
-    else if (arrayName === 'urduHardQuestions') { subject = 'Urdu'; difficulty = 'Hard'; }
-    else {
-      const match = arrayName.match(/^(eng|math|urdu)(\d+)(Easy|Med|Hard)Questions$/);
-      if (match) {
-        const [, subj, level, diff] = match;
-        subject = subj === 'eng' ? 'English' : subj === 'urdu' ? 'Urdu' : 'Math';
-        classLevel = `Grade ${level}`;
-        difficulty = diff === 'Med' ? 'Medium' : diff;
-      }
-    }
+    // Use a single transaction for everything to be ultra fast
+    db.transaction(() => {
+      for (const [arrayName, questions] of Object.entries(allSeedData)) {
+        let subject = 'Math';
+        let difficulty = 'Easy';
+        let classLevel = 'Grade 1';
 
-    const countCheck = db.prepare(`
-      SELECT COUNT(*) as count FROM questions 
-      WHERE subject = ? AND class_level = ? AND difficulty = ?
-    `).get(subject, classLevel, difficulty) as { count: number };
+        if (arrayName === 'easyQuestions') { }
+        else if (arrayName === 'mediumQuestions') { difficulty = 'Medium'; }
+        else if (arrayName === 'hardQuestions') { difficulty = 'Hard'; }
+        else if (arrayName === 'engEasyQuestions') { subject = 'English'; }
+        else if (arrayName === 'engMedQuestions') { subject = 'English'; difficulty = 'Medium'; }
+        else if (arrayName === 'engHardQuestions') { subject = 'English'; difficulty = 'Hard'; }
+        else if (arrayName === 'urduEasyQuestions') { subject = 'Urdu'; }
+        else if (arrayName === 'urduMedQuestions') { subject = 'Urdu'; difficulty = 'Medium'; }
+        else if (arrayName === 'urduHardQuestions') { subject = 'Urdu'; difficulty = 'Hard'; }
+        else {
+          const match = arrayName.match(/^(eng|math|urdu)(\d+)(Easy|Med|Hard)Questions$/);
+          if (match) {
+            const [, subj, level, diff] = match;
+            subject = subj === 'eng' ? 'English' : subj === 'urdu' ? 'Urdu' : 'Math';
+            classLevel = `Grade ${level}`;
+            difficulty = diff === 'Med' ? 'Medium' : diff;
+          }
+        }
 
-    if (countCheck.count < 30) {
-      console.log(`[DB] Seeding ${subject} ${classLevel} ${difficulty}...`);
-      for (const q of questions) {
-        const exists = checkExists.get(q.question_text, classLevel);
-        if (!exists) {
-          insert.run(subject, difficulty, classLevel, q.question_text, JSON.stringify(q.options), q.correct_option);
+        const countCheck = db.prepare(`
+          SELECT COUNT(*) as count FROM questions 
+          WHERE subject = ? AND class_level = ? AND difficulty = ?
+        `).get(subject, classLevel, difficulty) as { count: number };
+
+        if (countCheck.count < 30) {
+          console.log(`[DB] Seeding ${subject} ${classLevel} ${difficulty}...`);
+          for (const q of questions) {
+            const exists = checkExists.get(q.question_text, classLevel);
+            if (!exists) {
+              insert.run(subject, difficulty, classLevel, q.question_text, JSON.stringify(q.options), q.correct_option);
+            }
+          }
         }
       }
-    }
+    })();
+    console.log("[DB] Background seeding complete.");
+  } catch (err) {
+    console.error("[DB] Error during background seeding:", err);
+  } finally {
+    isSeeding = false;
   }
 }
