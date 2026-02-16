@@ -24,9 +24,20 @@ function initTables(database: any) {
       CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy', easy_percent INTEGER NOT NULL DEFAULT 40, medium_percent INTEGER NOT NULL DEFAULT 40, hard_percent INTEGER NOT NULL DEFAULT 20, english_questions INTEGER NOT NULL DEFAULT 10, urdu_questions INTEGER NOT NULL DEFAULT 10, math_questions INTEGER NOT NULL DEFAULT 10);
     `);
+
+    // Default Settings
     const count = database.prepare("SELECT COUNT(*) as count FROM settings").get();
     if (count.count === 0) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
+    }
+
+    // Default Admin (admin/admin)
+    const adminCount = database.prepare("SELECT COUNT(*) as count FROM admin_users").get();
+    if (adminCount.count === 0) {
+      const bcrypt = require('bcryptjs');
+      const hash = bcrypt.hashSync('admin', 10);
+      database.prepare("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)").run('admin', hash);
+      console.log('[DB] Default admin user created (admin/admin)');
     }
   } catch (err: any) {
     console.error('[DB] Passive Init Error:', err.message);
