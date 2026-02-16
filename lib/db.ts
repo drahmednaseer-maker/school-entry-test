@@ -3,7 +3,6 @@ import fs from 'fs';
 
 let db: any = null;
 
-// Build-safe mock
 const mockDb = {
   prepare: () => ({
     get: () => ({}),
@@ -64,44 +63,33 @@ function initTables(database: any) {
         math_questions INTEGER NOT NULL DEFAULT 10
       );
     `);
-
-    const settingsCount = database.prepare("SELECT COUNT(*) as count FROM settings").get();
-    if (settingsCount.count === 0) {
+    const count = database.prepare("SELECT COUNT(*) as count FROM settings").get();
+    if (count.count === 0) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
   } catch (err: any) {
-    console.error('[DB] Schema setup error:', err.message);
+    console.error('[DB] Static table init error:', err.message);
   }
 }
 
 export function getDb(): any {
-  // 1. Build Phase Guard
   if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true') {
     return mockDb as any;
   }
-
   if (!db) {
-    // VITAL: Resolve path relative to process.cwd() for container compatibility
     const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
-
     try {
-      console.log(`[DB] Using database at: ${dbPath}`);
       const dbDir = path.dirname(dbPath);
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-
+      if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
       const Database = require('better-sqlite3');
       db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
-
       initTables(db);
-    } catch (error: any) {
-      console.error(`[DB] Failed to load database:`, error.message);
+    } catch (e: any) {
+      console.error('[DB] Runtime failure:', e.message);
       db = mockDb;
     }
   }
-
   return db;
 }
