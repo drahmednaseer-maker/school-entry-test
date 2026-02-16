@@ -4,9 +4,7 @@ import fs from 'fs';
 
 let db: any = null;
 
-/**
- * Build-safe mock to prevent pre-rendering crashes
- */
+// Build-safe mock
 const mockDb = {
   prepare: () => ({
     get: () => ({}),
@@ -21,16 +19,21 @@ const mockDb = {
 
 export function getDb(): Database.Database {
   // 1. Build Phase Guard
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
+  if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true') {
     return mockDb as any;
   }
 
   if (!db) {
-    // 2. Determine path. Professional default for Docker environments.
-    const dbPath = process.env.DATABASE_URL || '/app/data/school.db';
+    // 2. Intelligent Pathing
+    let dbPath = process.env.DATABASE_URL;
+
+    if (!dbPath) {
+      // Default to root folder for simplicity
+      dbPath = 'school.db';
+    }
 
     try {
-      console.log(`[DB] Initializing database at: ${dbPath}`);
+      console.log(`[DB] Opening: ${path.resolve(dbPath)}`);
 
       const dbDir = path.dirname(dbPath);
       if (dbDir !== '.' && !fs.existsSync(dbDir)) {
@@ -42,11 +45,13 @@ export function getDb(): Database.Database {
       db.pragma('busy_timeout = 10000');
 
       initTables(db);
+      console.log(`[DB] Successfully connected.`);
     } catch (error: any) {
-      console.error(`[DB] Error:`, error.message);
-      // Fallback only to keep the app booting for health checks
+      console.error(`[DB] Initialization error:`, error.message);
+      // Fallback to in-memory to ensure health checks pass
       db = new Database(':memory:');
       initTables(db);
+      console.warn(`[DB] Using in-memory fallback.`);
     }
   }
   return db;
