@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 
-let db: any = null;
+let dbInstance: any = null;
 let initialized = false;
 
 // Build-safe mock
@@ -17,14 +17,9 @@ const mockDb = {
   transaction: (fn: any) => fn,
 };
 
-/**
- * EXTREMELY LAZY INITIALIZATION
- * Only runs when someone actually calls a database method.
- * Never runs during server startup/boot.
- */
 function ensureInitialized(database: any) {
   if (initialized) return;
-  console.log('[DB] First access detected. Initializing tables...');
+  console.log('[DB] Running lazy schema initialization...');
 
   try {
     database.exec(`
@@ -79,9 +74,9 @@ function ensureInitialized(database: any) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
     initialized = true;
-    console.log('[DB] Tables verified.');
+    console.log('[DB] Schema verified.');
   } catch (err: any) {
-    console.error('[DB] Schema setup error:', err.message);
+    console.error('[DB] Schema error:', err.message);
   }
 }
 
@@ -91,45 +86,45 @@ export function getDb(): any {
     return mockDb as any;
   }
 
-  if (!db) {
-    let dbPath = process.env.DATABASE_URL || 'school.db';
+  if (!dbInstance) {
+    // 2. Resolve absolute path
+    const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
 
     try {
-      console.log(`[DB] Opening connection to: ${dbPath}`);
+      console.log(`[DB] Connecting to: ${dbPath}`);
 
       const dbDir = path.dirname(dbPath);
-      if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+      if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
+      // VITAL: Use require for native module
       const Database = require('better-sqlite3');
-      db = new Database(dbPath, { timeout: 10000 });
-      db.pragma('journal_mode = WAL');
-      db.pragma('busy_timeout = 10000');
+      const innerDb = new Database(dbPath, { timeout: 10000 });
+      innerDb.pragma('journal_mode = WAL');
+      innerDb.pragma('busy_timeout = 10000');
 
-      // NOTICE: We do NOT call ensureInitialized here.
-      // We wrap the db in a Proxy to call it on first use.
-      return new Proxy(db, {
+      // 3. Robust Proxy Wrapper
+      // This ensures that even if getDb is called multiple times,
+      // the initialization check ALWAYS happens before any method call.
+      dbInstance = new Proxy(innerDb, {
         get(target, prop) {
-          if (typeof target[prop] === 'function') {
+          const value = target[prop];
+          if (typeof value === 'function') {
             ensureInitialized(target);
-            return target[prop].bind(target);
+            return value.bind(target);
           }
-          return target[prop];
+          return value;
         }
       });
 
+      console.log(`[DB] Connection successful.`);
     } catch (error: any) {
-      console.error(`[DB] Crash prevented:`, error.message);
-      try {
-        const Database = require('better-sqlite3');
-        db = new Database(':memory:');
-        return db;
-      } catch (inner) {
-        return mockDb;
-      }
+      console.error(`[DB] Failed to load native driver:`, error.message);
+      // Last-ditch fallback
+      dbInstance = mockDb;
     }
   }
 
-  return db;
+  return dbInstance;
 }
