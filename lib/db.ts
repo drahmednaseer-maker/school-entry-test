@@ -70,7 +70,7 @@ function initTables(database: any) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
   } catch (err: any) {
-    console.error('[DB] Initialization error:', err.message);
+    console.error('[DB] Schema setup error:', err.message);
   }
 }
 
@@ -81,10 +81,11 @@ export function getDb(): any {
   }
 
   if (!db) {
+    // VITAL: Resolve path relative to process.cwd() for container compatibility
     const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
 
     try {
-      console.log(`[DB] Connecting to singleton: ${dbPath}`);
+      console.log(`[DB] Using database at: ${dbPath}`);
       const dbDir = path.dirname(dbPath);
       if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
@@ -97,7 +98,7 @@ export function getDb(): any {
 
       initTables(db);
     } catch (error: any) {
-      console.error(`[DB] Critical Error:`, error.message);
+      console.error(`[DB] Failed to load database:`, error.message);
       db = mockDb;
     }
   }
