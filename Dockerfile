@@ -1,23 +1,23 @@
-# --- STAGE 1: Build ---
-FROM node:20-slim AS builder
+# Use the full Node 20 image (Debian) which includes build tools (gcc, g++, make, python)
+# This avoids the heavy apt-get install step that failed in the slim image.
+FROM node:20 AS builder
 
 WORKDIR /app
 
-# Install build dependencies for better-sqlite3
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
+# Install dependencies
 COPY package*.json ./
-RUN npm ci
+# Use npm install to ensure local compilation of better-sqlite3 for this specific OS
+RUN npm install
 
+# Copy source code
 COPY . .
+
+# Build the Next.js application
 RUN npm run build
 
-# --- STAGE 2: Runner ---
-FROM node:20-slim AS runner
+# --- Runner Stage ---
+# We use the full image for the runner too to ensure all shared libraries for native modules are present
+FROM node:20 AS runner
 
 WORKDIR /app
 
@@ -25,22 +25,16 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Install curl for health checks (optional)
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-RUN addgroup --system --gid 1001 nodejs
-RUN addUser --system --uid 1001 nextjs
-
-# Copy the standalone build result
+# Copy the standalone build if enabled, or the full project
+# Since standalone is enabled in next.config.ts, we copy those results
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Ensure data directory exists for SQLite
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
-
-USER nextjs
+# Ensure the data directory is present for the SQLite volume
+RUN mkdir -p /app/data
 
 EXPOSE 3000
 
+# Start using the standalone server
 CMD ["node", "server.js"]
