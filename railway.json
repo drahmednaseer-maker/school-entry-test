@@ -4,6 +4,7 @@
         "numReplicas": 1,
         "restartPolicyType": "ON_FAILURE",
         "healthcheckPath": "/api/health",
-        "healthcheckTimeout": 120
+        "healthcheckTimeout": 120,
+        "servicePort": 3000
     }
 }
