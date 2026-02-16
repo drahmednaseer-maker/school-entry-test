@@ -29,7 +29,7 @@ function initTables(database: any) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
   } catch (err: any) {
-    console.error('[DB] Schema error:', err.message);
+    console.error('[DB] Schema Error:', err.message);
   }
 }
 
@@ -37,19 +37,19 @@ export function getDb(): any {
   if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true') {
     return mockDb as any;
   }
-  if (!db) {
-    // FORCE location to /app/school.db for Railway Linux standard
-    const isRailway = !!process.env.RAILWAY_STATIC_URL || !!process.env.PORT;
-    const dbPath = isRailway
-      ? path.join(process.cwd(), 'school.db')
-      : path.resolve(process.cwd(), 'school.db');
 
+  if (!db) {
+    const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
     try {
+      const dbDir = path.dirname(dbPath);
+      if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+
       const Database = require('better-sqlite3');
       db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
       initTables(db);
+      console.log('[DB] Connected successfully');
     } catch (e: any) {
       console.error('[DB] Driver failure:', e.message);
       db = mockDb;
