@@ -1,11 +1,20 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
+import fs from 'fs';
+
 let db: Database.Database | undefined;
 
 export function getDb() {
   if (!db) {
     const dbPath = process.env.DATABASE_URL || 'school.db';
+
+    // Ensure the directory exists (important for Railway Volumes)
+    const dbDir = path.dirname(dbPath);
+    if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
     db = new Database(dbPath, { verbose: console.log });
     db.pragma('journal_mode = WAL');
     initDb(db);
