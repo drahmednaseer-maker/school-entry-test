@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 let db: any = null;
+// Force Restart: 2026-02-16T18:59:00Z
 let initialized = false;
 
 // Build-safe mock
