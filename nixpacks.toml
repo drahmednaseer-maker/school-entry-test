@@ -1,12 +1,16 @@
 [phases.setup]
 nixPkgs = ["nodejs", "python3", "gcc", "gnumake"]
 
+[phases.install]
+# We use npm install instead of npm ci to ensure local compilation of native modules on Linux
+cmds = ["npm install"]
+
 [phases.build]
-cmds = ["npm install", "npm run build"]
+cmds = ["npm run build"]
 
 [variables]
 NODE_ENV = "production"
-HOSTNAME = "0.0.0.0"
+NXT_HOSTNAME = "0.0.0.0"
 
 [start]
 cmd = "npm run start"

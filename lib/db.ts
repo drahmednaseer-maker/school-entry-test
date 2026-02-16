@@ -1,9 +1,12 @@
+import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
 let db: any = null;
 
-// Mock for build phase or failures
+/**
+ * Build-safe mock to prevent pre-rendering crashes
+ */
 const mockDb = {
   prepare: () => ({
     get: () => ({}),
@@ -16,43 +19,39 @@ const mockDb = {
   transaction: (fn: any) => fn,
 };
 
-export function getDb(): any {
-  // Build Phase Guard
-  if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.IS_BUILD === 'true') {
-    return mockDb;
+export function getDb(): Database.Database {
+  // 1. Build Phase Guard
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return mockDb as any;
   }
 
   if (!db) {
+    // 2. Determine path. Always prefer an environment variable in production.
+    // On Railway, 'school.db' in the root is fine for ephemeral testing, 
+    // or /app/data/school.db if a volume is mounted.
+    const dbPath = process.env.DATABASE_URL || 'school.db';
+
     try {
-      // Dynamic require to prevent top-level import errors
-      const Database = require('better-sqlite3');
+      console.log(`[DB] Initializing database: ${path.resolve(dbPath)}`);
 
-      let dbPath = process.env.DATABASE_URL;
-      if (!dbPath) {
-        // Use a local path that is definitely writeable in standard environments
-        dbPath = 'school.db';
+      // Ensure directory exists if path is specified
+      const dbDir = path.dirname(dbPath);
+      if (dbDir !== '.' && !fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
       }
-
-      console.log(`[DB] Attempting to open database at: ${path.resolve(dbPath)}`);
 
       db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
 
       initTables(db);
-      console.log(`[DB] Database successfully initialized.`);
+      console.log(`[DB] Database ready.`);
     } catch (error: any) {
-      console.error(`[DB] FATAL INITIALIZATION ERROR:`, error.message);
-      // Recovery mode: In-memory
-      try {
-        const Database = require('better-sqlite3');
-        db = new Database(':memory:');
-        initTables(db);
-        console.warn(`[DB] Recovery mode active: Using in-memory store.`);
-      } catch (innerError: any) {
-        console.error(`[DB] NATIVE MODULE LOAD FAILED:`, innerError.message);
-        return mockDb;
-      }
+      console.error(`[DB] Initialization error:`, error.message);
+      // Recovery mode: In-memory store to keep the app booting
+      db = new Database(':memory:');
+      initTables(db);
+      console.warn(`[DB] Fallback: Using in-memory database.`);
     }
   }
   return db;
@@ -106,8 +105,8 @@ function initTables(db: any) {
     );
   `);
 
-  const row = db.prepare("SELECT count(*) as count FROM settings").get();
-  if (row && row.count === 0) {
+  const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings").get();
+  if (settingsCount.count === 0) {
     db.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
   }
 }
