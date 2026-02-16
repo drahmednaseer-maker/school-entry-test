@@ -13,7 +13,11 @@ export function getDb() {
   }
 
   if (!db) {
-    const dbPath = process.env.DATABASE_URL || 'school.db';
+    let dbPath = process.env.DATABASE_URL;
+    if (!dbPath) {
+      const isLinux = process.platform === 'linux';
+      dbPath = isLinux ? '/app/data/school.db' : 'school.db';
+    }
     console.log(`[DB] Start initialization: ${dbPath}`);
 
     try {
