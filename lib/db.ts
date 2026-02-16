@@ -4,9 +4,7 @@ import fs from 'fs';
 let db: any = null;
 let initialized = false;
 
-/**
- * Build-safe mock to prevent pre-rendering crashes
- */
+// Build-safe mock
 const mockDb = {
   prepare: () => ({
     get: () => ({}),
@@ -20,11 +18,13 @@ const mockDb = {
 };
 
 /**
- * Initializes tables only when needed.
- * This is separate from connection to prevent startup hangs.
+ * EXTREMELY LAZY INITIALIZATION
+ * Only runs when someone actually calls a database method.
+ * Never runs during server startup/boot.
  */
 function ensureInitialized(database: any) {
   if (initialized) return;
+  console.log('[DB] First access detected. Initializing tables...');
 
   try {
     database.exec(`
@@ -79,9 +79,9 @@ function ensureInitialized(database: any) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
     initialized = true;
-    console.log('[DB] Optimization: Tables verified.');
+    console.log('[DB] Tables verified.');
   } catch (err: any) {
-    console.error('[DB] Initialization error:', err.message);
+    console.error('[DB] Schema setup error:', err.message);
   }
 }
 
@@ -92,43 +92,43 @@ export function getDb(): any {
   }
 
   if (!db) {
-    // 2. Determine path. 
-    // On Railway, we use the current folder or a volume if provided.
     let dbPath = process.env.DATABASE_URL || 'school.db';
 
     try {
-      console.log(`[DB] Attempting to connect to: ${dbPath}`);
+      console.log(`[DB] Opening connection to: ${dbPath}`);
 
-      // Force directory creation for safety
       const dbDir = path.dirname(dbPath);
       if (dbDir !== '.' && !fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
-      // VITAL: Dynamic require to prevent crash if native module is missing
       const Database = require('better-sqlite3');
       db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
 
-      console.log(`[DB] Dynamic load successful.`);
+      // NOTICE: We do NOT call ensureInitialized here.
+      // We wrap the db in a Proxy to call it on first use.
+      return new Proxy(db, {
+        get(target, prop) {
+          if (typeof target[prop] === 'function') {
+            ensureInitialized(target);
+            return target[prop].bind(target);
+          }
+          return target[prop];
+        }
+      });
+
     } catch (error: any) {
-      console.error(`[DB] Runtime crash prevented:`, error.message);
-      // Fallback to in-memory so health checks pass
+      console.error(`[DB] Crash prevented:`, error.message);
       try {
         const Database = require('better-sqlite3');
         db = new Database(':memory:');
-        console.warn(`[DB] Running in safety :memory: mode.`);
-      } catch (innerError: any) {
-        console.error(`[DB] Native driver missing entirely.`);
+        return db;
+      } catch (inner) {
         return mockDb;
       }
     }
-  }
-
-  // Ensure tables exist before returning (Lazy Initialization)
-  if (db && db !== mockDb) {
-    ensureInitialized(db);
   }
 
   return db;
