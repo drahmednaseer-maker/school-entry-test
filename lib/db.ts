@@ -6,10 +6,26 @@ import { allSeedData } from './seedData';
 let db: Database.Database | undefined;
 let isSeeding = false;
 
-export function getDb() {
-  // During build phase, NEVER attempt to initialize a real DB if it might block/fail
+/**
+ * A safe dummy proxy that prevents build-time crashes when getDb() is called
+ */
+const buildPhaseDbProxy = new Proxy({}, {
+  get: (target, prop) => {
+    // Return a dummy function for any method call (prepare, exec, etc.)
+    return () => ({
+      get: () => ({}),
+      all: () => [],
+      run: () => ({ lastInsertRowid: 0, changes: 0 }),
+      pragma: () => [],
+      transaction: (fn: any) => fn,
+    });
+  }
+});
+
+export function getDb(): Database.Database {
+  // During build phase, return the proxy to prevent pre-render crashes
   if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return {} as any;
+    return buildPhaseDbProxy as any;
   }
 
   if (!db) {
@@ -27,29 +43,24 @@ export function getDb() {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
-      console.log(`[DB] Opening better-sqlite3 connection...`);
-      db = new Database(dbPath, { timeout: 10000 }); // Explicit connection timeout
+      db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
 
-      console.log(`[DB] Initializing tables...`);
       initTables(db);
 
       console.log(`[DB] Fast startup phase complete.`);
 
-      // Defer seeding significantly
       setTimeout(() => {
         if (db) {
-          console.log("[DB] Starting deferred background seeding...");
           seedQuestionsAsync(db);
         }
       }, 10000);
 
     } catch (error: any) {
       console.error(`[DB] CONNECTION ERROR:`, error.message);
-      // Fallback to in-memory if disk is blocked, just to keep the process alive for health checks
       if (!process.env.DATABASE_URL) {
-        console.warn("[DB] Disk access failed. Falling back to in-memory for recovery.");
+        console.warn("[DB] Disk access failed. Falling back to in-memory.");
         db = new Database(':memory:');
         initTables(db);
       } else {
@@ -57,13 +68,12 @@ export function getDb() {
       }
     }
   }
-  return db;
+  return db!;
 }
 
 function initTables(db: Database.Database) {
   try {
     db.transaction(() => {
-      // Basic table creation is very fast
       db.exec(`
         CREATE TABLE IF NOT EXISTS questions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
