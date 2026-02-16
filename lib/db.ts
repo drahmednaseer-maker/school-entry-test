@@ -18,57 +18,18 @@ const mockDb = {
 function initTables(database: any) {
   try {
     database.exec(`
-      CREATE TABLE IF NOT EXISTS questions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        subject TEXT NOT NULL,
-        difficulty TEXT NOT NULL,
-        class_level TEXT,
-        question_text TEXT NOT NULL,
-        options TEXT NOT NULL,
-        correct_option INTEGER NOT NULL,
-        image_path TEXT
-      );
-      CREATE TABLE IF NOT EXISTS students (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        access_code TEXT UNIQUE NOT NULL,
-        name TEXT,
-        father_name TEXT,
-        class_level TEXT,
-        status TEXT DEFAULT 'pending',
-        score INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS test_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        student_id INTEGER NOT NULL,
-        question_ids TEXT NOT NULL,
-        answers TEXT,
-        start_time DATETIME,
-        end_time DATETIME,
-        FOREIGN KEY (student_id) REFERENCES students(id)
-      );
-      CREATE TABLE IF NOT EXISTS admin_users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy',
-        easy_percent INTEGER NOT NULL DEFAULT 40,
-        medium_percent INTEGER NOT NULL DEFAULT 40,
-        hard_percent INTEGER NOT NULL DEFAULT 20,
-        english_questions INTEGER NOT NULL DEFAULT 10,
-        urdu_questions INTEGER NOT NULL DEFAULT 10,
-        math_questions INTEGER NOT NULL DEFAULT 10
-      );
+      CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY AUTOINCREMENT, subject TEXT NOT NULL, difficulty TEXT NOT NULL, class_level TEXT, question_text TEXT NOT NULL, options TEXT NOT NULL, correct_option INTEGER NOT NULL, image_path TEXT);
+      CREATE TABLE IF NOT EXISTS students (id INTEGER PRIMARY KEY AUTOINCREMENT, access_code TEXT UNIQUE NOT NULL, name TEXT, father_name TEXT, class_level TEXT, status TEXT DEFAULT 'pending', score INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE IF NOT EXISTS test_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, student_id INTEGER NOT NULL, question_ids TEXT NOT NULL, answers TEXT, start_time DATETIME, end_time DATETIME, FOREIGN KEY (student_id) REFERENCES students(id));
+      CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy', easy_percent INTEGER NOT NULL DEFAULT 40, medium_percent INTEGER NOT NULL DEFAULT 40, hard_percent INTEGER NOT NULL DEFAULT 20, english_questions INTEGER NOT NULL DEFAULT 10, urdu_questions INTEGER NOT NULL DEFAULT 10, math_questions INTEGER NOT NULL DEFAULT 10);
     `);
     const count = database.prepare("SELECT COUNT(*) as count FROM settings").get();
     if (count.count === 0) {
       database.prepare("INSERT INTO settings (id, school_name) VALUES (1, 'Mardan Youth''s Academy')").run();
     }
   } catch (err: any) {
-    console.error('[DB] Static table init error:', err.message);
+    console.error('[DB] Schema error:', err.message);
   }
 }
 
@@ -77,17 +38,20 @@ export function getDb(): any {
     return mockDb as any;
   }
   if (!db) {
-    const dbPath = path.resolve(process.cwd(), process.env.DATABASE_URL || 'school.db');
+    // FORCE location to /app/school.db for Railway Linux standard
+    const isRailway = !!process.env.RAILWAY_STATIC_URL || !!process.env.PORT;
+    const dbPath = isRailway
+      ? path.join(process.cwd(), 'school.db')
+      : path.resolve(process.cwd(), 'school.db');
+
     try {
-      const dbDir = path.dirname(dbPath);
-      if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
       const Database = require('better-sqlite3');
       db = new Database(dbPath, { timeout: 10000 });
       db.pragma('journal_mode = WAL');
       db.pragma('busy_timeout = 10000');
       initTables(db);
     } catch (e: any) {
-      console.error('[DB] Runtime failure:', e.message);
+      console.error('[DB] Driver failure:', e.message);
       db = mockDb;
     }
   }

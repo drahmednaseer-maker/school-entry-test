@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Minimalist Health Check
+ * Returns plain text to ensure zero JSON overhead and maximum compatibility.
+ */
 export async function GET() {
-    return NextResponse.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        env: process.env.NODE_ENV
-    }, { status: 200 });
+    return new Response('OK', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' }
+    });
 }
