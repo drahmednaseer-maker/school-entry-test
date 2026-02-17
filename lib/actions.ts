@@ -7,7 +7,7 @@ import path from 'path';
 import mammoth from 'mammoth';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import { redirect } from 'next/navigation';
 
 // --- Authentication ---
@@ -58,46 +58,56 @@ export async function logout() {
     redirect('/admin/login');
 }
 
-// Decode token to get user role/id if needed, but for simplicity we rely on body or single update.
-// However, the requested feature is to allow admin to control passwords from settings.
-const cookieStore = await cookies();
-const token = cookieStore.get('admin_session')?.value;
-if (!token) return { error: 'Not authenticated' };
+export async function updatePassword(currentState: any, formData: FormData) {
+    const db = getDb();
+    const currentPassword = formData.get('current_password') as string;
+    const newPassword = formData.get('new_password') as string;
+    const confirmPassword = formData.get('confirm_password') as string;
 
-let payload;
-try {
-    const verified = await jwtVerify(token, JWT_SECRET);
-    payload = verified.payload;
-} catch (e) {
-    return { error: 'Invalid session' };
-}
-
-// Role check - only admin can change others' passwords, or anyone can change their own?
-// User request: "The admin should be able to control their login password for their settings menu."
-// This implies admin can change others.
-const targetUsername = formData.get('username') as string || payload.username as string;
-
-if (payload.role !== 'admin' && targetUsername !== payload.username) {
-    return { error: 'Unauthorized to change this password' };
-}
-
-const user = db.prepare('SELECT * FROM admin_users WHERE username = ?').get(targetUsername) as any;
-
-if (!user) return { error: 'User not found' };
-
-// If changing own password, verify current. If admin changing others, skip current?
-if (targetUsername === payload.username) {
-    if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
-        return { error: 'Incorrect current password' };
+    if (newPassword !== confirmPassword) {
+        return { error: 'New passwords do not match' };
     }
-} else if (payload.role !== 'admin') {
-    return { error: 'Unauthorized' };
-}
 
-const newHash = bcrypt.hashSync(newPassword, 10);
-db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+    // Decode token to get user role/id if needed, but for simplicity we rely on body or single update.
+    // However, the requested feature is to allow admin to control passwords from settings.
+    const cookieStore = await cookies();
+    const token = cookieStore.get('admin_session')?.value;
+    if (!token) return { error: 'Not authenticated' };
 
-return { success: 'Password updated successfully' };
+    let payload;
+    try {
+        const verified = await jwtVerify(token, JWT_SECRET);
+        payload = verified.payload;
+    } catch (e) {
+        return { error: 'Invalid session' };
+    }
+
+    // Role check - only admin can change others' passwords, or anyone can change their own?
+    // User request: "The admin should be able to control their login password for their settings menu."
+    // This implies admin can change others.
+    const targetUsername = formData.get('username') as string || payload.username as string;
+
+    if (payload.role !== 'admin' && targetUsername !== payload.username) {
+        return { error: 'Unauthorized to change this password' };
+    }
+
+    const user = db.prepare('SELECT * FROM admin_users WHERE username = ?').get(targetUsername) as any;
+
+    if (!user) return { error: 'User not found' };
+
+    // If changing own password, verify current. If admin changing others, skip current?
+    if (targetUsername === payload.username) {
+        if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+            return { error: 'Incorrect current password' };
+        }
+    } else if (payload.role !== 'admin') {
+        return { error: 'Unauthorized' };
+    }
+
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+
+    return { success: 'Password updated successfully' };
 }
 
 // Helper to get all admin users for settings
