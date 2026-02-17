@@ -6,31 +6,24 @@ import { LayoutDashboard, Users, FileText, Settings, LogOut } from 'lucide-react
 import { logout } from '@/lib/actions';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
-import { jwtDecode } from 'jwt-decode'; // We need to install this or use a simple parser
 
-export default function AdminLayout({ children, schoolName }: { children: React.ReactNode, schoolName: string }) {
+interface AdminLayoutProps {
+    children: React.ReactNode;
+    settings: any;
+    userRole: string | null;
+    username: string | null;
+}
+
+export default function AdminLayout({ children, settings, userRole, username }: AdminLayoutProps) {
     const pathname = usePathname();
     const isLoginPage = pathname === '/admin/login';
 
-    // Get user role from cookie (client side)
-    const [userRole, setUserRole] = React.useState<string | null>(null);
-
+    // If staff, and on /admin (dashboard), redirect to /admin/students
     React.useEffect(() => {
-        const getCookie = (name: string) => {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop()?.split(';').shift();
-        };
-        const token = getCookie('admin_session');
-        if (token) {
-            try {
-                const decoded: any = jwtDecode(token);
-                setUserRole(decoded.role);
-            } catch (e) {
-                console.error('Failed to decode token', e);
-            }
+        if (userRole === 'staff' && pathname === '/admin') {
+            window.location.href = '/admin/students';
         }
-    }, [pathname]);
+    }, [userRole, pathname]);
 
     const allNavItems = [
         { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'exam_coordinator'] },
@@ -39,7 +32,7 @@ export default function AdminLayout({ children, schoolName }: { children: React.
         { href: '/admin/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
     ];
 
-    const navItems = allNavItems.filter(item => !userRole || item.roles.includes(userRole));
+    const navItems = allNavItems.filter(item => userRole && item.roles.includes(userRole));
 
     if (isLoginPage) {
         return <>{children}</>;
@@ -50,7 +43,7 @@ export default function AdminLayout({ children, schoolName }: { children: React.
             {/* Sidebar */}
             <aside className="w-64 bg-white shadow-md hidden md:flex flex-col">
                 <div className="p-6 border-b">
-                    <h1 className="text-xl font-bold text-blue-600 line-clamp-2">{schoolName}</h1>
+                    <h1 className="text-xl font-bold text-blue-600 line-clamp-2">{settings.school_name}</h1>
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
                     {navItems.map((item) => {

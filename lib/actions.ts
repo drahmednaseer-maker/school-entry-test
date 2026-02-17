@@ -14,6 +14,18 @@ import { redirect } from 'next/navigation';
 
 const JWT_SECRET = new TextEncoder().encode('super-secret-key-change-this-in-prod');
 
+export async function getCurrentUser() {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('admin_session')?.value;
+    if (!token) return null;
+    try {
+        const { payload } = await jwtVerify(token, JWT_SECRET);
+        return payload as { sub: string; username: string; role: string };
+    } catch (e) {
+        return null;
+    }
+}
+
 export async function login(formData: FormData) {
     const db = getDb();
     const username = formData.get('username') as string;

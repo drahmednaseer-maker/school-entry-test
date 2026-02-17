@@ -104,9 +104,15 @@ export default function TestClient({
                     <div className="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl h-12 w-12 flex items-center justify-center">
                         ST
                     </div>
-                    <div>
+                    <div className="flex flex-col items-center md:items-start">
                         <h1 className="text-xl font-bold text-gray-800 line-clamp-1">{schoolName}</h1>
-                        <p className="text-sm font-semibold text-blue-600">SnapTest • Entry Examination</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-sm font-semibold text-blue-600">SnapTest • Entry Examination</span>
+                            <span className="text-gray-300">|</span>
+                            <span className="text-sm text-gray-500 font-medium">
+                                Question {currentIdx + 1} of {questions.length}
+                            </span>
+                        </div>
                     </div>
                 </div>
 

@@ -32,7 +32,24 @@ export async function middleware(request: NextRequest) {
         }
 
         try {
-            await jwtVerify(token, JWT_SECRET);
+            const { payload } = await jwtVerify(token, JWT_SECRET);
+            const role = payload.role as string;
+
+            // Role-based route protection
+            if (role === 'staff') {
+                // Staff ONLY allowed /admin/students
+                if (pathname !== '/admin/students') {
+                    return NextResponse.redirect(new URL('/admin/students', request.url));
+                }
+            } else if (role === 'exam_coordinator') {
+                // Exam Coordinator NOT allowed /admin/questions and /admin/settings
+                const restricted = ['/admin/questions', '/admin/settings'];
+                if (restricted.some(route => pathname.startsWith(route))) {
+                    return NextResponse.redirect(new URL('/admin', request.url));
+                }
+            }
+            // Admin has full access
+
             return NextResponse.next();
         } catch (e) {
             console.error('Middleware auth error:', e);

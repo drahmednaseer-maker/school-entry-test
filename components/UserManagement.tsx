@@ -2,7 +2,7 @@
 
 import { updatePassword } from '@/lib/actions';
 import { useRef, useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode';
+
 
 interface User {
     id: number;
@@ -10,31 +10,22 @@ interface User {
     role: string;
 }
 
-export default function UserManagement({ users }: { users: User[] }) {
+interface UserManagementProps {
+    users: User[];
+    currentUsername: string | null;
+}
+
+export default function UserManagement({ users, currentUsername }: UserManagementProps) {
     const formRef = useRef<HTMLFormElement>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+
+
+
+    const [selectedUsername, setSelectedUsername] = useState<string>(currentUsername || (users.length > 0 ? users[0].username : ''));
 
     useEffect(() => {
-        const getCookie = (name: string) => {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop()?.split(';').shift();
-        };
-        const token = getCookie('admin_session');
-        if (token) {
-            try {
-                const decoded: any = jwtDecode(token);
-                setCurrentUsername(decoded.username);
-            } catch (e) { }
-        }
-    }, []);
-
-    const [selectedUsername, setSelectedUsername] = useState<string>('');
-
-    useEffect(() => {
-        if (currentUsername) setSelectedUsername(currentUsername);
-    }, [currentUsername]);
+        if (currentUsername && !selectedUsername) setSelectedUsername(currentUsername);
+    }, [currentUsername, selectedUsername]);
 
     async function handleSubmit(formData: FormData) {
         setMessage(null);

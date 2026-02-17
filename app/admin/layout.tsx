@@ -1,7 +1,17 @@
 import AdminLayout from '@/components/AdminLayout';
-import { getSettings } from '@/lib/actions';
+import { getSettings, getCurrentUser } from "@/lib/actions";
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
     const settings = await getSettings();
-    return <AdminLayout schoolName={settings.school_name}>{children}</AdminLayout>;
+    const user = await getCurrentUser();
+
+    return (
+        <AdminLayout
+            settings={settings}
+            userRole={user?.role || null}
+            username={user?.username || null}
+        >
+            {children}
+        </AdminLayout>
+    );
 }
