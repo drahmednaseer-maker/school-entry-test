@@ -16,21 +16,23 @@ type Question = {
     correct_option: number;
 };
 
+interface TestClientProps {
+    sessionId: number;
+    questions: Question[];
+    startTime: number;
+    schoolName: string;
+    studentName: string;
+    fatherName: string;
+}
+
 export default function TestClient({
     sessionId,
     questions,
-    startTime, // timestamp
+    startTime,
     schoolName,
     studentName,
     fatherName
-}: {
-    sessionId: number,
-    questions: Question[],
-    startTime: number, // timestamp
-    schoolName: string,
-    studentName: string,
-    fatherName: string
-}) {
+}: TestClientProps) {
     const router = useRouter();
     const [currentIdx, setCurrentIdx] = useState(0);
     const [answers, setAnswers] = useState<Record<number, number>>({});
