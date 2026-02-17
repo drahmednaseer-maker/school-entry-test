@@ -19,8 +19,8 @@ const notNastaliqUrdu = Noto_Nastaliq_Urdu({
 });
 
 export const metadata: Metadata = {
-  title: "School Entry Test System",
-  description: "Computerized Entry Test System",
+  title: "SnapTest - Mardan Youth's Academy",
+  description: "Computerized Entry Test System for Mardan Youth's Academy",
 };
 
 export default function RootLayout({

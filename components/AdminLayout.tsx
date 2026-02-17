@@ -6,16 +6,44 @@ import { LayoutDashboard, Users, FileText, Settings, LogOut } from 'lucide-react
 import { logout } from '@/lib/actions';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import { jwtDecode } from 'jwt-decode'; // We need to install this or use a simple parser
 
 export default function AdminLayout({ children, schoolName }: { children: React.ReactNode, schoolName: string }) {
     const pathname = usePathname();
+    const isLoginPage = pathname === '/admin/login';
 
-    const navItems = [
-        { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/admin/questions', label: 'Question Bank', icon: FileText },
-        { href: '/admin/students', label: 'Students & Codes', icon: Users },
-        { href: '/admin/settings', label: 'Settings', icon: Settings },
+    // Get user role from cookie (client side)
+    const [userRole, setUserRole] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(';').shift();
+        };
+        const token = getCookie('admin_session');
+        if (token) {
+            try {
+                const decoded: any = jwtDecode(token);
+                setUserRole(decoded.role);
+            } catch (e) {
+                console.error('Failed to decode token', e);
+            }
+        }
+    }, [pathname]);
+
+    const allNavItems = [
+        { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'exam_coordinator'] },
+        { href: '/admin/questions', label: 'Question Bank', icon: FileText, roles: ['admin'] },
+        { href: '/admin/students', label: 'Students & Codes', icon: Users, roles: ['admin', 'exam_coordinator', 'staff'] },
+        { href: '/admin/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
     ];
+
+    const navItems = allNavItems.filter(item => !userRole || item.roles.includes(userRole));
+
+    if (isLoginPage) {
+        return <>{children}</>;
+    }
 
     return (
         <div className="flex h-screen bg-gray-100">

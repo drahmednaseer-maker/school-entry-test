@@ -1,9 +1,10 @@
-import { getSettings } from '@/lib/actions';
+import { getSettings, getAllUsers } from '@/lib/actions';
 import GeneralSettingsForm from '@/components/GeneralSettingsForm';
-import UpdatePasswordForm from '@/components/UpdatePasswordForm';
+import UserManagement from '@/components/UserManagement';
 
 export default async function SettingsPage() {
     const settings = await getSettings();
+    const users = await getAllUsers();
 
     return (
         <div className="space-y-8">
@@ -11,7 +12,7 @@ export default async function SettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <GeneralSettingsForm initialSettings={settings} />
-                <UpdatePasswordForm />
+                <UserManagement users={users} />
             </div>
         </div>
     );

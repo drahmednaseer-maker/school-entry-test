@@ -10,9 +10,15 @@ export default function StudentForm() {
     async function handleSubmit(formData: FormData) {
         const name = formData.get('name') as string;
         const fatherName = formData.get('father_name') as string;
+        const fatherMobile = formData.get('father_mobile') as string;
         const classLevel = formData.get('class_level') as string;
 
-        const res = await generateStudentCode(name, fatherName, classLevel);
+        if (fatherMobile.length !== 11 || !/^\d+$/.test(fatherMobile)) {
+            alert('Mobile number must be exactly 11 digits');
+            return;
+        }
+
+        const res = await generateStudentCode(name, fatherName, fatherMobile, classLevel);
 
         if (res.success && res.code) {
             setLastCode(res.code);
@@ -35,6 +41,11 @@ export default function StudentForm() {
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Father's Name</label>
                     <input type="text" name="father_name" required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Father's Mobile (11 digits)</label>
+                    <input type="tel" name="father_mobile" required pattern="\d{11}" title="Must be 11 digits" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="03XXXXXXXXX" />
                 </div>
 
                 <div>

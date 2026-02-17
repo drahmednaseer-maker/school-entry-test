@@ -19,13 +19,17 @@ type Question = {
 export default function TestClient({
     sessionId,
     questions,
-    startTime,
-    schoolName
+    startTime, // timestamp
+    schoolName,
+    studentName,
+    fatherName
 }: {
     sessionId: number,
     questions: Question[],
     startTime: number, // timestamp
-    schoolName: string
+    schoolName: string,
+    studentName: string,
+    fatherName: string
 }) {
     const router = useRouter();
     const [currentIdx, setCurrentIdx] = useState(0);
@@ -93,13 +97,22 @@ export default function TestClient({
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-8">
             {/* Header */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border-b-4 border-blue-500 flex justify-between items-center sticky top-4 z-10">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 line-clamp-1">{schoolName}</h1>
-                    <p className="text-sm text-gray-500">
-                        {currentQ.subject} • Question {currentIdx + 1} of {questions.length}
-                    </p>
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border-b-4 border-blue-500 flex flex-col md:flex-row justify-between items-center sticky top-4 z-10 gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl h-12 w-12 flex items-center justify-center">
+                        ST
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800 line-clamp-1">{schoolName}</h1>
+                        <p className="text-sm font-semibold text-blue-600">SnapTest • Entry Examination</p>
+                    </div>
                 </div>
+
+                <div className="flex flex-col items-center md:items-end">
+                    <div className="text-lg font-bold text-gray-900">{studentName}</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wider">s/o {fatherName}</div>
+                </div>
+
                 <div className={clsx("flex items-center space-x-2 px-4 py-2 rounded-lg font-mono text-xl font-bold",
                     timeLeft < 60 ? "bg-red-100 text-red-600 animate-pulse" : "bg-blue-50 text-blue-600"
                 )}>

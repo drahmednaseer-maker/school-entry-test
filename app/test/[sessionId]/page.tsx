@@ -9,8 +9,13 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
     const { sessionId } = await props.params;
     const db = getDb();
 
-    // Fetch Session
-    const session = db.prepare('SELECT * FROM test_sessions WHERE id = ?').get(sessionId) as any;
+    // Fetch Session and Student
+    const session = db.prepare(`
+        SELECT ts.*, s.name as student_name, s.father_name 
+        FROM test_sessions ts
+        JOIN students s ON ts.student_id = s.id
+        WHERE ts.id = ?
+    `).get(sessionId) as any;
 
     if (!session) {
         redirect('/');
@@ -46,6 +51,8 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
                 questions={orderedQuestions}
                 startTime={startTimeMillis}
                 schoolName={settings.school_name}
+                studentName={session.student_name}
+                fatherName={session.father_name}
             />
         </div>
     );

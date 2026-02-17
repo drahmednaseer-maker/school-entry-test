@@ -26,7 +26,11 @@ export async function login(formData: FormData) {
     }
 
     // Create JWT
-    const token = await new SignJWT({ sub: user.id.toString(), username: user.username })
+    const token = await new SignJWT({
+        sub: user.id.toString(),
+        username: user.username,
+        role: user.role
+    })
         .setProtectedHeader({ alg: 'HS256' })
         .setExpirationTime('24h')
         .sign(JWT_SECRET);
@@ -54,59 +58,80 @@ export async function logout() {
     redirect('/admin/login');
 }
 
-export async function updatePassword(currentState: any, formData: FormData) {
-    const db = getDb();
-    const currentPassword = formData.get('current_password') as string;
-    const newPassword = formData.get('new_password') as string;
-    const confirmPassword = formData.get('confirm_password') as string;
+// Decode token to get user role/id if needed, but for simplicity we rely on body or single update.
+// However, the requested feature is to allow admin to control passwords from settings.
+const cookieStore = await cookies();
+const token = cookieStore.get('admin_session')?.value;
+if (!token) return { error: 'Not authenticated' };
 
-    if (newPassword !== confirmPassword) {
-        return { error: 'New passwords do not match' };
-    }
-
-    // Since we don't have user session in action easily without middleware passing it,
-    // we can parse the cookie again or just rely on the fact that middleware protects this route.
-    // However, we need to know WHICH user.
-    // For this simple app, there is only 'admin'. Or we decode token.
-
-    // Decode token to get user ID
-    const cookieStore = await cookies();
-    const token = cookieStore.get('admin_session')?.value;
-    if (!token) return { error: 'Not authenticated' };
-
-    // We assume token is valid if we reached here (middleware), but let's verify to get ID
-    // or just assume subject is available.
-    // Let's re-verify to be safe and get ID.
-    // Or just fetch the only admin user if single user system.
-    // But let's do it right: get user from DB using username 'admin' for now?
-    // Better: verify token.
-
-    // For simplicity in this `actions.ts` without importing middleware logic, 
-    // let's assume 'admin' user since req is single user.
-    // But better:
-    const user = db.prepare('SELECT * FROM admin_users WHERE username = ?').get('admin') as any; // Hardcoded for single admin system
-
-    if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
-        return { error: 'Incorrect current password' };
-    }
-
-    const newHash = bcrypt.hashSync(newPassword, 10);
-    db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
-
-    return { success: 'Password updated successfully' };
+let payload;
+try {
+    const verified = await jwtVerify(token, JWT_SECRET);
+    payload = verified.payload;
+} catch (e) {
+    return { error: 'Invalid session' };
 }
 
-export async function generateStudentCode(name: string, fatherName: string, classLevel: string) {
+// Role check - only admin can change others' passwords, or anyone can change their own?
+// User request: "The admin should be able to control their login password for their settings menu."
+// This implies admin can change others.
+const targetUsername = formData.get('username') as string || payload.username as string;
+
+if (payload.role !== 'admin' && targetUsername !== payload.username) {
+    return { error: 'Unauthorized to change this password' };
+}
+
+const user = db.prepare('SELECT * FROM admin_users WHERE username = ?').get(targetUsername) as any;
+
+if (!user) return { error: 'User not found' };
+
+// If changing own password, verify current. If admin changing others, skip current?
+if (targetUsername === payload.username) {
+    if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+        return { error: 'Incorrect current password' };
+    }
+} else if (payload.role !== 'admin') {
+    return { error: 'Unauthorized' };
+}
+
+const newHash = bcrypt.hashSync(newPassword, 10);
+db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+
+return { success: 'Password updated successfully' };
+}
+
+// Helper to get all admin users for settings
+export async function getAllUsers() {
+    const db = getDb();
+    return db.prepare('SELECT id, username, role FROM admin_users').all() as any[];
+}
+
+export async function generateStudentCode(name: string, fatherName: string, fatherMobile: string, classLevel: string) {
     const db = getDb();
     const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
-        db.prepare('INSERT INTO students (access_code, name, father_name, class_level) VALUES (?, ?, ?, ?)').run(accessCode, name, fatherName, classLevel);
+        db.prepare('INSERT INTO students (access_code, name, father_name, father_mobile, class_level) VALUES (?, ?, ?, ?, ?)').run(accessCode, name, fatherName, fatherMobile, classLevel);
         revalidatePath('/admin/students');
         return { success: true, code: accessCode };
     } catch (error) {
         console.error('Error generating code:', error);
         return { success: false, error: 'Failed to generate code' };
+    }
+}
+
+export async function deleteStudent(id: number) {
+    const db = getDb();
+    try {
+        // Delete related test sessions first
+        db.prepare('DELETE FROM test_sessions WHERE student_id = ?').run(id);
+        db.prepare('DELETE FROM students WHERE id = ?').run(id);
+        revalidatePath('/admin/students');
+        revalidatePath('/admin');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting student:', error);
+        return { success: false, error: 'Failed to delete student' };
     }
 }
 

@@ -27,11 +27,12 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="mx-auto bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mb-4 text-blue-600">
-            <BookOpen size={32} />
+          <div className="mx-auto bg-blue-600 w-20 h-20 rounded-2xl shadow-lg flex items-center justify-center mb-6 text-white text-3xl font-bold transform -rotate-3 hover:rotate-0 transition-transform">
+            ST
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">School Entry Test</h1>
-          <p className="text-gray-500 mt-2">Enter your access code to begin</p>
+          <h2 className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-1">Mardan Youth's Academy</h2>
+          <h1 className="text-4xl font-extrabold text-gray-900 mb-2">SnapTest</h1>
+          <p className="text-gray-500">Computerized Entry Test System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -66,7 +67,7 @@ export default function Home() {
         </form>
 
         <div className="text-center text-xs text-gray-400">
-          <p>Mardan School System &copy; {new Date().getFullYear()}</p>
+          <p>Mardan Youth's Academy &copy; {new Date().getFullYear()}</p>
         </div>
       </div>
     </div>
