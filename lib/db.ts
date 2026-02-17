@@ -67,40 +67,42 @@ function initTables(database: any) {
       }
     }
 
-    // Seed Questions if empty
-    const questionCount = database.prepare("SELECT COUNT(*) as count FROM questions").get();
-    if (questionCount.count === 0) {
-      console.log('[DB] Seeding questions... this may take a moment');
-      const { allSeedData } = require('./seedData');
-      const insert = database.prepare('INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option) VALUES (?, ?, ?, ?, ?, ?)');
+    // Seed Questions incrementally
+    const { allSeedData } = require('./seedData');
+    const insert = database.prepare('INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option) VALUES (?, ?, ?, ?, ?, ?)');
+    const checkExists = database.prepare('SELECT COUNT(*) as count FROM questions WHERE subject = ? AND difficulty = ? AND class_level = ?');
 
-      database.transaction(() => {
-        for (const [key, questions] of Object.entries(allSeedData)) {
-          // Determine subject and level from key if possible, or use defaults
-          // Based on seedData naming: easyQuestions (Math), engEasy... urduEasy...
-          let subject = 'Math';
-          let difficulty = 'easy';
-          let level = 'Grade 1';
+    database.transaction(() => {
+      for (const [key, questions] of Object.entries(allSeedData)) {
+        let subject = 'Math';
+        let difficulty = 'easy';
+        let level = 'Grade 1';
 
-          if (key.includes('eng')) subject = 'English';
-          if (key.includes('urdu')) subject = 'Urdu';
-          if (key.includes('Med')) difficulty = 'medium';
-          if (key.includes('Hard')) difficulty = 'hard';
-          if (key.includes('2')) level = 'Grade 2';
-          if (key.includes('3')) level = 'Grade 3';
-          if (key.includes('4')) level = 'Grade 4';
-          if (key.includes('5')) level = 'Grade 5';
-          if (key.includes('6')) level = 'Grade 6';
-          if (key.includes('7')) level = 'Grade 7';
-          if (key.includes('8')) level = 'Grade 8';
+        if (key.includes('eng')) subject = 'English';
+        if (key.includes('urdu')) subject = 'Urdu';
+        if (key.includes('Med')) difficulty = 'medium';
+        if (key.includes('Hard')) difficulty = 'hard';
 
+        if (key.includes('10')) level = 'Grade 10';
+        else if (key.includes('9')) level = 'Grade 9';
+        else if (key.includes('8')) level = 'Grade 8';
+        else if (key.includes('7')) level = 'Grade 7';
+        else if (key.includes('6')) level = 'Grade 6';
+        else if (key.includes('5')) level = 'Grade 5';
+        else if (key.includes('4')) level = 'Grade 4';
+        else if (key.includes('3')) level = 'Grade 3';
+        else if (key.includes('2')) level = 'Grade 2';
+
+        const existing = checkExists.get(subject, difficulty, level);
+        if (existing.count === 0) {
+          console.log(`[DB] Seeding new category: ${subject} ${level} ${difficulty}`);
           for (const q of (questions as any[])) {
             insert.run(subject, difficulty, level, q.question_text, JSON.stringify(q.options), q.correct_option);
           }
         }
-      })();
-      console.log('[DB] Seeding completed');
-    }
+      }
+    })();
+    console.log('[DB] Seeding check completed');
   } catch (err: any) {
     console.error('[DB] Passive Init Error:', err.message);
   }
