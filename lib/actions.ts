@@ -2,7 +2,7 @@
 
 import { getDb } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import mammoth from 'mammoth';
 import { cookies } from 'next/headers';
@@ -176,11 +176,18 @@ export async function addQuestion(formData: FormData) {
     if (imageFile && imageFile.size > 0) {
         const buffer = Buffer.from(await imageFile.arrayBuffer());
         const filename = `${Date.now()}-${imageFile.name.replace(/\s/g, '_')}`;
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        // Ensure directory exists? doing it manually or assuming it exists. nextjs public folder usually exists.
-        // We might need to ensure 'uploads' folder exists.
+
+        // Use persistent volume path if DATABASE_URL is set (Railway)
+        const dbPath = process.env.DATABASE_URL || 'data/school.db';
+        const baseDir = path.dirname(path.resolve(process.cwd(), dbPath));
+        const uploadDir = path.join(baseDir, 'uploads');
+
+        // Ensure directory exists
+        await mkdir(uploadDir, { recursive: true });
+
         await writeFile(path.join(uploadDir, filename), buffer);
-        imagePath = `/uploads/${filename}`;
+        // Path should point to our API route
+        imagePath = `/api/uploads/${filename}`;
     }
 
     const options = JSON.stringify([option1, option2, option3, option4]);
@@ -218,17 +225,21 @@ export async function updateQuestion(formData: FormData) {
     const currentQuestion = db.prepare('SELECT image_path FROM questions WHERE id = ?').get(id) as any;
     let imagePath = currentQuestion?.image_path;
 
+    const options = JSON.stringify([option1, option2, option3, option4]);
+    const dbPath = process.env.DATABASE_URL || 'data/school.db';
+    const baseDir = path.dirname(path.resolve(process.cwd(), dbPath));
+    const uploadDir = path.join(baseDir, 'uploads');
+
     if (removeImage) {
         imagePath = null;
     } else if (imageFile && imageFile.size > 0) {
         const buffer = Buffer.from(await imageFile.arrayBuffer());
         const filename = `${Date.now()}-${imageFile.name.replace(/\s/g, '_')}`;
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        await writeFile(path.join(uploadDir, filename), buffer);
-        imagePath = `/uploads/${filename}`;
-    }
 
-    const options = JSON.stringify([option1, option2, option3, option4]);
+        await mkdir(uploadDir, { recursive: true });
+        await writeFile(path.join(uploadDir, filename), buffer);
+        imagePath = `/api/uploads/${filename}`;
+    }
 
     try {
         db.prepare(`
