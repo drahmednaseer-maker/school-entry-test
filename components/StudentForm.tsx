@@ -52,8 +52,8 @@ export default function StudentForm() {
                     <label className="block text-sm font-medium text-gray-700">Class / Grade</label>
                     <select name="class_level" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
                         <option value="PlayGroup">PlayGroup</option>
-                        <option value="Nursery">Nursery</option>
-                        <option value="Prep">Prep</option>
+                        <option value="KG 1">KG 1</option>
+                        <option value="KG 2">KG 2</option>
                         <option value="Grade 1">Grade 1</option>
                         <option value="Grade 2">Grade 2</option>
                         <option value="Grade 3">Grade 3</option>

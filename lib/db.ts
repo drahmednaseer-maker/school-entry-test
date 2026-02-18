@@ -92,6 +92,8 @@ function initTables(database: any) {
         else if (key.includes('4')) level = 'Grade 4';
         else if (key.includes('3')) level = 'Grade 3';
         else if (key.includes('2')) level = 'Grade 2';
+        else if (key.includes('KG1')) level = 'KG 1';
+        else if (key.includes('KG2')) level = 'KG 2';
 
         const existing = checkExists.get(subject, difficulty, level);
         if (existing.count === 0) {
