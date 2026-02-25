@@ -1,5 +1,5 @@
 export const allSeedData: Record<string, any[]> = {
-  easyQuestions: [
+  math2EasyQuestions: [
     { question_text: "Ali has 3 apples. He gets 2 more. How many apples does he have now?", options: ["4", "5", "6", "3"], correct_option: 1 },
     { question_text: "Which number is greater?", options: ["7", "5", "2", "1"], correct_option: 0 },
     { question_text: "What comes after 9?", options: ["8", "10", "11", "7"], correct_option: 1 },
@@ -41,7 +41,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "9 – 4 = ?", options: ["4", "5", "6", "3"], correct_option: 1 },
     { question_text: "How many fingers on one hand?", options: ["4", "5", "6", "10"], correct_option: 1 }
   ],
-  mediumQuestions: [
+  math2MedQuestions: [
     { question_text: "Which number makes the equation true? 4 + __ = 9", options: ["3", "4", "5", "6"], correct_option: 2 },
     { question_text: "Sara has 8 balloons. 3 fly away. How many are left?", options: ["4", "5", "6", "3"], correct_option: 1 },
     { question_text: "Which number is equal to 10?", options: ["6 + 3", "5 + 5", "4 + 4", "7 + 1"], correct_option: 1 },
@@ -83,7 +83,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "3 groups of 2 make:", options: ["5", "6", "7", "4"], correct_option: 1 },
     { question_text: "If 18 is made of 1 ten and how many ones?", options: ["6", "7", "8", "9"], correct_option: 2 }
   ],
-  hardQuestions: [
+  math2HardQuestions: [
     { question_text: "Ali has 9 marbles. He gives 3 to Ahmed and then buys 4 more. How many marbles does he have now?", options: ["9", "10", "8", "11"], correct_option: 1 },
     { question_text: "Which number makes the sentence true? __ + 5 = 14", options: ["8", "9", "10", "7"], correct_option: 1 },
     { question_text: "Which number is 2 tens and 3 ones?", options: ["23", "32", "20", "13"], correct_option: 0 },
@@ -125,7 +125,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "6 children stand in 2 equal rows. How many in each row?", options: ["2", "3", "4", "5"], correct_option: 1 },
     { question_text: "Which number is 10 more than 9?", options: ["18", "19", "20", "21"], correct_option: 1 }
   ],
-  engEasyQuestions: [
+  eng2EasyQuestions: [
     { question_text: "Which word begins with the same sound as ball?", options: ["Cat", "Boy", "Sun", "Dog"], correct_option: 1 },
     { question_text: "Choose the picture word that rhymes with cat.", options: ["Hat", "Dog", "Sun", "Pen"], correct_option: 0 },
     { question_text: "Which word has the short /a/ sound?", options: ["Apple", "Ice", "Orange", "Umbrella"], correct_option: 0 },
@@ -167,7 +167,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct word. The cat is ___ the table.", options: ["on", "run", "big", "eat"], correct_option: 0 },
     { question_text: "Which word has the middle sound /a/?", options: ["Map", "Me", "Ice", "Up"], correct_option: 0 }
   ],
-  engMedQuestions: [
+  eng2MedQuestions: [
     { question_text: "Choose the word made by blending the sounds: /c/ /a/ /t/", options: ["Cot", "Cat", "Cut", "Cap"], correct_option: 1 },
     { question_text: "Which word has the long /a/ sound?", options: ["Hat", "Man", "Cake", "Bag"], correct_option: 2 },
     { question_text: "Choose the correct word to complete the sentence: The dog is ___ fast.", options: ["run", "runs", "running", "ran"], correct_option: 2 },
@@ -209,7 +209,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which word begins with the same sound as chair?", options: ["Chop", "Sun", "Top", "Fan"], correct_option: 0 },
     { question_text: "Read the sentence: The sun is bright. What does “bright” mean?", options: ["Dark", "Shiny", "Cold", "Small"], correct_option: 1 }
   ],
-  engHardQuestions: [
+  eng2HardQuestions: [
     { question_text: "Choose the correct sentence.", options: ["The cat are sleeping.", "The cat is sleeping.", "The cat am sleeping.", "The cat sleeping is."], correct_option: 1 },
     { question_text: "Which word has the same vowel sound as train?", options: ["Hat", "Rain", "Pen", "Sit"], correct_option: 1 },
     { question_text: "Choose the correct word: The children ___ playing in the park.", options: ["is", "am", "are", "be"], correct_option: 2 },
@@ -251,7 +251,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which word completes the sentence? The birds are flying ___ the sky.", options: ["in", "on", "at", "under"], correct_option: 0 },
     { question_text: "Read the passage: Bilal forgot his umbrella. It started to rain. He got wet. Why did Bilal get wet?", options: ["He was playing.", "He forgot his umbrella.", "He was running.", "He was happy."], correct_option: 1 }
   ],
-  urduEasyQuestions: [
+  urdu2EasyQuestions: [
     { question_text: "کون سا لفظ \"ب\" کی آواز سے شروع ہوتا ہے؟", options: ["سیب", "بلی", "ٹوپی", "درخت"], correct_option: 1 },
     { question_text: "\"کتاب\" کس قسم کا لفظ ہے؟", options: ["فعل", "اسم", "صفت", "حرف"], correct_option: 1 },
     { question_text: "کون سا لفظ \"گھر\" کے ساتھ ہم قافیہ ہے؟", options: ["در", "سیب", "بکری", "پانی"], correct_option: 0 },
@@ -293,7 +293,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"استاد\" کس کے لیے استعمال ہوتا ہے؟", options: ["جانور", "چیز", "انسان", "جگہ"], correct_option: 2 },
     { question_text: "کون سا لفظ مکمل جملہ ہے؟", options: ["علی", "کھیلتا", "علی کھیلتا ہے۔", "کھیل"], correct_option: 2 }
   ],
-  urduMedQuestions: [
+  urdu2MedQuestions: [
     { question_text: "درست جملہ منتخب کریں۔", options: ["علی اسکول جاتا ہیں۔", "علی اسکول جاتا ہے۔", "علی جاتا اسکول ہے۔", "اسکول علی جاتا ہے۔"], correct_option: 1 },
     { question_text: "\"لڑکی\" کی جمع کیا ہے؟", options: ["لڑکیاں", "لڑکے", "لڑکیوں", "لڑکی"], correct_option: 0 },
     { question_text: "درست لفظ منتخب کریں: وہ پانی ___ رہا ہے۔", options: ["پینا", "پیتا", "پیا", "پئیں"], correct_option: 1 },
@@ -335,7 +335,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"استاد ہمیں پڑھاتے ہیں۔\" میں \"ہمیں\" کیا ہے؟", options: ["ضمیر", "اسم", "صفت", "فعل"], correct_option: 0 },
     { question_text: "مختصر عبارت پڑھیں: علی روزانہ صبح اٹھتا ہے۔ وہ اسکول جاتا ہے۔ علی کب اٹھتا ہے؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 }
   ],
-  urduHardQuestions: [
+  urdu2HardQuestions: [
     { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہی ہیں۔", "بچے کھیل رہے ہیں۔", "بچے کھیلتا ہے۔"], correct_option: 2 },
     { question_text: "جملہ مکمل کریں: وہ کل اسکول ___ گا۔", options: ["جائے", "جائے گا", "گیا", "جاتی"], correct_option: 1 },
     { question_text: "\"لڑکا دوڑ رہا ہے۔\" یہ جملہ کس زمانے کا ہے؟", options: ["ماضی", "حال", "مستقبل", "سوالیہ"], correct_option: 1 },
@@ -377,7 +377,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"عائشہ نے کہانی پڑھی۔\" میں فعل کون سا ہے؟", options: ["عائشہ", "کھانی", "پڑھی", "نے"], correct_option: 2 },
     { question_text: "مختصر عبارت پڑھیں: صبح سورج نکلا۔ پرندے چہکنے لگے۔ بچے اسکول گئے۔ یہ سب کب ہوا؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 }
   ],
-  eng2EasyQuestions: [
+  eng3EasyQuestions: [
     { question_text: "Choose the correct plural form of “box.”", options: ["boxs", "boxes", "boxies", "boxing"], correct_option: 1 },
     { question_text: "Choose the correct sentence.", options: ["She go to school.", "She goes to school.", "She going school.", "She gone school."], correct_option: 1 },
     { question_text: "Identify the noun in the sentence: “The cat is sleeping.”", options: ["sleeping", "is", "cat", "the"], correct_option: 2 },
@@ -419,7 +419,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct pronoun. This is my book. It is ___.", options: ["mine", "my", "me", "I"], correct_option: 0 },
     { question_text: "Choose the correct sentence.", options: ["We are going to market.", "We are going to the market.", "We going market.", "We goes to market."], correct_option: 1 }
   ],
-  eng2MedQuestions: [
+  eng3MedQuestions: [
     { question_text: "Choose the correct sentence.", options: ["The girl have a doll.", "The girl has a doll.", "The girl having a doll.", "The girl hading a doll."], correct_option: 1 },
     { question_text: "Fill in the blank with the correct verb. The boys ___ football every day.", options: ["plays", "play", "playing", "played"], correct_option: 1 },
     { question_text: "Choose the correct past tense of “go.”", options: ["goed", "gone", "went", "going"], correct_option: 2 },
@@ -461,7 +461,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct question form.", options: ["Where you are going?", "Where are you going?", "Where going you are?", "You are going where?"], correct_option: 1 },
     { question_text: "Read and answer: “Bilal studied hard for his test. He got good marks.” What can we learn from this?", options: ["Studying helps us succeed.", "Tests are easy.", "Bilal is lucky.", "Marks are not important."], correct_option: 0 }
   ],
-  eng2HardQuestions: [
+  eng3HardQuestions: [
     { question_text: "Choose the correct sentence.", options: ["Each boys have a book.", "Each boy has a book.", "Each boy have a book.", "Each boys has a book."], correct_option: 1 },
     { question_text: "Identify the error. “She don’t like apples.”", options: ["She", "don’t", "like", "apples"], correct_option: 1 },
     { question_text: "Choose the correct form. If it ___ tomorrow, we will stay home.", options: ["rain", "rains", "raining", "rained"], correct_option: 1 },
@@ -503,7 +503,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["This is the most tallest building.", "This is the tallest building.", "This is tallest building.", "This is more tallest building."], correct_option: 1 },
     { question_text: "Read and answer: “Zain studied carefully and checked his answers twice. He made no mistakes.” What helped Zain avoid mistakes?", options: ["Luck", "Studying carefully and checking twice", "Easy questions", "Guessing"], correct_option: 1 }
   ],
-  math2EasyQuestions: [
+  math3EasyQuestions: [
     { question_text: "What is the place value of 5 in 253?", options: ["5", "50", "500", "25"], correct_option: 1 },
     { question_text: "Which number is the greatest?", options: ["145", "154", "451", "415"], correct_option: 2 },
     { question_text: "342 is made of:", options: ["3 tens, 4 hundreds, 2 ones", "3 hundreds, 4 tens, 2 ones", "3 hundreds, 2 tens, 4 ones", "4 hundreds, 3 tens, 2 ones"], correct_option: 1 },
@@ -545,7 +545,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "What is the total of 5 tens?", options: ["5", "50", "15", "500"], correct_option: 1 },
     { question_text: "A rectangle has how many pairs of equal sides?", options: ["1", "2", "3", "4"], correct_option: 1 }
   ],
-  math2MedQuestions: [
+  math3MedQuestions: [
     { question_text: "58 + 27 = ?", options: ["75", "85", "95", "65"], correct_option: 1 },
     { question_text: "73 − 48 = ?", options: ["25", "35", "45", "15"], correct_option: 0 },
     { question_text: "What is 6 + 6 + 6 equal to?", options: ["12", "18", "24", "36"], correct_option: 1 },
@@ -587,7 +587,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which is greater?", options: ["3/4", "1/2", "Both are equal", "1/4"], correct_option: 0 },
     { question_text: "A bus carries 40 passengers. 15 get off. How many remain?", options: ["20", "25", "30", "35"], correct_option: 1 }
   ],
-  math2HardQuestions: [
+  math3HardQuestions: [
     { question_text: "468 + 257 = ?", options: ["615", "725", "715", "735"], correct_option: 1 },
     { question_text: "700 − 358 = ?", options: ["342", "352", "442", "452"], correct_option: 0 },
     { question_text: "A shopkeeper had 250 apples. He sold 125. How many apples are left?", options: ["115", "125", "135", "150"], correct_option: 1 },
@@ -629,7 +629,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which fraction equals 1 whole?", options: ["2/2", "1/2", "3/4", "1/4"], correct_option: 0 },
     { question_text: "A farmer has 3 fields. Each field has 120 trees. How many trees are there in total?", options: ["320", "340", "360", "380"], correct_option: 2 }
   ],
-  urdu2EasyQuestions: [
+  urdu3EasyQuestions: [
     { question_text: "درست جمع منتخب کریں: کتاب", options: ["کتابیں", "کتابان", "کتابی", "کتابہ"], correct_option: 0 },
     { question_text: "درست واحد منتخب کریں: لڑکے", options: ["لڑکیاں", "لڑکا", "لڑکوں", "لڑکی"], correct_option: 1 },
     { question_text: "درست متضاد منتخب کریں: اونچا — ؟", options: ["لمبا", "نیچا", "بڑا", "تیز"], correct_option: 1 },
@@ -671,7 +671,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست املا منتخب کریں۔", options: ["دوست", "دوسٹ", "دووست", "دو ست"], correct_option: 0 },
     { question_text: "\"صبح سورج نکلا۔\" یہ کب ہوا؟", options: ["رات", "صبح", "شام", "دوپہر"], correct_option: 1 }
   ],
-  urdu2MedQuestions: [
+  urdu3MedQuestions: [
     { question_text: "علی روز صبح جلدی اٹھتا ہے۔ وہ نماز پڑھتا ہے اور پھر اسکول جاتا ہے۔ اسکول میں وہ محنت سے پڑھائی کرتا ہے۔ علی کب اٹھتا ہے؟", options: ["دوپہر", "رات", "صبح", "شام"], correct_option: 2 },
     { question_text: "علی اسکول میں کیا کرتا ہے؟", options: ["سوتا ہے", "کھیلتا ہے", "محنت سے پڑھائی کرتا ہے", "گھر جاتا ہے"], correct_option: 2 },
     { question_text: "\"جلدی\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "حال بیان کرنے والا لفظ", "ضمیر"], correct_option: 2 },
@@ -713,7 +713,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست ضمیر منتخب کریں: یہ کتاب علی کی ہے۔ یہ ___ کتاب ہے۔", options: ["اس کی", "میری", "ہماری", "تمہاری"], correct_option: 0 },
     { question_text: "پیراگراف کا مرکزی خیال پہچاننے کا مطلب کیا ہے؟", options: ["ہر لفظ یاد کرنا", "اہم بات سمجھنا", "مشکل الفاظ ڈھونڈنا", "جملہ لکھنا"], correct_option: 1 }
   ],
-  urdu2HardQuestions: [
+  urdu3HardQuestions: [
     { question_text: "احمد ایک محنتی طالب علم ہے۔ وہ روزانہ وقت پر اسکول جاتا ہے۔ وہ اپنے اساتذہ کا احترام کرتا ہے اور سبق غور سے سنتا ہے۔ اسی وجہ سے وہ کلاس میں اچھے نمبر حاصل کرتا ہے۔ احمد کو اچھے نمبر کیوں ملتے ہیں؟", options: ["وہ زیادہ کھیلتا ہے", "وہ محنت کرتا اور غور سے سنتا ہے", "وہ اسکول نہیں جاتا", "وہ شور کرتا ہے"], correct_option: 1 },
     { question_text: "پیراگراف کا مرکزی خیال کیا ہے؟", options: ["اسکول کی عمارت", "اچھے استاد", "محنت کی اہمیت", "کھیل کود"], correct_option: 2 },
     { question_text: "\"احترام کرتا ہے\" میں \"احترام\" کیا ہے؟", options: ["فعل", "اسم", "صفت", "ضمیر"], correct_option: 1 },
@@ -755,7 +755,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"وہ کل آیا تھا۔\" یہ کس زمانے کی مثال ہے؟", options: ["حال", "مستقبل", "ماضی", "جاری"], correct_option: 2 },
     { question_text: "پیراگراف سے نتیجہ اخذ کرنا کیا ہوتا ہے؟", options: ["الفاظ یاد کرنا", "اہم بات سمجھ کر نتیجہ نکالنا", "مشکل لفظ ڈھونڈنا", "صرف پڑھنا"], correct_option: 1 }
   ],
-  eng3EasyQuestions: [
+  eng4EasyQuestions: [
     { question_text: "Read the passage and answer: Sara wakes up early in the morning. She brushes her teeth and gets ready for school. She likes to read books in her free time. When does Sara wake up?", options: ["At night", "In the morning", "In the evening", "At noon"], correct_option: 1 },
     { question_text: "What does Sara like to do?", options: ["Play cricket", "Watch TV", "Read books", "Sleep"], correct_option: 2 },
     { question_text: "What does Sara do before going to school?", options: ["Watches TV", "Brushes her teeth", "Sleeps again", "Plays outside"], correct_option: 1 },
@@ -797,7 +797,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct pronoun. This is my bag. It is ___.", options: ["mine", "my", "me", "I"], correct_option: 0 },
     { question_text: "Choose the correct sentence.", options: ["The sun rise in the east.", "The sun rises in the east.", "The sun rising in east.", "The sun rose in east."], correct_option: 1 }
   ],
-  eng3MedQuestions: [
+  eng4MedQuestions: [
     { question_text: "Read the passage and answer: Bilal loves planting trees. Every Sunday, he waters the plants in his garden. He believes trees make the air clean and fresh. His neighbors also help him sometimes. Why does Bilal like planting trees?", options: ["To sell them", "To make the air clean and fresh", "To cut them", "To play under them"], correct_option: 1 },
     { question_text: "When does Bilal water the plants?", options: ["Every day", "Every Sunday", "Once a year", "At night"], correct_option: 1 },
     { question_text: "Who helps Bilal sometimes?", options: ["His teacher", "His friends", "His neighbors", "His parents"], correct_option: 2 },
@@ -839,7 +839,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["We are going to picnic yesterday.", "We went to picnic yesterday.", "We go to picnic yesterday.", "We going picnic yesterday."], correct_option: 1 },
     { question_text: "What does a story’s main idea tell us?", options: ["Every small detail", "The most important point", "Only the first line", "The ending only"], correct_option: 1 }
   ],
-  eng3HardQuestions: [
+  eng4HardQuestions: [
     { question_text: "Read the passage and answer: Hassan found a wallet on the playground. Instead of keeping it, he gave it to his teacher. The teacher found the owner and returned it. The owner thanked Hassan for his honesty. Why did Hassan give the wallet to his teacher?", options: ["He was afraid", "He wanted money", "He was honest", "He was careless"], correct_option: 2 },
     { question_text: "What lesson does this story teach?", options: ["Keep what you find", "Honesty is important", "Teachers are strict", "Play carefully"], correct_option: 1 },
     { question_text: "If Hassan had kept the wallet, what might have happened?", options: ["The owner would stay happy", "The owner would lose it forever", "The teacher would thank him", "Nothing would change"], correct_option: 1 },
@@ -881,7 +881,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["Hardly had he arrived when it started raining.", "Hardly he had arrived when it started raining.", "He hardly arrived when it started raining.", "Hardly arrived he when raining."], correct_option: 0 },
     { question_text: "What does inference mean in reading?", options: ["Copying lines", "Guessing meaning using clues", "Reading loudly", "Memorizing sentences"], correct_option: 1 }
   ],
-  math3EasyQuestions: [
+  math4EasyQuestions: [
     { question_text: "What is the place value of 5 in 3,452?", options: ["5", "50", "500", "5,000"], correct_option: 1 },
     { question_text: "Which number is the greatest?", options: ["4,321", "4,123", "4,312", "4,213"], correct_option: 2 },
     { question_text: "4,356 – 2,100 = ?", options: ["2,156", "2,256", "2,356", "1,256"], correct_option: 1 },
@@ -923,7 +923,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "What is 84 ÷ 7?", options: ["10", "11", "12", "13"], correct_option: 2 },
     { question_text: "Which shape has no sides?", options: ["Triangle", "Square", "Circle", "Rectangle"], correct_option: 2 }
   ],
-  math3MedQuestions: [
+  math4MedQuestions: [
     { question_text: "2,345 + 1,678 = ?", options: ["4,023", "3,913", "4,113", "4,213"], correct_option: 0 },
     { question_text: "5,000 – 2,756 = ?", options: ["2,344", "2,254", "2,244", "2,144"], correct_option: 2 },
     { question_text: "A shopkeeper had 450 mangoes. He sold 275. How many are left?", options: ["175", "165", "185", "195"], correct_option: 0 },
@@ -965,7 +965,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "9 × 11 = ?", options: ["90", "99", "100", "101"], correct_option: 1 },
     { question_text: "A class has 5 rows of 8 students. How many students are there in total?", options: ["35", "40", "45", "48"], correct_option: 1 }
   ],
-  math3HardQuestions: [
+  math4HardQuestions: [
     { question_text: "A shopkeeper had 2,500 kg of rice. He sold 1,275 kg in the morning and 525 kg in the evening. How much rice is left?", options: ["700 kg", "800 kg", "600 kg", "750 kg"], correct_option: 0 },
     { question_text: "Which fraction is the greatest?", options: ["5/6", "4/6", "3/6", "2/6"], correct_option: 0 },
     { question_text: "A train leaves at 9:15 AM and reaches at 12:45 PM. How long is the journey?", options: ["3 hours 15 minutes", "3 hours 30 minutes", "2 hours 45 minutes", "4 hours"], correct_option: 1 },
@@ -1007,7 +1007,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which is the smallest 4-digit number divisible by 5?", options: ["1000", "1001", "1002", "1003"], correct_option: 0 },
     { question_text: "A shopkeeper gives Rs. 1,000 and receives Rs. 765 back. How much did he spend?", options: ["Rs. 225", "Rs. 235", "Rs. 245", "Rs. 255"], correct_option: 1 }
   ],
-  urdu3EasyQuestions: [
+  urdu4EasyQuestions: [
     { question_text: "لفظ \"بڑا\" کا متضاد کیا ہے؟", options: ["لمبا", "چھوٹا", "موٹا", "اونچا"], correct_option: 1 },
     { question_text: "لفظ \"کتاب\" کی جمع کیا ہے؟", options: ["کتابیں", "کتابان", "کتابی", "کتابوں"], correct_option: 0 },
     { question_text: "درج ذیل میں سے مذکر لفظ کون سا ہے؟", options: ["لڑکی", "عورت", "استاد", "بہن"], correct_option: 2 },
@@ -1049,7 +1049,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "لفظ \"سخت\" کا متضاد کیا ہے؟", options: ["نرم", "تیز", "گہرا", "اونچا"], correct_option: 0 },
     { question_text: "درج ذیل میں سے اسمِ معرفہ کون سا ہے؟", options: ["لڑکا", "کتاب", "علی", "شہر"], correct_option: 2 }
   ],
-  urdu3MedQuestions: [
+  urdu4MedQuestions: [
     { question_text: "پیراگراف پڑھیں اور سوال کا جواب دیں: \"علی روزانہ صبح جلدی اٹھتا ہے۔ وہ نماز پڑھتا ہے اور پھر اسکول جاتا ہے۔\" علی صبح کیا کرتا ہے؟", options: ["کھیلتا ہے", "سوتا ہے", "نماز پڑھتا ہے", "بازار جاتا ہے"], correct_option: 2 },
     { question_text: "لفظ \"خوبصورت\" کا ہم معنی کیا ہے؟", options: ["بدصورت", "حسین", "لمبا", "موٹا"], correct_option: 1 },
     { question_text: "درست جملہ منتخب کریں:", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔", "بچے کھیل رہا ہیں۔"], correct_option: 1 },
@@ -1091,7 +1091,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "لفظ \"محنتی\" کس قسم کا لفظ ہے؟", options: ["اسم", "صفت", "فعل", "حرف"], correct_option: 1 },
     { question_text: "\"بچے خوشی سے کھیل رہے ہیں۔\" اس جملے میں کیفیت ظاہر کرنے والا لفظ کون سا ہے؟", options: ["بچے", "کھیل", "خوشی", "رہے"], correct_option: 2 }
   ],
-  urdu3HardQuestions: [
+  urdu4HardQuestions: [
     { question_text: "پیراگراف پڑھیں: \"عائشہ ایک محنتی طالبہ ہے۔ وہ روزانہ وقت پر اسکول جاتی ہے اور اپنا کام مکمل کرتی ہے۔\" عائشہ کی کون سی خوبی بیان کی گئی ہے؟", options: ["بہادری", "سستی", "محنتی ہونا", "شرارت"], correct_option: 2 },
     { question_text: "لفظ \"اندھیرا\" کا متضاد مناسب جملے میں کون سا ہوگا؟ \"رات کو کمرے میں بہت ___ تھا۔\"", options: ["شور", "روشنی", "گرمی", "آواز"], correct_option: 1 },
     { question_text: "درست جملہ منتخب کریں:", options: ["بچے پارک میں کھیل رہا ہے۔", "بچے پارک میں کھیل رہے ہیں۔", "بچے پارک میں کھیل رہی ہے۔", "بچے پارک میں کھیل رہا ہیں۔"], correct_option: 1 },
@@ -1133,7 +1133,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"ہم نے درخت لگائے۔\" اس جملے میں فعل کون سا ہے؟", options: ["ہم", "نے", "درخت", "لگائے"], correct_option: 3 },
     { question_text: "پیراگراف پڑھیں: \"ماں نے بچوں کو صفائی کی اہمیت بتائی۔ بچوں نے گھر صاف رکھا۔\" بچوں نے کیا کیا؟", options: ["گھر گندا کیا", "گھر صاف رکھا", "شور مچایا", "باہر چلے گئے"], correct_option: 1 }
   ],
-  eng4EasyQuestions: [
+  eng5EasyQuestions: [
     { question_text: "Which of the following is a noun?", options: ["Run", "Happy", "Book", "Quickly"], correct_option: 2 },
     { question_text: "Choose the correct plural of “child.”", options: ["Childs", "Childes", "Children", "Childrens"], correct_option: 2 },
     { question_text: "Which word is a verb?", options: ["Jump", "Table", "Blue", "Tall"], correct_option: 0 },
@@ -1175,7 +1175,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct superlative form of “fast.”", options: ["Faster", "Fastest", "More fast", "Very fast"], correct_option: 1 },
     { question_text: "Which sentence is correct?", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She didn’t likes milk."], correct_option: 1 }
   ],
-  eng4MedQuestions: [
+  eng5MedQuestions: [
     { question_text: "Read the passage: “Ali wakes up early every day. He washes his face and goes for a walk.” What does Ali do after washing his face?", options: ["Goes to school", "Goes for a walk", "Eats breakfast", "Sleeps again"], correct_option: 1 },
     { question_text: "Choose the correct tense: She ___ her homework before dinner yesterday.", options: ["finishes", "finished", "finishing", "will finish"], correct_option: 1 },
     { question_text: "Select the correct sentence.", options: ["The boys is playing.", "The boys are playing.", "The boys was playing.", "The boys plays."], correct_option: 1 },
@@ -1217,7 +1217,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct word: This is ___ umbrella.", options: ["a", "an", "the", "no article"], correct_option: 1 },
     { question_text: "Which sentence is grammatically correct?", options: ["Me and Ali went to school.", "Ali and I went to school.", "Ali and me went to school.", "I and Ali went to school."], correct_option: 1 }
   ],
-  eng4HardQuestions: [
+  eng5HardQuestions: [
     { question_text: "Passage 1: “Ahmed found a wallet on the road. He looked inside and saw some money and an identity card. He decided to return it to the owner.” Why did Ahmed look inside the wallet?", options: ["To take the money", "To find the owner", "To throw it away", "To hide it"], correct_option: 1 },
     { question_text: "What does this passage show about Ahmed?", options: ["He is careless", "He is dishonest", "He is honest", "He is angry"], correct_option: 2 },
     { question_text: "Choose the correct passive voice: Ahmed returned the wallet.", options: ["The wallet is returned by Ahmed.", "The wallet was returned by Ahmed.", "The wallet returned by Ahmed.", "Ahmed was returned the wallet."], correct_option: 1 },
@@ -1259,7 +1259,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which sentence is grammatically correct?", options: ["Hardly had he reached when it started raining.", "Hardly had he reached than it started raining.", "Hardly had he reached when it started raining.", "Hardly he had reached when it started raining."], correct_option: 0 },
     { question_text: "Choose the correct sentence transformation: Open the door. (Passive voice)", options: ["Let the door be opened.", "The door opened.", "The door is open.", "Door is opened by you."], correct_option: 0 }
   ],
-  math4EasyQuestions: [
+  math5EasyQuestions: [
     { question_text: "What is the place value of 5 in 45,321?", options: ["5", "50", "5,000", "50,000"], correct_option: 2 },
     { question_text: "Find the sum: 3,245 + 2,134 =", options: ["5,379", "5,289", "5,469", "5,349"], correct_option: 0 },
     { question_text: "Subtract: 8,000 – 3,256 =", options: ["4,844", "4,744", "4,654", "4,734"], correct_option: 1 },
@@ -1301,7 +1301,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Find the missing number: 900 + ___ = 1,200", options: ["200", "250", "300", "350"], correct_option: 2 },
     { question_text: "A book has 120 pages. If you read 20 pages, how many pages are left?", options: ["80", "90", "100", "110"], correct_option: 2 }
   ],
-  math4MedQuestions: [
+  math5MedQuestions: [
     { question_text: "Find the sum: 4,568 + 3,729 =", options: ["8,187", "8,297", "8,207", "8,397"], correct_option: 1 },
     { question_text: "Subtract: 9,000 – 4,785 =", options: ["4,215", "4,315", "4,125", "4,205"], correct_option: 0 },
     { question_text: "Multiply: 324 × 12 =", options: ["3,888", "3,798", "3,968", "3,808"], correct_option: 0 },
@@ -1343,7 +1343,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "A bus leaves at 9:30 AM and reaches at 12:00 PM. How long is the journey?", options: ["2 hours", "2 hours 30 minutes", "3 hours", "3 hours 30 minutes"], correct_option: 1 },
     { question_text: "What is the value of 3 in 73,245?", options: ["3", "30", "300", "3,000"], correct_option: 3 }
   ],
-  math4HardQuestions: [
+  math5HardQuestions: [
     { question_text: "Multiply: 346 × 24 =", options: ["8,204", "8,304", "8,214", "8,404"], correct_option: 1 },
     { question_text: "Divide: 2,496 ÷ 12 =", options: ["206", "208", "212", "218"], correct_option: 1 },
     { question_text: "Find the HCF of 24 and 36.", options: ["6", "8", "12", "18"], correct_option: 2 },
@@ -1385,7 +1385,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If a clock shows 3:00 PM, what will be the time after 145 minutes?", options: ["5:05 PM", "5:15 PM", "5:25 PM", "5:35 PM"], correct_option: 2 },
     { question_text: "A school bought 48 desks at Rs. 1,250 each. What was the total cost?", options: ["58,000", "59,000", "60,000", "61,000"], correct_option: 2 }
   ],
-  urdu4EasyQuestions: [
+  urdu5EasyQuestions: [
     { question_text: "درج ذیل میں سے اسم کون سا ہے؟", options: ["دوڑنا", "کتاب", "خوبصورت", "تیز"], correct_option: 1 },
     { question_text: "لفظ \"لڑکا\" کی جمع کیا ہے؟", options: ["لڑکیاں", "لڑکے", "لڑکی", "لڑکوں"], correct_option: 1 },
     { question_text: "\"استاد\" کا مؤنث کیا ہے؟", options: ["استادی", "استانی", "استادہ", "استادات"], correct_option: 1 },
@@ -1466,7 +1466,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"آزادی\" کا متضاد کیا ہے؟", options: ["خوشی", "غلامی", "روشنی", "محنت"], correct_option: 1 },
     { question_text: "درست جملہ منتخب کریں۔", options: ["بچے اسکول جاتے ہیں۔", "بچے اسکول جاتا ہیں۔", "بچے اسکول جاتی ہے۔", "بچے اسکول جاتے ہے۔"], correct_option: 0 }
   ],
-  urdu4MedQuestions: [
+  urdu5MedQuestions: [
     { question_text: "درج ذیل میں سے مرکب لفظ کون سا ہے؟", options: ["کتاب", "قلم", "خوشبو", "دروازہ"], correct_option: 2 },
     { question_text: "\"وقت کی پابندی\" کا مطلب کیا ہے؟", options: ["دیر سے آنا", "وقت پر کام کرنا", "کھیلنا", "آرام کرنا"], correct_option: 1 },
     { question_text: "درج ذیل میں سے اسم صفت کون سا ہے؟", options: ["دوڑنا", "خوبصورتی", "خوبصورت", "خوب"], correct_option: 1 },
@@ -1508,7 +1508,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "خالی جگہ پر درست لفظ لگائیں: وہ ___ کتاب پڑھ رہا ہے۔", options: ["دلچسپ", "دلچسپی", "دلچسپہ", "دلچسپیں"], correct_option: 0 },
     { question_text: "درست جملہ منتخب کریں۔", options: [" ہمیں بڑوں کا احترام کرنا چاہیے۔", " ہمیں بڑوں کا احترام کرتے چاہیے۔", " ہمیں بڑوں کا احترام کرنی چاہیے۔", " ہمیں بڑوں کا احترام کرنا چاہیے ہیں۔"], correct_option: 0 }
   ],
-  urdu4HardQuestions: [
+  urdu5HardQuestions: [
     { question_text: "درج ذیل میں سے اسمِ فاعل کون سا ہے؟", options: ["چلنا", "چلا", "چلنے والا", "چلے"], correct_option: 2 },
     { question_text: "\"محنت کرنے والا کامیاب ہوتا ہے\" میں \"کامیاب\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "حرف"], correct_option: 2 },
     { question_text: "محاورہ \"ناک کٹ جانا\" کا مطلب کیا ہے؟", options: ["زخمی ہونا", "بدنام ہونا", "رونا", "گر جانا"], correct_option: 1 },
@@ -1550,7 +1550,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست جملہ منتخب کریں۔", options: ["بچوں نے کھیل کھیلا۔", "بچوں نے کھیل کھیلتے۔", "بچوں نے کھیل کھیل رہا ہے۔", "بچوں نے کھیل کھیلتے ہیں۔"], correct_option: 0 },
     { question_text: "\"محنتی انسان کامیاب ہوتا ہے\" اس جملے کا پیغام کیا ہے؟", options: ["محنت ضروری نہیں", "محنت کامیابی کا سبب بنتی ہے", "کامیابی آسان ہے", "کھیل ضروری ہے"], correct_option: 1 }
   ],
-  eng5EasyQuestions: [
+  eng6EasyQuestions: [
     { question_text: "Choose the noun in the sentence: \"The boy kicked the ball.\"", options: ["kicked", "boy", "kicked", "the"], correct_option: 1 },
     { question_text: "Choose the correct plural form of \"child\":", options: ["childs", "childrens", "children", "childes"], correct_option: 2 },
     { question_text: "Choose the correct verb: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
@@ -1592,7 +1592,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct conditional: If it rains, we ___ stay home.", options: ["will", "would", "stayed", "staying"], correct_option: 0 },
     { question_text: "Choose the correct sentence:", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She didn’t likes milk."], correct_option: 1 }
   ],
-  eng5MedQuestions: [
+  eng6MedQuestions: [
     { question_text: "Choose the correct sentence:", options: ["Each of the boys have a book.", "Each of the boys has a book.", "Each of the boys are having a book.", "Each of the boys have books."], correct_option: 1 },
     { question_text: "Choose the correct form: She has lived here ___ five years.", options: ["since", "for", "from", "at"], correct_option: 1 },
     { question_text: "Identify the subordinate clause: \"I will help you if you need me.\"", options: ["I will help you", "if you need me", "will help", "you need"], correct_option: 1 },
@@ -1634,7 +1634,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct verb form: He would rather ___ at home.", options: ["stay", "staying", "stayed", "to stay"], correct_option: 0 },
     { question_text: "Choose the correct sentence:", options: ["No sooner did he arrive than the train left.", "No sooner he arrived than the train left.", "No sooner did he arrive when the train left.", "No sooner he did arrive than the train left."], correct_option: 0 }
   ],
-  eng5HardQuestions: [
+  eng6HardQuestions: [
     { question_text: "Choose the correct transformation: \"He is too tired to walk.\"", options: ["He is so tired that he can walk.", "He is so tired that he cannot walk.", "He is very tired that he cannot walk.", "He is tired so he walk."], correct_option: 1 },
     { question_text: "Choose the correct reported speech: She said, \"I will finish the work.\"", options: ["She said she will finish the work.", "She said she would finish the work.", "She said she finishes the work.", "She says she would finish the work."], correct_option: 1 },
     { question_text: "Choose the correct passive voice: \"People speak English all over the world.\"", options: ["English is spoken all over the world.", "English was spoken all over the world.", "English spoken all over the world.", "English is speaking all over the world."], correct_option: 0 },
@@ -1676,7 +1676,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct inversion: Hardly ___ the door when the phone rang.", options: ["had he closed", "he had closed", "did he close", "he closed"], correct_option: 0 },
     { question_text: "Choose the correct sentence:", options: ["Unless you work hard, you will fail.", "Unless you work hard, you will pass.", "Unless you worked hard, you will fail.", "Unless you work hard, you would fail."], correct_option: 0 }
   ],
-  math5EasyQuestions: [
+  math6EasyQuestions: [
     { question_text: "What is the place value of 7 in 47,356?", options: ["7", "70", "7,000", "700"], correct_option: 2 },
     { question_text: "What is 8,432 + 2,568?", options: ["10,000", "11,000", "9,000", "10,900"], correct_option: 1 },
     { question_text: "What is 9,000 − 4,375?", options: ["4,625", "4,525", "4,675", "5,625"], correct_option: 0 },
@@ -1718,7 +1718,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "What is the value of 3 × (4 + 2)?", options: ["18", "12", "14", "16"], correct_option: 0 },
     { question_text: "Which decimal is equal to 3/10?", options: ["0.03", "0.3", "3.0", "0.003"], correct_option: 1 }
   ],
-  math5MedQuestions: [
+  math6MedQuestions: [
     { question_text: "A shopkeeper sold 125 pencils on Monday and 175 on Tuesday. How many pencils were sold in total?", options: ["250", "275", "300", "325"], correct_option: 2 },
     { question_text: "A factory produces 480 toys in 6 days. How many toys are produced per day?", options: ["60", "70", "80", "90"], correct_option: 2 },
     { question_text: "What is the LCM of 8 and 12?", options: ["16", "24", "32", "48"], correct_option: 1 },
@@ -1760,7 +1760,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "What is the volume of a cube with side 3 cm?", options: ["9 cm³", "18 cm³", "27 cm³", "36 cm³"], correct_option: 2 },
     { question_text: "If 25% of a number is 50, what is the number?", options: ["100", "150", "200", "250"], correct_option: 2 }
   ],
-  math5HardQuestions: [
+  math6HardQuestions: [
     { question_text: "A shopkeeper buys a book for Rs. 400 and sells it for Rs. 460. What is the profit percentage?", options: ["10%", "12%", "15%", "20%"], correct_option: 2 },
     { question_text: "What is the LCM of 15 and 20?", options: ["45", "60", "30", "75"], correct_option: 1 },
     { question_text: "Find the HCF of 84 and 126.", options: ["21", "42", "14", "28"], correct_option: 1 },
@@ -1802,7 +1802,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "What is 2/3 × 9/4 ?", options: ["3/2", "6/12", "18/12", "2/4"], correct_option: 0 },
     { question_text: "A rectangular hall is 12 m long and 10 m wide. What is the cost of tiling it at Rs. 50 per m²?", options: ["5000", "5500", "6000", "6500"], correct_option: 2 }
   ],
-  urdu5EasyQuestions: [
+  urdu6EasyQuestions: [
     { question_text: "لفظ \"کتاب\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 2 },
     { question_text: "لفظ \"لڑکا\" کی جمع کیا ہے؟", options: ["لڑکی", "لڑکیاں", "لڑکے", "لڑکوں"], correct_option: 2 },
     { question_text: "درست جملہ منتخب کریں۔", options: ["وہ اسکول جاتا ہے۔", "وہ اسکول جاتی ہے۔", "وہ اسکول جاتے ہے۔", "وہ اسکول جاؤ ہے۔"], correct_option: 0 },
@@ -1844,7 +1844,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "لفظ \"نیا\" کا متضاد کیا ہے؟", options: ["پرانا", "اچھا", "صاف", "بڑا"], correct_option: 0 },
     { question_text: "\"وہ پانی پی رہا ہے\" میں ضمیر کون سا ہے؟", options: ["پانی", "پی رہا ہے", "وہ", "ہے"], correct_option: 2 }
   ],
-  urdu5MedQuestions: [
+  urdu6MedQuestions: [
     { question_text: "لفظ \"پاکستان\" کس قسم کا اسم ہے؟", options: ["اسم نکرہ", "اسم معرفہ", "اسم صفت", "اسم فعل"], correct_option: 1 },
     { question_text: "\"وہ خط لکھ چکا ہے\" میں زمانہ کون سا ہے؟", options: ["ماضی مطلق", "ماضی بعید", "ماضی کامل", "حال"], correct_option: 2 },
     { question_text: "درست جملہ منتخب کریں۔", options: ["بچوں نے کہانی سنائی۔", "بچوں نے کہانی سنایا۔", "بچوں نے کہانی سنائیں۔", "بچوں نے کہانی سناتی۔"], correct_option: 0 },
@@ -1886,7 +1886,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "محاورہ \"دل چھوٹا کرنا\" کا مطلب کیا ہے؟", options: ["خوش ہونا", "ہمت ہارنا", "غصہ کرنا", "دوڑنا"], correct_option: 1 },
     { question_text: "\"میں کتاب پڑھ چکا ہوں\" میں زمانہ کون سا ہے؟", options: ["حال", "ماضی کامل", "مستقبل", "امر"], correct_option: 1 }
   ],
-  urdu5HardQuestions: [
+  urdu6HardQuestions: [
     { question_text: "\"استاد نے طالب علم کو سبق سمجھایا\" میں مفعول کون ہے؟", options: ["استاد", "طالب علم", "سبق", "سمجھایا"], correct_option: 1 },
     { question_text: "لفظ \"بے ایمان\" میں کون سا سابقہ ہے؟", options: ["بے", "ایمان", "ان", "دار"], correct_option: 0 },
     { question_text: "\"وہ دوڑتا ہے\" میں فعل کی قسم کیا ہے؟", options: ["فعل متعدی", "فعل لازم", "فعل امر", "فعل ناقص"], correct_option: 1 },
@@ -1928,7 +1928,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست املا منتخب کریں۔", options: ["احتیاط", "احتیات", "احتیاط", "احتیاطھ"], correct_option: 0 },
     { question_text: "\"وہ کتاب پڑھ چکی ہے\" میں فعل کی جنس کیا ہے؟", options: ["مذکر", "مؤنث", "جمع", "امر"], correct_option: 1 }
   ],
-  eng6EasyQuestions: [
+  eng7EasyQuestions: [
     { question_text: "Identify the noun in the sentence: “The children are playing in the park.”", options: ["playing", "children", "in", "are"], correct_option: 1 },
     { question_text: "Choose the correct plural form of “leaf.”", options: ["leafs", "leaves", "leafes", "leavs"], correct_option: 1 },
     { question_text: "Choose the correct sentence.", options: ["She don’t like milk.", "She doesn’t like milk.", "She not like milk.", "She didn’t likes milk."], correct_option: 1 },
@@ -1970,7 +1970,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["He runs more faster than me.", "He runs faster than me.", "He run faster than me.", "He runs fastest than me."], correct_option: 1 },
     { question_text: "Choose the correct transformation: “He is too weak to lift the box.”", options: ["He is so weak that he cannot lift the box.", "He is very weak that he cannot lift the box.", "He is weak so he cannot lift.", "He weak cannot lift the box."], correct_option: 0 }
   ],
-  eng6MedQuestions: [
+  eng7MedQuestions: [
     { question_text: "Choose the correct tense: By the time we reached the station, the train ___ .", options: ["leaves", "has left", "had left", "left"], correct_option: 2 },
     { question_text: "Choose the correct passive voice: “They are repairing the road.”", options: ["The road is repaired by them.", "The road is being repaired by them.", "The road was repaired by them.", "The road being repaired by them."], correct_option: 1 },
     { question_text: "Choose the correct indirect speech: He said, “I will finish the work.”", options: ["He said that he will finish the work.", "He said that he would finish the work.", "He says he would finish the work.", "He said that I would finish the work."], correct_option: 1 },
@@ -2012,7 +2012,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct conditional: If you heat water, it ___ boil.", options: ["will", "would", "boils", "boiled"], correct_option: 2 },
     { question_text: "Choose the correct sentence.", options: ["The information are useful.", "The information is useful.", "Informations are useful.", "Information are useful."], correct_option: 1 }
   ],
-  eng6HardQuestions: [
+  eng7HardQuestions: [
     { question_text: "Choose the correct option: Hardly ___ the meeting started when the lights went out.", options: ["did", "had", "has", "was"], correct_option: 1 },
     { question_text: "Choose the correct mixed conditional: If she had taken the medicine, she ___ better now.", options: ["will feel", "would feel", "felt", "would have felt"], correct_option: 1 },
     { question_text: "Choose the correct transformation: “He is so intelligent that he can solve the puzzle.”", options: ["He is intelligent enough to solve the puzzle.", "He is very intelligent to solve the puzzle.", "He intelligent enough solve puzzle.", "He so intelligent enough."], correct_option: 0 },
@@ -2054,7 +2054,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["She hardly ever makes mistakes.", "She hardly never makes mistakes.", "She never hardly makes mistakes.", "She hardly makes never mistakes."], correct_option: 0 },
     { question_text: "Choose the correct structure: The sooner you start, ___ you will finish.", options: ["the soon", "the sooner", "sooner", "very soon"], correct_option: 1 }
   ],
-  math6EasyQuestions: [
+  math7EasyQuestions: [
     { question_text: "What is the place value of 5 in 4,582?", options: ["5", "50", "500", "5000"], correct_option: 2 },
     { question_text: "Find the LCM of 4 and 6.", options: ["12", "24", "6", "10"], correct_option: 0 },
     { question_text: "What is the HCF of 12 and 18?", options: ["2", "3", "6", "9"], correct_option: 2 },
@@ -2096,7 +2096,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If 3 pens cost Rs. 60, what is the cost of 1 pen?", options: ["15", "20", "25", "30"], correct_option: 1 },
     { question_text: "Find the value of: 6³", options: ["18", "36", "216", "108"], correct_option: 2 }
   ],
-  math6MedQuestions: [
+  math7MedQuestions: [
     { question_text: "Find: 3/4 + 2/3", options: ["5/7", "17/12", "6/7", "5/12"], correct_option: 1 },
     { question_text: "Subtract: 5/6 – 1/4", options: ["7/12", "4/12", "3/12", "2/12"], correct_option: 0 },
     { question_text: "Multiply: 2/5 × 3/4", options: ["6/20", "6/9", "5/8", "8/15"], correct_option: 0 },
@@ -2138,7 +2138,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Find the value of: 100 – 25% of 100", options: ["70", "75", "80", "85"], correct_option: 1 },
     { question_text: "Simplify: 9 – 3²", options: ["0", "6", "3", "12"], correct_option: 0 }
   ],
-  math6HardQuestions: [
+  math7HardQuestions: [
     { question_text: "A number increased by 25% becomes 125. What is the original number?", options: ["80", "90", "100", "110"], correct_option: 2 },
     { question_text: "If the ratio of boys to girls is 4:5 and total students are 45, how many boys are there?", options: ["15", "18", "20", "25"], correct_option: 2 },
     { question_text: "Solve: 3(x – 2) = 18", options: ["6", "8", "4", "10"], correct_option: 1 },
@@ -2180,7 +2180,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Find the value of: 3² + 4² – 5²", options: ["0", "1", "2", "5"], correct_option: 0 },
     { question_text: "If 12 men can complete a work in 15 days, how many days will 20 men take?", options: ["10", "9", "12", "8"], correct_option: 1 }
   ],
-  urdu6EasyQuestions: [
+  urdu7EasyQuestions: [
     { question_text: "درج ذیل میں اسم کی نشاندہی کریں: “بچہ کھیل رہا ہے۔”", options: ["کھیل", "بچہ", "رہا", "ہے"], correct_option: 1 },
     { question_text: "لفظ “کتاب” کی جمع کیا ہے؟", options: ["کتابیں", "کتابان", "کتابوں", "کتابی"], correct_option: 0 },
     { question_text: "لفظ “لڑکا” کا مؤنث کیا ہے؟", options: ["لڑکی", "لڑکے", "لڑکیاں", "لڑکپن"], correct_option: 0 },
@@ -2222,7 +2222,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درج ذیل میں ضمیر جمع منتخب کریں۔", options: ["وہ", "ہم", "یہ", "وہی"], correct_option: 1 },
     { question_text: "“پیار” کا مترادف کیا ہے؟", options: ["نفرت", "محبت", "غصہ", "دشمنی"], correct_option: 1 }
   ],
-  urdu6MedQuestions: [
+  urdu7MedQuestions: [
     { question_text: "درست املا منتخب کریں۔", options: ["زمہ داری", "ذمہ داری", "زمداری", "زمہداری"], correct_option: 1 },
     { question_text: "جملے کی درستی منتخب کریں۔", options: ["وہ کل بازار جائے گا۔", "وہ کل بازار گیا گا۔", "وہ کل بازار جاتا گا۔", "وہ کل بازار جارہا گا۔"], correct_option: 0 },
     { question_text: "“آسمان سے باتیں کرنا” کا مفہوم کیا ہے؟", options: ["اونچا ہونا", "باتیں کرنا", "چیخنا", "ہنسنا"], correct_option: 0 },
@@ -2264,7 +2264,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست املا منتخب کریں۔", options: ["ذمے داری", "ذمہ داری", "زمہداری", "زمداری"], correct_option: 1 },
     { question_text: "“نقصان” کا متضاد کیا ہے؟", options: ["خسارہ", "فائدہ", "کمی", "خرابی"], correct_option: 1 }
   ],
-  urdu6HardQuestions: [
+  urdu7HardQuestions: [
     { question_text: "جملہ “علی نے خط لکھا” کو مجہول میں تبدیل کریں۔", options: ["خط علی نے لکھا", "خط لکھا گیا", "علی خط لکھ رہا ہے", "علی خط لکھے گا"], correct_option: 1 },
     { question_text: "“وہ کام کر رہا ہے” کس زمانے کی مثال ہے؟", options: ["ماضی", "حال استمراری", "مستقبل", "حال مطلق"], correct_option: 1 },
     { question_text: "محاورہ “کان کھڑے ہونا” کا مفہوم کیا ہے؟", options: ["سننا", "چونک جانا", "دوڑنا", "ہنسنا"], correct_option: 1 },
@@ -2306,7 +2306,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "فعل متعدی کی مثال منتخب کریں۔", options: ["وہ سو گیا۔", "اس نے دروازہ کھولا۔", "وہ ہنسا۔", "وہ آیا۔"], correct_option: 1 },
     { question_text: "“علم کی روشنی” کس صنعت کی مثال ہے؟", options: ["استعارہ", "تشبیہ", "تضاد", "تکرار"], correct_option: 0 }
   ],
-  eng7EasyQuestions: [
+  eng8EasyQuestions: [
     { question_text: "Identify the noun in the sentence: “The children are playing in the park.”", options: ["playing", "children", "are", "in"], correct_option: 1 },
     { question_text: "Choose the correct form of the verb: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
     { question_text: "Identify the adjective: “He bought a new bicycle.”", options: ["bought", "bicycle", "new", "he"], correct_option: 2 },
@@ -2348,7 +2348,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct passive form: “They cleaned the room.”", options: ["The room cleaned.", "The room was cleaned.", "The room is cleaned.", "The room cleaning."], correct_option: 1 },
     { question_text: "Select the correct sentence.", options: ["He is more smarter than me.", "He is smarter than me.", "He is smartest than me.", "He smarter than me."], correct_option: 1 }
   ],
-  eng7MedQuestions: [
+  eng8MedQuestions: [
     { question_text: "Choose the correct passive voice: “They are building a bridge.”", options: ["A bridge was built.", "A bridge is being built.", "A bridge has been built.", "A bridge builds."], correct_option: 1 },
     { question_text: "Select the correct indirect speech: He said, “I am tired.”", options: ["He said that he was tired.", "He said that I am tired.", "He said he is tired.", "He said that he tired."], correct_option: 0 },
     { question_text: "Identify the subordinate clause: “I will call you when I reach home.”", options: ["I will call you", "when I reach home", "I reach", "will call"], correct_option: 1 },
@@ -2390,7 +2390,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["Hardly had he arrived when it started raining.", "Hardly he had arrived when it started raining.", "Hardly he arrived when it started raining.", "Hardly had he arrive when it started raining."], correct_option: 0 },
     { question_text: "Select the correct passive form: “They will announce the results tomorrow.”", options: ["The results will be announced tomorrow.", "The results are announced tomorrow.", "The results announced tomorrow.", "The results will announced tomorrow."], correct_option: 0 }
   ],
-  eng7HardQuestions: [
+  eng8HardQuestions: [
     { question_text: "Choose the correct passive form: “They must finish the work today.”", options: ["The work must finished today.", "The work must be finished today.", "The work must been finished today.", "The work must finishing today."], correct_option: 1 },
     { question_text: "Select the correct transformation: “He is too weak to lift the box.”", options: ["He is so weak that he cannot lift the box.", "He is very weak to lift the box.", "He is enough weak to lift the box.", "He is weak that he can lift the box."], correct_option: 0 },
     { question_text: "Identify the complex sentence.", options: ["She came and sat down.", "She came because I called her.", "She came.", "She sat down."], correct_option: 1 },
@@ -2432,7 +2432,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Select the correct cohesive connector: He was tired; ___, he continued working.", options: ["because", "however", "although", "unless"], correct_option: 1 },
     { question_text: "Choose the correct sentence.", options: ["So difficult was the question that no one could answer it.", "So difficult the question was that no one could answer it.", "So the question was difficult that no one could answer it.", "So difficult question was that no one could answer it."], correct_option: 0 }
   ],
-  math7EasyQuestions: [
+  math8EasyQuestions: [
     { question_text: "What is −7 + 3?", options: ["−4", "4", "−10", "10"], correct_option: 0 },
     { question_text: "What is 12 − (−5)?", options: ["7", "−7", "17", "−17"], correct_option: 2 },
     { question_text: "Simplify: 4 × (−3)", options: ["12", "−12", "7", "−7"], correct_option: 1 },
@@ -2474,7 +2474,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which number is a prime number?", options: ["9", "15", "17", "21"], correct_option: 2 },
     { question_text: "If a book costs Rs. 200 and discount is 10%, how much is the discount?", options: ["10", "15", "20", "25"], correct_option: 2 }
   ],
-  math7MedQuestions: [
+  math8MedQuestions: [
     { question_text: "Simplify: −3/4 + 5/8", options: ["1/8", "−1/8", "2/8", "−2/8"], correct_option: 1 },
     { question_text: "Find the product: (−2/3) × (9/4)", options: ["−3/2", "3/2", "−6/4", "6/4"], correct_option: 0 },
     { question_text: "Solve: 3x − 5 = 16", options: ["6", "7", "8", "9"], correct_option: 1 },
@@ -2516,7 +2516,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If 6 notebooks cost Rs. 240, cost of 9 notebooks is:", options: ["300", "320", "360", "400"], correct_option: 2 },
     { question_text: "Find the value: 10 − (−6)", options: ["4", "16", "−4", "−16"], correct_option: 1 }
   ],
-  math7HardQuestions: [
+  math8HardQuestions: [
     { question_text: "Solve: 3(2x − 4) = 18", options: ["4", "5", "6", "7"], correct_option: 1 },
     { question_text: "Simplify: −3/5 + 7/10 − 1/2", options: ["0", "−1/10", "1/10", "−2/10"], correct_option: 1 },
     { question_text: "If 15% of a number is 45, the number is:", options: ["250", "275", "300", "325"], correct_option: 2 },
@@ -2558,7 +2558,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Area of triangle: base 14 cm, height 9 cm", options: ["56", "63", "72", "81"], correct_option: 1 },
     { question_text: "Solve: x/5 − 3 = 7", options: ["45", "50", "55", "60"], correct_option: 1 }
   ],
-  urdu7EasyQuestions: [
+  urdu8EasyQuestions: [
     { question_text: "جملے میں اسم کی نشاندہی کریں: \"علی اسکول گیا۔\"", options: ["علی", "گیا", "اسکول گیا", "گیا تھا"], correct_option: 0 },
     { question_text: "لفظ \"خوش\" کی ضد کیا ہے؟", options: ["غمگین", "مسرور", "مطمئن", "ہنستا"], correct_option: 0 },
     { question_text: "درست جمع منتخب کریں: کتاب", options: ["کتابیں", "کتابان", "کتابوں", "کتابات"], correct_option: 0 },
@@ -2600,7 +2600,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"کتاب پڑھنا اچھی عادت ہے۔\" یہاں \"اچھی\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 2 },
     { question_text: "درست جملہ منتخب کریں:", options: ["وہ اچھا لڑکی ہے۔", "وہ اچھی لڑکی ہے۔", "وہ اچھے لڑکی ہے۔", "وہ اچھوں لڑکی ہے۔"], correct_option: 1 }
   ],
-  urdu7MedQuestions: [
+  urdu8MedQuestions: [
     { question_text: "جملے میں فاعل کی نشاندہی کریں: \"علی نے کتاب پڑھی۔\"", options: ["علی", "کتاب", "پڑھی", "نے"], correct_option: 0 },
     { question_text: "جملے میں مفعول کون سا ہے؟ \"استاد نے سبق سمجھایا۔\"", options: ["استاد", "نے", "سبق", "سمجھایا"], correct_option: 2 },
     { question_text: "درست جملہ منتخب کریں:", options: ["بچے کھیل رہی ہے۔", "بچے کھیل رہا ہیں۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہے۔"], correct_option: 2 },
@@ -2642,7 +2642,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "جملے میں فعل کی نشاندہی کریں: \"ماں کھانا بنا رہی ہے۔\"", options: ["ماں", "کھانا", "بنا رہی ہے", "ہے"], correct_option: 2 },
     { question_text: "\"وہ کل امتحان دے گا۔\" اس جملے کا زمانہ کیا ہے؟", options: ["حال", "ماضی", "مستقبل", "حال مکمل"], correct_option: 2 }
   ],
-  urdu7HardQuestions: [
+  urdu8HardQuestions: [
     { question_text: "جملہ کی نوعیت بتائیں: \"جب بارش ہوئی تو ہم گھر چلے گئے۔\"", options: ["سادہ", "مرکب", "پیچیدہ", "سوالیہ"], correct_option: 2 },
     { question_text: "جملے میں مفعول فیہ کی نشاندہی کریں: \"وہ صبح اسکول گیا۔\"", options: ["وہ", "اسکول", "صبح", "گیا"], correct_option: 2 },
     { question_text: "ضرب المثل \"اونٹ کے منہ میں زیرہ\" کا مفہوم ہے:", options: ["بہت زیادہ", "بہت کم", "برابر", "مکمل"], correct_option: 1 },
@@ -2684,7 +2684,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"وہ اس لیے کامیاب ہوا کہ اس نے محنت کی۔\" یہاں \"کہ\" کیا ظاہر کرتا ہے؟", options: ["سبب", "سوال", "شرط", "حکم"], correct_option: 0 },
     { question_text: "درست جملہ منتخب کریں:", options: ["اسے میری بات پر یقین ہے۔", "اسے میری بات میں یقین ہے۔", "اسے میری بات کو یقین ہے۔", "اسے میری بات سے یقین ہے۔"], correct_option: 0 }
   ],
-  eng8EasyQuestions: [
+  eng9EasyQuestions: [
     { question_text: "Identify the adjective: “She wore a beautiful dress.”", options: ["wore", "beautiful", "dress", "she"], correct_option: 1 },
     { question_text: "Choose the correct form: He ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
     { question_text: "Choose the correct passive voice: “They clean the room.”", options: ["The room was cleaned.", "The room is cleaned.", "The room cleaned.", "The room has cleaned."], correct_option: 1 },
@@ -2726,7 +2726,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct phrase: He is interested ___ science.", options: ["in", "on", "at", "for"], correct_option: 0 },
     { question_text: "Choose the correct sentence:", options: ["She enjoys to read books.", "She enjoys reading books.", "She enjoy reading books.", "She enjoyed to read books."], correct_option: 1 }
   ],
-  eng8MedQuestions: [
+  eng9MedQuestions: [
     { question_text: "Identify the type of clause: “I know that he is honest.”", options: ["Adjective clause", "Noun clause", "Adverb clause", "Conditional clause"], correct_option: 1 },
     { question_text: "Choose the correct passive voice: “They are repairing the road.”", options: ["The road repaired.", "The road is repaired.", "The road is being repaired.", "The road was repaired."], correct_option: 2 },
     { question_text: "Choose the correct reported speech: He said, “Where are you going?”", options: ["He asked where I am going.", "He asked where I was going.", "He said where I was going.", "He asked where was I going."], correct_option: 1 },
@@ -2768,7 +2768,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence:", options: ["He insisted to leave early.", "He insisted on leaving early.", "He insisted leaving early.", "He insisted for leaving early."], correct_option: 1 },
     { question_text: "Choose the correct sentence structure:", options: ["Not only he sings but also dances.", "Not only does he sing but also dance.", "Not only does he sing but also dances.", "Not only he sing but also dances."], correct_option: 2 }
   ],
-  eng8HardQuestions: [
+  eng9HardQuestions: [
     { question_text: "Choose the correct mixed conditional sentence: If she had studied hard, she ___ the exam now.", options: ["would pass", "would have passed", "would be passing", "will pass"], correct_option: 2 },
     { question_text: "Choose the correct passive voice: “They will have completed the work by tomorrow.”", options: ["The work will have been completed by tomorrow.", "The work will be completed by tomorrow.", "The work has been completed by tomorrow.", "The work will completed by tomorrow."], correct_option: 0 },
     { question_text: "Choose the correct reported speech: He said, “I am writing a letter.”", options: ["He said that he was writing a letter.", "He said that he is writing a letter.", "He said he has written a letter.", "He said he wrote a letter."], correct_option: 0 },
@@ -2810,7 +2810,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct reported speech: He said, “I have lost my keys.”", options: ["He said that he had lost his keys.", "He said that he has lost his keys.", "He said that he lost his keys.", "He said that he had lost my keys."], correct_option: 0 },
     { question_text: "Choose the correct transformation (degree of comparison): Very few cities are as beautiful as Paris.", options: ["Paris is more beautiful than many cities.", "Paris is one of the most beautiful cities.", "Paris is the most beautiful city.", "Paris is beautiful city."], correct_option: 1 }
   ],
-  math8EasyQuestions: [
+  math9EasyQuestions: [
     { question_text: "Which of the following is a rational number?", options: ["√5", "π", "3/4", "√7"], correct_option: 2 },
     { question_text: "Simplify: 2³", options: ["6", "8", "9", "12"], correct_option: 1 },
     { question_text: "Solve: 5x = 25", options: ["3", "4", "5", "6"], correct_option: 2 },
@@ -2852,7 +2852,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Find the value of: 9²", options: ["18", "72", "81", "90"], correct_option: 2 },
     { question_text: "If the mean of 4, 6, 8 is:", options: ["5", "6", "7", "8"], correct_option: 1 }
   ],
-  math8MedQuestions: [
+  math9MedQuestions: [
     { question_text: "Simplify: 2³ × 2²", options: ["2⁵", "2⁶", "4⁵", "8⁵"], correct_option: 0 },
     { question_text: "Simplify: (−3/4) + (1/4)", options: ["−1/2", "1/2", "−1", "1"], correct_option: 0 },
     { question_text: "Solve: 3x − 5 = 16", options: ["5", "6", "7", "8"], correct_option: 2 },
@@ -2894,7 +2894,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "The median of 3, 7, 9, 11, 15 is:", options: ["7", "9", "11", "15"], correct_option: 1 },
     { question_text: "Solve: 6x − 4 = 2x + 12", options: ["2", "3", "4", "5"], correct_option: 2 }
   ],
-  math8HardQuestions: [
+  math9HardQuestions: [
     { question_text: "Simplify: (2³ × 2⁴) ÷ 2²", options: ["2³", "2⁴", "2⁵", "2⁶"], correct_option: 2 },
     { question_text: "Solve: 4x − 7 = 3x + 9", options: ["14", "15", "16", "17"], correct_option: 2 },
     { question_text: "Factorize: x² − 9", options: ["(x − 3)(x + 3)", "(x − 9)(x + 1)", "(x − 1)(x + 9)", "(x − 3)²"], correct_option: 0 },
@@ -2936,7 +2936,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If the mean of 5 numbers is 18, their total sum is:", options: ["80", "85", "90", "95"], correct_option: 2 },
     { question_text: "Solve: x − 4/3 = 5/3", options: ["2", "3", "4", "5"], correct_option: 1 }
   ],
-  urdu8EasyQuestions: [
+  urdu9EasyQuestions: [
     { question_text: "لفظ \"استاد\" کیا ہے؟", options: ["فعل", "صفت", "اسم", "ضمیر"], correct_option: 2 },
     { question_text: "\"لڑکی\" کی جمع کیا ہے؟", options: ["لڑکیوں", "لڑکیاں", "لڑکے", "لڑکی"], correct_option: 0 },
     { question_text: "درست جملہ منتخب کریں۔", options: ["بچے کھیل رہا ہے۔", "بچے کھیل رہے ہیں۔", "بچے کھیل رہی ہیں۔", "بچے کھیلتا ہے۔"], correct_option: 1 },
@@ -2978,7 +2978,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست جملہ منتخب کریں۔", options: ["ہم کھیل رہا ہے۔", "ہم کھیل رہے ہیں۔", "ہم کھیل رہی ہیں۔", "ہم کھیلتے ہے۔"], correct_option: 1 },
     { question_text: "لفظ \"ایمانداری\" کیا ہے؟", options: ["اسم", "فعل", "صفت", "ضمیر"], correct_option: 0 }
   ],
-  urdu8MedQuestions: [
+  urdu9MedQuestions: [
     { question_text: "جملے میں فاعل کی نشاندہی کریں: \"علی نے خط لکھا۔\"", options: ["علی", "خط", "لکھا", "نے"], correct_option: 0 },
     { question_text: "جملے میں مفعول کیا ہے؟ \"استاد نے سبق سمجھایا۔\"", options: ["استاد", "سبق", "سمجھایا", "نے"], correct_option: 1 },
     { question_text: "فعل متعدی کی مثال منتخب کریں۔", options: ["بچہ سو رہا ہے۔", "علی کتاب پڑھتا ہے۔", "پرندہ اُڑتا ہے۔", "سورج نکلتا ہے۔"], correct_option: 1 },
@@ -3020,7 +3020,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست جملہ منتخب کریں۔", options: ["ہم کل بازار گیا۔", "ہم کل بازار گئے۔", "ہم کل بازار گئی۔", "ہم کل بازار جاتا ہے۔"], correct_option: 1 },
     { question_text: "پیچیدہ جملہ کی پہچان کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "جب میں گھر پہنچا تو بارش ہو رہی تھی۔", "وہ ہنسا۔", "وہ گیا۔"], correct_option: 1 }
   ],
-  urdu8HardQuestions: [
+  urdu9HardQuestions: [
     { question_text: "جملہ معلوم سے مجہول میں تبدیل کریں: \"استاد نے سبق سمجھایا۔\"", options: ["سبق استاد نے سمجھایا گیا۔", "سبق سمجھایا گیا۔", "استاد سبق سمجھایا گیا۔", "سبق سمجھاتا گیا۔"], correct_option: 1 },
     { question_text: "جملے میں متمم کی نشاندہی کریں: \"وہ شام کو پارک میں گیا۔\"", options: ["وہ", "شام کو", "پارک میں", "گیا"], correct_option: 2 },
     { question_text: "مرکبِ مرکب جملہ منتخب کریں۔", options: ["علی آیا اور بیٹھ گیا۔", "جب بارش ہوئی تو ہم گھر گئے اور دروازہ بند کر دیا۔", "وہ ہنسا۔", "میں اسکول گیا۔"], correct_option: 1 },
@@ -3062,7 +3062,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درست جملہ منتخب کریں۔", options: ["اس نے مجھے مشورہ دی۔", "اس نے مجھے مشورہ دیا۔", "اس نے مجھے مشورہ دیے۔", "اس نے مجھے مشورہ دیئے"], correct_option: 1 },
     { question_text: "پیچیدہ جملہ منتخب کریں۔", options: ["وہ آیا اور بیٹھ گیا۔", "اگر بارش ہوگی تو ہم گھر میں رہیں گے۔", "وہ ہنسا。", "وہ گیا۔"], correct_option: 1 }
   ],
-  eng9EasyQuestions: [
+  eng10EasyQuestions: [
     { question_text: "Choose the correct form of the verb: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
     { question_text: "Identify the adjective in the sentence: “The tall boy won the race.”", options: ["boy", "tall", "won", "race"], correct_option: 1 },
     { question_text: "Choose the correct synonym of “happy.”", options: ["sad", "joyful", "angry", "tired"], correct_option: 1 },
@@ -3104,7 +3104,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Identify the correct use of “too.”", options: ["He is too tired to walk.", "He is to tired to walk.", "He is two tired to walk.", "He too tired to walk."], correct_option: 0 },
     { question_text: "Choose the correct form of adjective: This is the ___ solution.", options: ["better", "best", "good", "more good"], correct_option: 1 }
   ],
-  eng9MedQuestions: [
+  eng10MedQuestions: [
     { question_text: "Choose the correct verb form: If she ___ harder, she would have passed.", options: ["studies", "studied", "study", "had study"], correct_option: 1 },
     { question_text: "Select the correct passive voice: They are building a bridge.", options: ["A bridge is built by them.", "A bridge was built by them.", "A bridge is being built by them.", "A bridge has built by them."], correct_option: 2 },
     { question_text: "Choose the correct reported speech: She said, “I have finished my work.”", options: ["She said she has finished her work.", "She said that she had finished her work.", "She said that I had finished my work.", "She says she had finished her work."], correct_option: 1 },
@@ -3146,7 +3146,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct form: She prefers tea ___ coffee.", options: ["than", "to", "over", "with"], correct_option: 1 },
     { question_text: "Choose the correct sentence transformation: It is too cold to swim.", options: ["It is so cold that we cannot swim.", "It is very cold to swim.", "It is enough cold to swim.", "It is so cold to swim."], correct_option: 0 }
   ],
-  eng9HardQuestions: [
+  eng10HardQuestions: [
     { question_text: "Choose the correct third conditional sentence.", options: ["If he worked hard, he would pass.", "If he had worked hard, he would have passed.", "If he works hard, he will pass.", "If he worked hard, he will pass."], correct_option: 1 },
     { question_text: "Select the correct passive form: People say that he is honest.", options: ["He is said to be honest.", "He was said honest.", "It says he is honest.", "He is saying to be honest."], correct_option: 0 },
     { question_text: "Choose the correct reported speech: He said, “I will finish it tomorrow.”", options: ["He said he will finish it tomorrow.", "He said that he would finish it the next day.", "He said that he will finish it the next day.", "He says he would finish it tomorrow."], correct_option: 1 },
@@ -3188,7 +3188,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct sentence.", options: ["Neither of the boys were present.", "Neither of the boys was present.", "Neither of boys was present.", "Neither boys were present."], correct_option: 1 },
     { question_text: "Choose the correct transformation: He is too proud to admit his mistake.", options: ["He is so proud that he cannot admit his mistake.", "He is very proud to admit his mistake.", "He is proud to admit his mistake.", "He is enough proud to admit his mistake."], correct_option: 0 }
   ],
-  math9EasyQuestions: [
+  math10EasyQuestions: [
     { question_text: "Which of the following is a rational number?", options: ["√2", "π", "3/4", "√5"], correct_option: 2 },
     { question_text: "The value of ( 2^3 ) is:", options: ["6", "8", "9", "12"], correct_option: 1 },
     { question_text: "If A = {1, 2, 3}, then number of elements in A is:", options: ["1", "2", "3", "4"], correct_option: 2 },
@@ -3230,7 +3230,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If two lines intersect, vertically opposite angles are:", options: ["Unequal", "Complementary", "Equal", "Adjacent"], correct_option: 2 },
     { question_text: "Simplify: (2x)(3x)", options: ["5x²", "6x²", "6x", "x²"], correct_option: 1 }
   ],
-  math9MedQuestions: [
+  math10MedQuestions: [
     { question_text: "Simplify: ( 2^3 × 2^4 )", options: ["2⁷", "2¹²", "4⁷", "8⁴"], correct_option: 0 },
     { question_text: "Rationalize the denominator: ( \\frac{1}{\\sqrt{3}} )", options: ["( \\frac{\\sqrt{3}}{3} )", "( \\frac{1}{3} )", "( \\sqrt{3} )", "( \\frac{3}{\\sqrt{3}} )"], correct_option: 0 },
     { question_text: "If A = {1,2,3,4} and B = {3,4,5}, find A ∪ B", options: ["{1,2,3,4,5}", "{3,4}", "{1,2}", "{5}"], correct_option: 0 },
@@ -3272,7 +3272,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If two lines are parallel, alternate interior angles are:", options: ["Unequal", "Equal", "Complementary", "Adjacent"], correct_option: 1 },
     { question_text: "Solve: 3(x + 2) – 6 = 0", options: ["0", "2", "–2", "4"], correct_option: 2 }
   ],
-  math9HardQuestions: [
+  math10HardQuestions: [
     { question_text: "Simplify: ( \\frac{2^5 \\times 2^3}{2^4} )", options: ["2⁴", "2⁸", "2⁴", "2²"], correct_option: 2 },
     { question_text: "If √x + 3 = 7, find x.", options: ["4", "9", "16", "25"], correct_option: 2 },
     { question_text: "Factorize completely: x² – 5x – 24", options: ["(x – 8)(x + 3)", "(x – 6)(x + 4)", "(x + 8)(x – 3)", "(x – 12)(x + 2)"], correct_option: 0 },
@@ -3314,7 +3314,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "If √5 is irrational, then √20 is:", options: ["Rational", "Irrational", "2√5", "5"], correct_option: 2 },
     { question_text: "Solve: 3x² = 12", options: ["x = ±2", "x = 2", "x = 4", "x = ±4"], correct_option: 0 }
   ],
-  urdu9EasyQuestions: [
+  urdu10EasyQuestions: [
     { question_text: "جملے میں اسم کی نشاندہی کریں: \"بچہ کتاب پڑھ رہا ہے۔\"", options: ["پڑھ رہا", "بچہ", "رہا", "ہے"], correct_option: 1 },
     { question_text: "درج ذیل میں سے صفت کون سا لفظ ہے؟", options: ["دوڑنا", "خوبصورت", "کرسی", "لکھنا"], correct_option: 1 },
     { question_text: "درج ذیل میں سے فعل کا انتخاب کریں:", options: ["کھانا", "کتاب", "دوڑنا", "بچہ"], correct_option: 2 },
@@ -3356,7 +3356,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درج ذیل میں سے حرفِ استفہام منتخب کریں:", options: ["کیوں", "اور", "تک", "پر"], correct_option: 0 },
     { question_text: "درج ذیل میں سے مرکب لفظ منتخب کریں:", options: ["اسکول", "خوشحال", "قلم", "بچہ"], correct_option: 1 }
   ],
-  urdu9MedQuestions: [
+  urdu10MedQuestions: [
     { question_text: "\"وہ بہت محنتی طالب علم ہے۔\" اس جملے میں صفت کون سی ہے؟", options: ["طالب", "علم", "محنتی", "بہت"], correct_option: 2 },
     { question_text: "درج ذیل میں سے اسمِ مصدر منتخب کریں:", options: ["دوڑ", "دوڑنا", "دوڑا", "دوڑتی"], correct_option: 1 },
     { question_text: "\"علی نے خط لکھا۔\" اس جملے میں مفعول کون سا ہے؟", options: ["علی", "نے", "خط", "لکھا"], correct_option: 2 },
@@ -3398,7 +3398,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "درج ذیل میں سے درست جمع منتخب کریں: \"قلم\"", options: ["قلمیں", "اقلام", "قلموں", "قلمی"], correct_option: 1 },
     { question_text: "درج ذیل میں سے تمثیل کی مثال منتخب کریں:", options: ["وقت سونا ہے", "وقت گزر گیا", "وقت آیا", "وقت لکھا گیا"], correct_option: 0 }
   ],
-  urdu9HardQuestions: [
+  urdu10HardQuestions: [
     { question_text: "\"وہ ایسا بہادر ہے کہ سب اس کی تعریف کرتے ہیں۔\" یہ جملہ کس قسم کا ہے؟", options: ["سادہ", "مرکب", "مرکبِ تابع", "سوالیہ"], correct_option: 2 },
     { question_text: "درج ذیل میں سے استعارہ کی مثال منتخب کریں:", options: ["وہ شیر کی طرح بہادر ہے", "وہ شیر ہے", "وہ بہادر ہے", "وہ مضبوط ہے"], correct_option: 1 },
     { question_text: "\"اگر بارش ہوئی تو ہم گھر رہیں گے۔\" جملے میں شرطیہ جملہ کون سا ہے؟", options: ["ہم گھر رہیں گے", "اگر بارش ہوئی", "بارش ہوئی", "گھر رہیں گے"], correct_option: 1 },
@@ -3440,7 +3440,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "\"وہ اتنا تھک گیا کہ فوراً سو گیا۔\" جملے میں سبب کیا ہے؟", options: ["وہ سو گیا", "وہ تھک گیا", "فوراً", "اتنا"], correct_option: 1 },
     { question_text: "درج ذیل میں سے صحیح مثال منتخب کریں جو کنایہ ہو:", options: ["اس کے ہاتھ صاف ہیں", "اس کا دل بڑا ہے", "وہ بڑا آدمی ہے", "وہ امیر ہے"], correct_option: 1 }
   ],
-  eng10EasyQuestions: [
+  del_eng10EasyQuestions: [
     { question_text: "Choose the correct form of the verb: She ___ to school every day.", options: ["go", "goes", "going", "gone"], correct_option: 1 },
     { question_text: "Identify the noun in the sentence: \"The teacher explained the lesson.\"", options: ["explained", "teacher", "the", "lesson"], correct_option: 1 },
     { question_text: "Choose the correct synonym of “brave.”", options: ["coward", "bold", "weak", "shy"], correct_option: 1 },
@@ -3482,7 +3482,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Identify the conjunction: I was tired, but I finished my work.", options: ["tired", "finished", "but", "work"], correct_option: 2 },
     { question_text: "Choose the correct form of adjective: This is the ___ building in the city.", options: ["tall", "taller", "tallest", "more tall"], correct_option: 2 }
   ],
-  eng10MedQuestions: [
+  del_eng10MedQuestions: [
     { question_text: "Choose the correct passive voice: \"People speak English all over the world.\"", options: ["English spoke all over the world.", "English is spoken all over the world.", "English was spoken all over the world.", "English speaks all over the world."], correct_option: 1 },
     { question_text: "Identify the correct conditional sentence (Type 1):", options: ["If he studied, he would pass.", "If he studies, he will pass.", "If he studied, he will pass.", "If he studies, he would pass."], correct_option: 1 },
     { question_text: "Choose the correct reported speech: She said, “I have finished my work.”", options: ["She said that she has finished her work.", "She said that she had finished her work.", "She said she finished her work.", "She says she had finished her work."], correct_option: 1 },
@@ -3524,7 +3524,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Choose the correct transformation into passive voice: \"They have finished the project.\"", options: ["The project was finished.", "The project has been finished.", "The project is finished.", "The project had finished."], correct_option: 1 },
     { question_text: "Choose the correct word form: She gave a very ___ performance.", options: ["impress", "impressive", "impressed", "impressing"], correct_option: 1 }
   ],
-  eng10HardQuestions: [
+  del_eng10HardQuestions: [
     { question_text: "Choose the correct Type 2 conditional sentence:", options: ["If he studies, he will pass.", "If he studied, he would pass.", "If he studies, he would pass.", "If he studied, he will pass."], correct_option: 1 },
     { question_text: "Choose the correct Type 3 conditional sentence:", options: ["If she works hard, she will succeed.", "If she worked hard, she would succeed.", "If she had worked hard, she would have succeeded.", "If she works hard, she would succeed."], correct_option: 2 },
     { question_text: "Select the correct passive voice: \"They had completed the task.\"", options: ["The task was completed.", "The task has been completed.", "The task had been completed.", "The task completed."], correct_option: 2 },
@@ -3566,7 +3566,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Identify the subject-verb agreement error correction:", options: ["Neither of the boys were present.", "Neither of the boys was present.", "Neither boys was present.", "Neither boys were present."], correct_option: 1 },
     { question_text: "Choose the correct transformation into passive voice: \"They say that he is very rich.\"", options: ["He is said to be very rich.", "He is saying very rich.", "He said to be rich.", "He is very rich said."], correct_option: 0 }
   ],
-  math10EasyQuestions: [
+  del_math10EasyQuestions: [
     { question_text: "Solve: 2x = 10", options: ["2", "5", "8", "12"], correct_option: 1 },
     { question_text: "Factorize: x² - 9", options: ["(x − 9)(x + 1)", "(x − 3)(x + 3)", "(x − 3)²", "(x + 9)(x − 1)"], correct_option: 1 },
     { question_text: "If a = 2, find the value of a³.", options: ["4", "6", "8", "16"], correct_option: 2 },
@@ -3608,7 +3608,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "The degree of quadratic equation is:", options: ["1", "2", "3", "4"], correct_option: 1 },
     { question_text: "Simplify: 9 ÷ 3", options: ["2", "3", "6", "9"], correct_option: 1 }
   ],
-  math10MedQuestions: [
+  del_math10MedQuestions: [
     { question_text: "Solve: x² - 5x + 6 = 0", options: ["(2,3)", "(1,6)", "(−2,−3)", "(3,6)"], correct_option: 0 },
     { question_text: "The nature of roots if b² - 4ac > 0 is:", options: ["Equal", "Imaginary", "Real and unequal", "No roots"], correct_option: 2 },
     { question_text: "Factorize: x² + 7x + 10", options: ["(x + 5)(x + 2)", "(x + 10)(x − 1)", "(x + 7)(x + 3)", "(x + 5)²"], correct_option: 0 },
@@ -3650,7 +3650,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Solve: x² - 4x = 0", options: ["(0,4)", "(2,2)", "(4,0)", "(1,4)"], correct_option: 0 },
     { question_text: "The equation of y-axis is:", options: ["x = 0", "y = 0", "x = 1", "y = 1"], correct_option: 0 }
   ],
-  math10HardQuestions: [
+  del_math10HardQuestions: [
     { question_text: "If the roots of x² - 7x + k = 0 are equal, then k =", options: ["12", "49/4", "7", "14"], correct_option: 1 },
     { question_text: "The distance between (−2,3) and (4,−3) is:", options: ["6", "6√2", "12", "3√2"], correct_option: 1 },
     { question_text: "If sin A = 3/5, find cos A.", options: ["4/5", "3/4", "5/3", "2/5"], correct_option: 0 },
@@ -3692,7 +3692,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Solve: x² - 1 = 0", options: ["±1", "1", "−1", "0"], correct_option: 0 },
     { question_text: "If vertex form is y = a(x - h)² + k, vertex is:", options: ["(h,k)", "(k,h)", "(0,0)", "(a,h)"], correct_option: 0 }
   ],
-  urdu10EasyQuestions: [
+  del_urdu10EasyQuestions: [
     { question_text: "لفظ محنت کا مترادف ہے:", options: ["سستی", "کوشش", "آرام", "غفلت"], correct_option: 1 },
     { question_text: "لفظ اندھیرا کا متضاد ہے:", options: ["روشنی", "رات", "سایہ", "کالا"], correct_option: 0 },
     { question_text: "\"علی اسکول گیا۔\" جملہ میں اسم کی نشاندہی کریں:", options: ["گیا", "علی", "اسکول گیا", "ہے"], correct_option: 1 },
@@ -3734,7 +3734,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "لفظ خوشبو کس قسم کا اسم ہے؟", options: ["اسمِ ذات", "اسمِ کیفیت", "اسمِ علم", "اسمِ جمع"], correct_option: 1 },
     { question_text: "درست جملہ منتخب کریں:", options: ["وہ کتاب پڑھتی ہے۔", "وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھتے ہیں۔"], correct_option: 0 }
   ],
-  urdu10MedQuestions: [
+  del_urdu10MedQuestions: [
     { question_text: "لفظ ایثار کا مفہوم ہے:", options: ["خود غرضی", "قربانی", "دشمنی", "لالچ"], correct_option: 1 },
     { question_text: "محاورہ \"آسمان سر پر اٹھانا\" کا مطلب ہے:", options: ["خوش ہونا", "شور مچانا", "سونا", "بھاگ جانا"], correct_option: 1 },
     { question_text: "لفظ استقامت کا مترادف ہے:", options: ["کمزوری", "ثابت قدمی", "جلد بازی", "سستی"], correct_option: 1 },
@@ -3776,7 +3776,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "لفظ محبت کا مترادف ہے:", options: ["پیار", "نفرت", "غصہ", "دشمنی"], correct_option: 0 },
     { question_text: "\"سچائی کامیابی کی کنجی ہے\" — اس جملے کا مرکزی خیال ہے:", options: ["سچ بولنا مشکل ہے", "سچ کامیابی کا سبب بنتا ہے", "کامیابی آسان ہے", "کنجی اہم چیز ہے"], correct_option: 1 }
   ],
-  urdu10HardQuestions: [
+  del_urdu10HardQuestions: [
     { question_text: "کسی سبق میں شاعر قربانی کی تلقین کیوں کرتا ہے؟", options: ["ذاتی فائدے کے لیے", "قوم کی ترقی کے لیے", "شہرت کے لیے", "دولت کے لیے"], correct_option: 1 },
     { question_text: "لفظ حریت کا مفہوم ہے:", options: ["غلامی", "آزادی", "قید", "پابندی"], correct_option: 1 },
     { question_text: "اگر کسی قوم میں اتحاد نہ ہو تو نتیجہ کیا ہوگا؟", options: ["ترقی", "کامیابی", "زوال", "خوشحالی"], correct_option: 2 },
@@ -3818,7 +3818,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "فعل مضارع کی اعلیٰ مثال ہے:", options: ["وہ پڑھ رہا ہے۔", "وہ پڑھا۔", "وہ پڑھے گا۔", "وہ پڑھ چکا۔"], correct_option: 0 },
     { question_text: "کسی نظم میں شاعر کا پیغام سمجھنے کے لیے ضروری ہے:", options: ["صرف قافیہ دیکھنا", "مکمل مفہوم پر غور کرنا", "اشعار یاد کرنا", "مشکل الفاظ چھوڑ دینا"], correct_option: 1 }
   ],
-  engKG1EasyQuestions: [
+  engKG2EasyQuestions: [
     { question_text: "Which letter comes after A?", options: ["B", "C", "D", "E"], correct_option: 0 },
     { question_text: "Which letter comes before D?", options: ["B", "C", "E", "F"], correct_option: 1 },
     { question_text: "Which letter makes the sound /b/?", options: ["A", "B", "D", "E"], correct_option: 1 },
@@ -3850,7 +3850,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which number is greater?", options: ["6", "3", "2", "1"], correct_option: 0 },
     { question_text: "How many days are in a week?", options: ["5", "6", "7", "8"], correct_option: 2 }
   ],
-  engKG1MedQuestions: [
+  engKG2MedQuestions: [
     { question_text: "What do we drink?", options: ["Water", "Stone", "Paper", "Sand"], correct_option: 0 },
     { question_text: "What do we use to write?", options: ["Pencil", "Plate", "Shoe", "Cap"], correct_option: 0 },
     { question_text: "Where do we study?", options: ["School", "Park", "Market", "Zoo"], correct_option: 0 },
@@ -3882,7 +3882,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which food is healthy?", options: ["Fruits", "Chips", "Candy", "Soda"], correct_option: 0 },
     { question_text: "What keeps our teeth clean?", options: ["Toothbrush", "Spoon", "Plate", "Towel"], correct_option: 0 }
   ],
-  engKG1HardQuestions: [
+  engKG2HardQuestions: [
     { question_text: "Which word starts with S?", options: ["Sun", "Cat", "Bat", "Hat"], correct_option: 0 },
     { question_text: "Which is a farm animal?", options: ["Goat", "Tiger", "Lion", "Bear"], correct_option: 0 },
     { question_text: "Which is a wild animal?", options: ["Elephant", "Cow", "Goat", "Hen"], correct_option: 0 },
@@ -3914,7 +3914,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which is a household pet?", options: ["Dog", "Lion", "Elephant", "Bear"], correct_option: 0 },
     { question_text: "Which is a natural source of light?", options: ["Sun", "Bulb", "Torch", "Candle"], correct_option: 0 }
   ],
-  mathKG1EasyQuestions: [
+  mathKG2EasyQuestions: [
     { question_text: "Which number is this: 5?", options: ["3", "5", "7", "9"], correct_option: 1 },
     { question_text: "Which number is this: 10?", options: ["8", "6", "10", "12"], correct_option: 2 },
     { question_text: "Which number is this: 15?", options: ["14", "15", "16", "18"], correct_option: 1 },
@@ -3946,7 +3946,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "What comes after 18?", options: ["17", "19", "20", "21"], correct_option: 1 },
     { question_text: "What comes before 4?", options: ["2", "3", "5", "6"], correct_option: 1 }
   ],
-  mathKG1MedQuestions: [
+  mathKG2MedQuestions: [
     { question_text: "Which number is greater?", options: ["3", "5", "2", "1"], correct_option: 1 },
     { question_text: "Which number is smaller?", options: ["9", "4", "7", "8"], correct_option: 1 },
     { question_text: "Which is greater?", options: ["10", "6", "5", "2"], correct_option: 0 },
@@ -3978,7 +3978,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which shape is like a clock?", options: ["Circle", "Square", "Triangle", "Line"], correct_option: 0 },
     { question_text: "Which shape has four corners?", options: ["Square", "Circle", "Oval", "Line"], correct_option: 0 }
   ],
-  mathKG1HardQuestions: [
+  mathKG2HardQuestions: [
     { question_text: "Which is longer?", options: ["Rope", "Eraser", "Coin", "Marble"], correct_option: 0 },
     { question_text: "Which is heavier?", options: ["Stone", "Feather", "Paper", "Leaf"], correct_option: 0 },
     { question_text: "Which is shorter?", options: ["Pencil", "Crayon", "Rope", "Stick"], correct_option: 1 },
@@ -4010,7 +4010,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which shape has no corners?", options: ["Circle", "Square", "Triangle", "Rectangle"], correct_option: 0 },
     { question_text: "Which number comes after 19?", options: ["18", "20", "21", "22"], correct_option: 1 }
   ],
-  urduKG1EasyQuestions: [
+  urduKG2EasyQuestions: [
     { question_text: "\"ا\" سے کون سا لفظ بنتا ہے؟", options: ["انار", "بکری", "کتا", "گھر"], correct_option: 0 },
     { question_text: "\"ب\" سے کون سا لفظ بنتا ہے؟", options: ["بال", "انار", "گھر", "دودھ"], correct_option: 0 },
     { question_text: "\"پ\" سے کون سا لفظ بنتا ہے؟", options: ["پانی", "کتاب", "چادر", "آم"], correct_option: 0 },
@@ -4062,7 +4062,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "کون سا لفظ میٹھا ہے؟", options: ["شہد", "نمک", "مرچ", "پانی"], correct_option: 0 },
     { question_text: "کون سا لفظ اسکول کی جگہ ہے؟", options: ["کلاس", "باغ", "بازار", "جنگل"], correct_option: 0 }
   ],
-  urduKG1MedQuestions: [
+  urduKG2MedQuestions: [
     { question_text: "\"ل\" سے کون سا لفظ بنتا ہے؟", options: ["لیموں", "آم", "بکری", "کتاب"], correct_option: 0 },
     { question_text: "\"ر\" سے کون سا لفظ بنتا ہے؟", options: ["رس", "آم", "بلی", "گائے"], correct_option: 0 },
     { question_text: "کون سا لفظ پانی پینے کے لیے ہے؟", options: ["گلاس", "کرسی", "درخت", "قلم"], correct_option: 0 },
@@ -4084,7 +4084,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "کون سا لفظ گرم ہوتا ہے؟", options: ["آگ", "برف", "پانی", "دودھ"], correct_option: 0 },
     { question_text: "کون سا لفظ اسکول میں پڑھا جاتا ہے؟", options: ["سبق", "آم", "بکری", "گائے"], correct_option: 0 }
   ],
-  urduKG1HardQuestions: [
+  urduKG2HardQuestions: [
     { question_text: "کون سا لفظ گھر میں ہوتا ہے؟", options: ["بستر", "آم", "درخت", "گائے"], correct_option: 0 },
     { question_text: "کون سا لفظ کھیل ہے؟", options: ["کرکٹ", "کتاب", "کرسی", "قلم"], correct_option: 0 },
     { question_text: "کون سا لفظ پھول ہے؟", options: ["چنبیلی", "بلی", "گھر", "کرسی"], correct_option: 0 },
@@ -4096,7 +4096,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "کون سا لفظ پھل ہے؟", options: ["امرود", "گاجر", "آلو", "مرچ"], correct_option: 0 },
     { question_text: "کون سا لفظ سبزی ہے؟", options: ["بھنڈی", "آم", "سیب", "کیلا"], correct_option: 0 }
   ],
-  engKG2EasyQuestions: [
+  eng1EasyQuestions: [
     { question_text: "Which letter comes after D?", options: ["C", "E", "F", "G"], correct_option: 1 },
     { question_text: "Which letter comes before K?", options: ["I", "J", "L", "M"], correct_option: 1 },
     { question_text: "Which letter is a vowel?", options: ["B", "E", "T", "S"], correct_option: 1 },
@@ -4148,7 +4148,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which is a flower?", options: ["Rose", "Stone", "Tree", "Leaf"], correct_option: 0 },
     { question_text: "Which is a body part?", options: ["Hand", "Book", "Chair", "Cup"], correct_option: 0 }
   ],
-  engKG2MedQuestions: [
+  eng1MedQuestions: [
     { question_text: "Which word begins with the sound /sh/?", options: ["Ship", "Sun", "Cat", "Ball"], correct_option: 0 },
     { question_text: "Which word begins with /ch/?", options: ["Chair", "Goat", "Fish", "Book"], correct_option: 0 },
     { question_text: "Which word has the sound /th/?", options: ["Thumb", "Dog", "Fan", "Pen"], correct_option: 0 },
@@ -4170,7 +4170,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which word is singular?", options: ["Boy", "Boys", "Children", "Cats"], correct_option: 0 },
     { question_text: "Which is a healthy drink?", options: ["Milk", "Soda", "Cola", "Energy drink"], correct_option: 0 }
   ],
-  engKG2HardQuestions: [
+  eng1HardQuestions: [
     { question_text: "Which is a describing word (adjective)?", options: ["Big", "Run", "Dog", "Sit"], correct_option: 0 },
     { question_text: "Choose the correct sentence:", options: ["I am a boy.", "Am I boy.", "I boy am.", "Boy I am."], correct_option: 0 },
     { question_text: "Fill in the blank: This is ___ apple.", options: ["a", "an", "the", "in"], correct_option: 1 },
@@ -4192,7 +4192,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which is a national bird of Pakistan?", options: ["Chukar", "Crow", "Parrot", "Pigeon"], correct_option: 0 },
     { question_text: "Which is our national animal?", options: ["Markhor", "Lion", "Tiger", "Elephant"], correct_option: 0 }
   ],
-  mathKG2EasyQuestions: [
+  math1EasyQuestions: [
     { question_text: "Which number is this: 25?", options: ["52", "25", "35", "20"], correct_option: 1 },
     { question_text: "Which number is this: 40?", options: ["14", "30", "40", "50"], correct_option: 2 },
     { question_text: "Which number comes after 59?", options: ["58", "60", "61", "69"], correct_option: 1 },
@@ -4244,7 +4244,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "20, 19, 18, ___", options: ["16", "17", "15", "14"], correct_option: 1 },
     { question_text: "10, 20, 30, ___", options: ["35", "40", "50", "60"], correct_option: 1 }
   ],
-  mathKG2MedQuestions: [
+  math1MedQuestions: [
     { question_text: "In 24, the digit 2 shows:", options: ["2 ones", "2 tens", "4 tens", "4 ones"], correct_option: 1 },
     { question_text: "In 38, the digit 8 shows:", options: ["8 ones", "8 tens", "3 ones", "3 tens"], correct_option: 0 },
     { question_text: "How many tens are in 50?", options: ["4", "5", "6", "0"], correct_option: 1 },
@@ -4266,7 +4266,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "11 − 2 = ?", options: ["8", "9", "10", "11"], correct_option: 1 },
     { question_text: "17 − 5 = ?", options: ["11", "12", "13", "14"], correct_option: 1 }
   ],
-  mathKG2HardQuestions: [
+  math1HardQuestions: [
     { question_text: "Ali has 5 apples. He gets 3 more. How many apples now?", options: ["7", "8", "9", "6"], correct_option: 1 },
     { question_text: "Sara had 10 balloons. 2 burst. How many left?", options: ["6", "7", "8", "9"], correct_option: 2 },
     { question_text: "There are 6 birds on a tree. 4 more come. Total birds?", options: ["8", "9", "10", "11"], correct_option: 2 },
@@ -4288,7 +4288,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "11 + 8 = ?", options: ["18", "19", "20", "21"], correct_option: 1 },
     { question_text: "20 − 0 = ?", options: ["0", "10", "20", "2"], correct_option: 2 }
   ],
-  urduKG2EasyQuestions: [
+  urdu1EasyQuestions: [
     { question_text: "الف کے بعد کون سا حرف آتا ہے؟", options: ["ب", "پ", "ت", "ث"], correct_option: 0 },
     { question_text: "پ سے پہلے کون سا حرف آتا ہے؟", options: ["ب", "ت", "ج", "چ"], correct_option: 0 },
     { question_text: "چ کے بعد کون سا حرف آتا ہے؟", options: ["ح", "ج", "خ", "د"], correct_option: 0 },
@@ -4340,7 +4340,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "ہم ہاتھ کب دھوتے ہیں؟", options: ["کھانے سے پہلے", "سونے سے پہلے", "کھیلنے کے بعد", "اسکول کے بعد"], correct_option: 0 },
     { question_text: "کون سا لفظ جانور نہیں ہے؟", options: ["کتاب", "بلی", "کتا", "گائے"], correct_option: 0 }
   ],
-  urduKG2MedQuestions: [
+  urdu1MedQuestions: [
     { question_text: "د سے پہلے کون سا حرف آتا ہے؟", options: ["خ", "ر", "ز", "س"], correct_option: 0 },
     { question_text: "م سے پہلے کون سا حرف آتا ہے؟", options: ["ل", "ن", "و", "ہ"], correct_option: 0 },
     { question_text: "و کے بعد کون سا حرف آتا ہے؟", options: ["ہ", "ی", "ل", "م"], correct_option: 1 },
@@ -4362,7 +4362,7 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "سورج نکل آیا۔", options: ["سورج نکل آیا۔", "سورج آیا۔", "نکل سورج۔", "آیا سورج نکل۔"], correct_option: 0 },
     { question_text: "تم کہاں جا رہے ہو؟", options: ["تم کہاں جا رہے ہو؟", "تم جا رہے ہو۔", "تم جا رہے۔", "جا رہے تم ہو۔"], correct_option: 0 }
   ],
-  urduKG2HardQuestions: [
+  urdu1HardQuestions: [
     { question_text: "اگر بارش ہو تو ہم کیا استعمال کرتے ہیں؟", options: ["چھتری", "پنکھا", "ہیٹر", "کمبل"], correct_option: 0 },
     { question_text: "ہم دانت صاف کرنے کے لیے کیا استعمال کرتے ہیں؟", options: ["برش", "چمچ", "کپ", "پلیٹ"], correct_option: 0 },
     { question_text: "ہم رات کو کیا کرتے ہیں؟", options: ["سوتے ہیں", "کھیلتے ہیں", "پڑھتے ہیں", "دوڑتے ہیں"], correct_option: 0 },

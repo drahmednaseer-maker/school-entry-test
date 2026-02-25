@@ -67,6 +67,38 @@ function initTables(database: any) {
       }
     }
 
+    // V1 Migration: Shift classes and capitalize difficulty
+    const currentVersion = database.pragma('user_version', { simple: true });
+    if (currentVersion === 0) {
+      console.log('[DB] Running V1 Migration: Shifting Class Levels and Capitalizing Difficulty...');
+      try {
+        database.transaction(() => {
+          database.exec(`
+            UPDATE questions SET difficulty = 'Easy' WHERE difficulty IN ('easy', 'EASY');
+            UPDATE questions SET difficulty = 'Medium' WHERE difficulty IN ('medium', 'MEDIUM');
+            UPDATE questions SET difficulty = 'Hard' WHERE difficulty IN ('hard', 'HARD');
+
+            DELETE FROM questions WHERE class_level = 'Grade 10';
+            UPDATE questions SET class_level = 'Grade 10' WHERE class_level = 'Grade 9';
+            UPDATE questions SET class_level = 'Grade 9' WHERE class_level = 'Grade 8';
+            UPDATE questions SET class_level = 'Grade 8' WHERE class_level = 'Grade 7';
+            UPDATE questions SET class_level = 'Grade 7' WHERE class_level = 'Grade 6';
+            UPDATE questions SET class_level = 'Grade 6' WHERE class_level = 'Grade 5';
+            UPDATE questions SET class_level = 'Grade 5' WHERE class_level = 'Grade 4';
+            UPDATE questions SET class_level = 'Grade 4' WHERE class_level = 'Grade 3';
+            UPDATE questions SET class_level = 'Grade 3' WHERE class_level = 'Grade 2';
+            UPDATE questions SET class_level = 'Grade 2' WHERE class_level = 'Grade 1';
+            UPDATE questions SET class_level = 'Grade 1' WHERE class_level = 'KG 2';
+            UPDATE questions SET class_level = 'KG 2' WHERE class_level = 'KG 1';
+          `);
+        })();
+        database.pragma('user_version = 1');
+        console.log('[DB] V1 Migration complete');
+      } catch (err: any) {
+        console.error('[DB] V1 Migration failed:', err.message);
+      }
+    }
+
     // Seed Questions incrementally
     const { allSeedData } = require('./seedData');
     const insert = database.prepare('INSERT INTO questions (subject, difficulty, class_level, question_text, options, correct_option) VALUES (?, ?, ?, ?, ?, ?)');
@@ -74,14 +106,16 @@ function initTables(database: any) {
 
     database.transaction(() => {
       for (const [key, questions] of Object.entries(allSeedData)) {
+        if (key.startsWith('del_')) continue; // Skip dropped sets
+
         let subject = 'Math';
-        let difficulty = 'easy';
+        let difficulty = 'Easy';
         let level = 'Grade 1';
 
         if (key.includes('eng')) subject = 'English';
         if (key.includes('urdu')) subject = 'Urdu';
-        if (key.includes('Med')) difficulty = 'medium';
-        if (key.includes('Hard')) difficulty = 'hard';
+        if (key.includes('Med')) difficulty = 'Medium';
+        if (key.includes('Hard')) difficulty = 'Hard';
 
         if (key.includes('KG1')) level = 'KG 1';
         else if (key.includes('KG2')) level = 'KG 2';
