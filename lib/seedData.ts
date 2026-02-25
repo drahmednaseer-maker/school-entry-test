@@ -4477,6 +4477,197 @@ export const allSeedData: Record<string, any[]> = {
     { question_text: "Which word shows possession?", options: ["Ali book", "Ali’s book", "Ali book’s", "Alis book"], correct_option: 1 },
     { question_text: "Which is the correct order of words?", options: ["playing is she", "She is playing", "Is she playing", "Playing she is"], correct_option: 1 },
     { question_text: "Which word has the digraph /sh/?", options: ["Ship", "Sip", "Chip", "Tip"], correct_option: 0 },
-    { question_text: "Which sentence shows good table manners?", options: ["Eat quickly.", "Eat with mouth closed.", "Talk loudly.", "Stand and eat."], correct_option: 1 }
+  ],
+  mathKG1EasyQuestions: [
+    { question_text: "Which number is this: 5?", options: ["3", "4", "5", "6"], correct_option: 2 },
+    { question_text: "What comes after 7?", options: ["6", "8", "9", "5"], correct_option: 1 },
+    { question_text: "Count: ★★★ How many stars?", options: ["2", "3", "4", "5"], correct_option: 1 },
+    { question_text: "Which number is the smallest?", options: ["9", "2", "7", "5"], correct_option: 1 },
+    { question_text: "Which shape is round?", options: ["Square", "Triangle", "Circle", "Rectangle"], correct_option: 2 },
+    { question_text: "Which number comes before 10?", options: ["8", "9", "11", "12"], correct_option: 1 },
+    { question_text: "Count the objects: 🍎🍎 How many apples?", options: ["1", "2", "3", "4"], correct_option: 1 },
+    { question_text: "Which number is bigger?", options: ["4", "9", "Same", "None"], correct_option: 1 },
+    { question_text: "Which is a square?", options: ["○", "△", "□", "◇"], correct_option: 2 },
+    { question_text: "What is the color of the number written in red? (conceptual)", options: ["Red", "Blue", "Green", "Yellow"], correct_option: 0 },
+    { question_text: "Count: ★★★★★ How many stars?", options: ["4", "5", "6", "7"], correct_option: 1 },
+    { question_text: "Which number shows zero?", options: ["1", "0", "2", "10"], correct_option: 1 },
+    { question_text: "Which is long?", options: ["Short pencil", "Long pencil", "Small ball", "Tiny box"], correct_option: 1 },
+    { question_text: "What comes after 1?", options: ["0", "2", "3", "4"], correct_option: 1 },
+    { question_text: "Count the fingers on one hand.", options: ["4", "5", "6", "7"], correct_option: 1 },
+    { question_text: "Which number is missing? 1, 2, __, 4", options: ["2", "3", "5", "6"], correct_option: 1 },
+    { question_text: "Which is heavy?", options: ["Feather", "Stone", "Leaf", "Paper"], correct_option: 1 },
+    { question_text: "Which number is between 3 and 5?", options: ["2", "4", "6", "7"], correct_option: 1 },
+    { question_text: "Count: ▲▲▲▲ How many triangles?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "Which is tall?", options: ["Tall boy", "Short boy", "Small ant", "Tiny bug"], correct_option: 0 },
+    { question_text: "What comes before 6?", options: ["5", "7", "8", "9"], correct_option: 0 },
+    { question_text: "Which is a triangle?", options: ["○", "□", "△", "▭"], correct_option: 2 },
+    { question_text: "Count: 🍌🍌🍌 How many bananas?", options: ["2", "3", "4", "5"], correct_option: 1 },
+    { question_text: "Which number is greater?", options: ["1", "8", "Same", "None"], correct_option: 1 },
+    { question_text: "Which is short?", options: ["Short rope", "Long rope", "Tall tree", "Big box"], correct_option: 0 },
+    { question_text: "What comes after 14?", options: ["13", "15", "16", "12"], correct_option: 1 },
+    { question_text: "Which number is even?", options: ["3", "5", "8", "7"], correct_option: 2 },
+    { question_text: "Count: ●●●●●● How many dots?", options: ["5", "6", "7", "8"], correct_option: 1 },
+    { question_text: "Which is small?", options: ["Elephant", "Ant", "Horse", "Camel"], correct_option: 1 },
+    { question_text: "What comes before 1?", options: ["0", "2", "3", "4"], correct_option: 0 }
+  ],
+  mathKG1MedQuestions: [
+    { question_text: "What is 2 + 1?", options: ["2", "3", "4", "5"], correct_option: 1 },
+    { question_text: "Which number is missing? 5, 6, __, 8", options: ["6", "7", "9", "10"], correct_option: 1 },
+    { question_text: "Which is greater?", options: ["6", "9", "Same", "None"], correct_option: 1 },
+    { question_text: "Count: ★★★★ How many?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "What is 4 + 2?", options: ["5", "6", "7", "8"], correct_option: 1 },
+    { question_text: "Which is the next number? 10, 11, 12, __", options: ["13", "14", "15", "9"], correct_option: 0 },
+    { question_text: "Which is the smallest?", options: ["12", "3", "9", "7"], correct_option: 1 },
+    { question_text: "Complete the pattern: ● ▲ ● ▲ __", options: ["▲", "●", "■", "◆"], correct_option: 1 },
+    { question_text: "What is 5 + 0?", options: ["0", "5", "10", "1"], correct_option: 1 },
+    { question_text: "Which number is between 8 and 10?", options: ["7", "9", "11", "12"], correct_option: 1 },
+    { question_text: "What is 3 + 3?", options: ["5", "6", "7", "8"], correct_option: 1 },
+    { question_text: "Which group has more?", options: ["●●●", "●●●●", "Same", "None"], correct_option: 1 },
+    { question_text: "What comes before 15?", options: ["13", "14", "16", "17"], correct_option: 1 },
+    { question_text: "What is 6 + 1?", options: ["6", "7", "8", "9"], correct_option: 1 },
+    { question_text: "Which is the correct counting order?", options: ["1,3,2", "1,2,3", "2,1,3", "3,2,1"], correct_option: 1 },
+    { question_text: "How many sides does a triangle have?", options: ["2", "3", "4", "5"], correct_option: 1 },
+    { question_text: "What is 2 + 2?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "Which number is odd?", options: ["2", "6", "9", "8"], correct_option: 2 },
+    { question_text: "Count backward: 5, 4, __, 2", options: ["3", "1", "6", "0"], correct_option: 0 },
+    { question_text: "Which is heavier?", options: ["Brick", "Feather", "Paper", "Leaf"], correct_option: 0 },
+    { question_text: "What is 7 + 2?", options: ["8", "9", "10", "11"], correct_option: 1 },
+    { question_text: "Which number comes next? 18, 19, __", options: ["17", "20", "21", "16"], correct_option: 1 },
+    { question_text: "How many sides does a square have?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "Which is correct?", options: ["6 < 2", "6 > 2", "6 = 2", "None"], correct_option: 1 },
+    { question_text: "What is 1 + 4?", options: ["4", "5", "6", "7"], correct_option: 1 },
+    { question_text: "Which is the longest?", options: ["Short rope", "Medium rope", "Long rope", "Tiny rope"], correct_option: 2 },
+    { question_text: "Count: ▲▲▲▲▲ How many?", options: ["4", "5", "6", "7"], correct_option: 1 },
+    { question_text: "Which number is missing? 11, __, 13", options: ["10", "12", "14", "15"], correct_option: 1 },
+    { question_text: "What is 0 + 3?", options: ["0", "3", "4", "5"], correct_option: 1 },
+    { question_text: "Which is the correct symbol for “more than”?", options: ["<", ">", "=", "+"], correct_option: 1 }
+  ],
+  mathKG1HardQuestions: [
+    { question_text: "What is 9 + 1?", options: ["9", "10", "11", "8"], correct_option: 1 },
+    { question_text: "Which number is the greatest?", options: ["16", "19", "14", "12"], correct_option: 1 },
+    { question_text: "Ali has 3 balls and gets 2 more. How many now?", options: ["4", "5", "6", "3"], correct_option: 1 },
+    { question_text: "Which comes next in pattern? 2, 4, 6, __", options: ["7", "8", "9", "10"], correct_option: 1 },
+    { question_text: "What is 10 − 1?", options: ["8", "9", "10", "11"], correct_option: 1 },
+    { question_text: "Which number is missing? 20, 19, __, 17", options: ["18", "16", "15", "14"], correct_option: 0 },
+    { question_text: "Sara has 5 candies and eats 1. How many left?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "Which number is exactly in the middle of 2 and 6?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "What is 8 + 2?", options: ["9", "10", "11", "12"], correct_option: 1 },
+    { question_text: "Which group has the least objects?", options: ["●●●●", "●●", "●●●", "●●●●●"], correct_option: 1 },
+    { question_text: "What is 7 + 3?", options: ["9", "10", "11", "12"], correct_option: 1 },
+    { question_text: "Which number is just before 20?", options: ["18", "19", "17", "16"], correct_option: 1 },
+    { question_text: "Complete the pattern: ▲ ▲ ● ▲ ▲ ● __", options: ["▲", "●", "■", "◆"], correct_option: 0 },
+    { question_text: "What is 6 − 2?", options: ["3", "4", "5", "6"], correct_option: 1 },
+    { question_text: "Which number is odd?", options: ["10", "12", "15", "18"], correct_option: 2 },
+    { question_text: "Ahmed has 4 pencils and buys 4 more. Total?", options: ["6", "7", "8", "9"], correct_option: 2 },
+    { question_text: "Which is true?", options: ["5 > 9", "9 > 5", "5 = 9", "None"], correct_option: 1 },
+    { question_text: "What is 3 + 5?", options: ["7", "8", "9", "10"], correct_option: 1 },
+    { question_text: "Which number is missing? 2, 5, 8, __", options: ["9", "10", "11", "12"], correct_option: 2 },
+    { question_text: "What is 10 − 5?", options: ["4", "5", "6", "7"], correct_option: 1 },
+    { question_text: "Which shape has 4 equal sides?", options: ["Triangle", "Circle", "Square", "Oval"], correct_option: 2 },
+    { question_text: "What is 1 + 9?", options: ["9", "10", "11", "12"], correct_option: 1 },
+    { question_text: "Which number is between 14 and 16?", options: ["13", "15", "17", "18"], correct_option: 1 },
+    { question_text: "Complete the pattern: 1, 3, 5, __", options: ["6", "7", "8", "9"], correct_option: 1 },
+    { question_text: "What is 8 − 3?", options: ["4", "5", "6", "7"], correct_option: 1 },
+    { question_text: "Which is lighter?", options: ["Feather", "Stone", "Brick", "Iron"], correct_option: 0 },
+    { question_text: "What is double of 2?", options: ["2", "3", "4", "5"], correct_option: 2 },
+    { question_text: "Which number makes 10 when added to 6?", options: ["2", "3", "4", "5"], correct_option: 2 },
+    { question_text: "What is 5 + 5?", options: ["9", "10", "11", "12"], correct_option: 1 },
+    { question_text: "Which is the correct descending order?", options: ["1,2,3", "3,2,1", "2,3,1", "1,3,2"], correct_option: 1 }
+  ],
+  urduKG1EasyQuestions: [
+    { question_text: "یہ کون سا حرف ہے: ا", options: ["ب", "ا", "پ", "ت"], correct_option: 1 },
+    { question_text: "حرف ب کے بعد کون سا حرف آتا ہے؟", options: ["ت", "ا", "ج", "د"], correct_option: 0 },
+    { question_text: "کون سا لفظ حرف ا سے شروع ہوتا ہے؟", options: ["بلی", "انار", "کتاب", "گھر"], correct_option: 1 },
+    { question_text: "کون سا جانور ہے؟", options: ["کرسی", "بلی", "میز", "کتاب"], correct_option: 1 },
+    { question_text: "کون سا پھل ہے؟", options: ["گاجر", "آم", "کرسی", "جوتا"], correct_option: 1 },
+    { question_text: "حرف پ کی پہچان کریں۔", options: ["پ", "ت", "ث", "ج"], correct_option: 0 },
+    { question_text: "کون سا رنگ ہے؟", options: ["سرخ", "بلی", "میز", "کپ"], correct_option: 0 },
+    { question_text: "کون سا پرندہ ہے؟", options: ["شیر", "طوطا", "بکری", "گھوڑا"], correct_option: 1 },
+    { question_text: "ہم پانی کس میں پیتے ہیں؟", options: ["گلاس", "کتاب", "جوتا", "بیگ"], correct_option: 0 },
+    { question_text: "حرف ت کے بعد کیا آتا ہے؟", options: ["ب", "ث", "ج", "چ"], correct_option: 1 },
+    { question_text: "کون سا لفظ ب سے شروع ہوتا ہے؟", options: ["بکری", "آم", "انار", "اُلو"], correct_option: 0 },
+    { question_text: "کون سی سبزی ہے؟", options: ["سیب", "گاجر", "آم", "کیلا"], correct_option: 1 },
+    { question_text: "کون سا جسم کا حصہ ہے؟", options: ["ہاتھ", "میز", "کتاب", "کپ"], correct_option: 0 },
+    { question_text: "جوتے کہاں پہنتے ہیں؟", options: ["سر پر", "پاؤں میں", "ہاتھ میں", "آنکھ میں"], correct_option: 1 },
+    { question_text: "کون سا دن ہے؟", options: ["پیر", "گرمی", "صبح", "سال"], correct_option: 0 },
+    { question_text: "کون سا لفظ د سے شروع ہوتا ہے؟", options: ["دروازہ", "کتاب", "آم", "بلی"], correct_option: 0 },
+    { question_text: "کون سا میٹھا ہے؟", options: ["چینی", "نمک", "مرچ", "کالی مرچ"], correct_option: 0 },
+    { question_text: "کون سا جانور فارم میں ہوتا ہے؟", options: ["گائے", "شیر", "چیتا", "ریچھ"], correct_option: 0 },
+    { question_text: "کون سا حرف ہے؟", options: ["ج", "ز", "ر", "س"], correct_option: 0 },
+    { question_text: "کون سا موسم ہے؟", options: ["سردی", "پیر", "مارچ", "شام"], correct_option: 0 },
+    { question_text: "ہم کیا استعمال کر کے مٹاتے ہیں؟", options: ["ربڑ", "پین", "برش", "بیگ"], correct_option: 0 },
+    { question_text: "کون سی چیز کلاس میں ہوتی ہے؟", options: ["میز", "آم", "بکری", "جوتا"], correct_option: 0 },
+    { question_text: "کون سا کیڑا ہے؟", options: ["چیونٹی", "بلی", "گائے", "گھوڑا"], correct_option: 0 },
+    { question_text: "کون سا حرف علت ہے؟", options: ["ا", "ب", "پ", "ت"], correct_option: 0 },
+    { question_text: "کون سا مہینہ ہے؟", options: ["جنوری", "پیر", "گرمی", "صبح"], correct_option: 0 },
+    { question_text: "ہم رنگ بھرنے کے لیے کیا استعمال کرتے ہیں؟", options: ["کریون", "چمچ", "پلیٹ", "کپ"], correct_option: 0 },
+    { question_text: "کون سا بڑا ہے؟", options: ["ہاتھی", "چیونٹی", "مکھی", "شہد کی مکھی"], correct_option: 0 },
+    { question_text: "کون سا پہلے آتا ہے؟", options: ["ا", "ب", "پ", "ت"], correct_option: 0 },
+    { question_text: "کون سا برتن کھانے کے لیے ہے؟", options: ["چمچ", "کتاب", "بیگ", "جوتا"], correct_option: 0 },
+    { question_text: "کون سا لفظ جانور ہے؟", options: ["شیر", "میز", "قلم", "کپ"], correct_option: 0 }
+  ],
+  urduKG1MedQuestions: [
+    { question_text: "\"بلی\" کی جمع کیا ہے؟", options: ["بلیاں", "بلیوں", "بلی", "بلیز"], correct_option: 0 },
+    { question_text: "کون سا لفظ \"گھر\" سے ہم آواز ہے؟", options: ["در", "کتاب", "بلی", "آم"], correct_option: 0 },
+    { question_text: "خالی جگہ پُر کریں: میں ___ ہوں۔", options: ["ہے", "ہوں", "ہیں", "ہو"], correct_option: 1 },
+    { question_text: "کون سا بنیادی رنگ ہے؟", options: ["سبز", "سرخ", "جامنی", "بھورا"], correct_option: 1 },
+    { question_text: "جمعہ کے بعد کون سا دن آتا ہے؟", options: ["ہفتہ", "اتوار", "جمعرات", "پیر"], correct_option: 0 },
+    { question_text: "درست جملہ کون سا ہے؟", options: ["میں اسکول جاتا ہوں۔", "میں اسکول جاتا ہے۔", "میں اسکول جاتے ہیں۔", "میں اسکول جانا۔"], correct_option: 0 },
+    { question_text: "کون سا لفظ علت سے شروع ہوتا ہے؟", options: ["انار", "بلی", "کتاب", "در"], correct_option: 0 },
+    { question_text: "کون سی درست املا ہے؟", options: ["کتتاب", "کتاب", "کتابب", "کتاب"], correct_option: 1 },
+    { question_text: "\"بڑا\" کی ضد کیا ہے؟", options: ["چھوٹا", "لمبا", "موٹا", "اونچا"], correct_option: 0 },
+    { question_text: "مارچ کے بعد کون سا مہینہ آتا ہے؟", options: ["اپریل", "مئی", "جون", "فروری"], correct_option: 0 },
+    { question_text: "مکمل جملہ کون سا ہے؟", options: ["سرخ گیند", "میرے پاس گیند ہے۔", "بڑی گیند", "گیند سرخ"], correct_option: 1 },
+    { question_text: "کون سا لفظ آخر میں \"ت\" کی آواز رکھتا ہے؟", options: ["ہاتھ", "بلی", "گائے", "آم"], correct_option: 0 },
+    { question_text: "ثانوی رنگ کون سا ہے؟", options: ["سبز", "سرخ", "نیلا", "پیلا"], correct_option: 0 },
+    { question_text: "ملنے پر کیا کہتے ہیں؟", options: ["خدا حافظ", "السلام علیکم", "شکریہ", "معاف کریں"], correct_option: 1 },
+    { question_text: "اسم (Naming word) کون سا ہے؟", options: ["دوڑنا", "کتاب", "تیز", "اچھا"], correct_option: 1 },
+    { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کھیل رہا ہے۔", "وہ کھیل رہی ہیں۔", "وہ کھیل رہا ہوں۔", "وہ کھیل رہا۔"], correct_option: 0 },
+    { question_text: "کون سا لفظ \"م\" کی آواز سے شروع ہوتا ہے؟", options: ["آم", "مینگو", "رنگ", "سنگ"], correct_option: 1 },
+    { question_text: "بارش میں کیا استعمال کرتے ہیں؟", options: ["چھتری", "پنکھا", "ہیٹر", "ٹوپی"], correct_option: 0 },
+    { question_text: "\"قلم\" سے ہم آواز لفظ کون سا ہے؟", options: ["علم", "گھر", "بلی", "آم"], correct_option: 0 },
+    { question_text: "مؤدبانہ جملہ کون سا ہے؟", options: ["پانی دو", "براہ کرم پانی دیں۔", "پانی ابھی", "مجھے پانی"], correct_option: 1 },
+    { question_text: "\"سورج\" کس سمت سے نکلتا ہے؟", options: ["مشرق", "مغرب", "شمال", "جنوب"], correct_option: 0 },
+    { question_text: "صبح کا سلام کیا ہے؟", options: ["شب بخیر", "صبح بخیر", "خدا حافظ", "السلام"], correct_option: 1 },
+    { question_text: "درست بڑا حرف کون سا ہے؟", options: ["ا", "اا", "آا", "آ"], correct_option: 0 },
+    { question_text: "فعل (Action word) کون سا ہے؟", options: ["دوڑنا", "کتاب", "میز", "کپ"], correct_option: 0 },
+    { question_text: "تین حروف والا لفظ کون سا ہے؟", options: ["گھر", "کتاب", "انار", "اسکول"], correct_option: 0 },
+    { question_text: "واحد کتاب کے لیے کون سا اشارہ درست ہے؟", options: ["یہ", "یہ سب", "وہ سب", "وہ"], correct_option: 0 },
+    { question_text: "خالی جگہ پُر کریں: وہ ___ رہا ہے۔", options: ["کھیل", "کھیلیں", "کھیلتے", "کھیلیں گے"], correct_option: 0 },
+    { question_text: "کون سا لفظ رنگ ظاہر کرتا ہے؟", options: ["نیلا", "دوڑ", "کھاؤ", "پیو"], correct_option: 0 },
+    { question_text: "اچھے آداب کیا ہیں؟", options: ["شور کرنا", "شکریہ کہنا", "دھکا دینا", "بھاگنا"], correct_option: 1 },
+    { question_text: "کون سا لفظ \"س\" کی آواز سے شروع ہوتا ہے؟", options: ["سیب", "کتاب", "در", "بلی"], correct_option: 0 }
+  ],
+  urduKG1HardQuestions: [
+    { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کتاب پڑھتا ہے۔", "وہ کتاب پڑھتے ہے۔", "وہ کتاب پڑھتا ہوں۔", "وہ کتاب پڑھنا ہے۔"], correct_option: 0 },
+    { question_text: "کون سا لفظ \"آ\" کی آواز رکھتا ہے؟", options: ["آم", "قلم", "گھر", "در"], correct_option: 0 },
+    { question_text: "کون سا جوڑا ایک جیسی آواز سے شروع ہوتا ہے؟", options: ["بلی — بکری", "بلی — آم", "گھر — سیب", "قلم — در"], correct_option: 0 },
+    { question_text: "کون سا لفظ علت سے شروع نہیں ہوتا؟", options: ["انار", "امرود", "آم", "بلی"], correct_option: 3 },
+    { question_text: "پڑھیں اور جواب دیں: \"علی کے پاس سرخ گیند ہے۔\" گیند کا رنگ کیا ہے؟", options: ["نیلا", "سبز", "سرخ", "پیلا"], correct_option: 2 },
+    { question_text: "\"خوش\" کی ضد کیا ہے؟", options: ["اداس", "بڑا", "تیز", "اونچا"], correct_option: 0 },
+    { question_text: "سوالیہ جملہ کون سا ہے؟", options: ["تم کہاں جا رہے ہو؟", "وہ کھیل رہا ہے۔", "میں اسکول جاتا ہوں۔", "وہ خوش ہے۔"], correct_option: 0 },
+    { question_text: "کون سا لفظ لمبی آواز رکھتا ہے؟", options: ["سیب", "سب", "سر", "سن"], correct_option: 0 },
+    { question_text: "درست حروف کی ترتیب کون سی ہے؟", options: ["ش س ص", "س ش ص", "ص ش س", "ش ص س"], correct_option: 1 },
+    { question_text: "درست جمع کون سی ہے؟", options: ["بچے", "بچہ", "بچوں", "بچگان"], correct_option: 0 },
+    { question_text: "کون سا لفظ آخر میں \"گ\" کی آواز رکھتا ہے؟", options: ["رنگ", "قلم", "کتاب", "ہاتھ"], correct_option: 0 },
+    { question_text: "کون سا جملہ سوالیہ ہے؟", options: ["آپ کہاں جا رہے ہیں؟", "میں گھر جا رہا ہوں۔", "وہ کھیل رہی ہے۔", "ہم خوش ہیں۔"], correct_option: 0 },
+    { question_text: "دو ہجوں والا لفظ کون سا ہے؟", options: ["آم", "کیلا", "گھر", "دل"], correct_option: 1 },
+    { question_text: "بڑے حرف کا درست استعمال کون سا ہے؟", options: ["علی اسکول جاتا ہے۔", "علی اسکول جاتا ہے", "علی اسکول جاتا ہے", "علی اسکول جاتا ہے"], correct_option: 0 },
+    { question_text: "\"شیر\" کے گروہ کا لفظ کون سا ہے؟", options: ["چیتا", "گاجر", "میز", "کپ"], correct_option: 0 },
+    { question_text: "کون سا لفظ مرکب ہے؟", options: ["سورج مکھی", "سورج", "مکھی", "روشنی"], correct_option: 0 },
+    { question_text: "مددگار فعل منتخب کریں: \"وہ ___ رہی ہے۔\"", options: ["کھیل", "کھیلیں", "کھیلتے", "کھیلیں گے"], correct_option: 0 },
+    { question_text: "درست املا کون سی ہے؟", options: ["دوست", "دوسٹ", "دوستت", "دوستہ"], correct_option: 0 },
+    { question_text: "اجازت لینے والا جملہ کون سا ہے؟", options: ["میں جا رہا ہوں۔", "کیا میں جا سکتا ہوں؟", "میں جاؤں گا۔", "جانا ہے۔"], correct_option: 1 },
+    { question_text: "کون سا لفظ \"ش\" سے شروع ہوتا ہے؟", options: ["شیر", "سیر", "تیر", "میر"], correct_option: 0 },
+    { question_text: "\"بڑا\" کی تقابلی شکل کیا ہے؟", options: ["بڑا تر", "بڑا ترین", "زیادہ بڑا", "بڑا زیادہ"], correct_option: 0 },
+    { question_text: "خالی جگہ پُر کریں: سورج مشرق سے ___ ہے۔", options: ["نکلتا", "نکلا", "نکلتے", "نکلیں"], correct_option: 0 },
+    { question_text: "درمیانی آواز \"اِ\" والا لفظ کون سا ہے؟", options: ["دل", "دال", "دول", "دُل"], correct_option: 0 },
+    { question_text: "درست جملہ منتخب کریں۔", options: ["وہ کھیل رہے ہیں۔", "وہ کھیل رہا ہیں۔", "وہ کھیل رہے ہے۔", "وہ کھیل رہا ہوں۔"], correct_option: 0 },
+    { question_text: "سوال کے آخر میں کون سی علامت لگتی ہے؟", options: ["۔", "؟", "،", "!"], correct_option: 1 },
+    { question_text: "ملکیت ظاہر کرنے والا جملہ کون سا ہے؟", options: ["علی کی کتاب", "علی کتاب", "علی کتاب ہے", "علی کتابیں"], correct_option: 0 },
+    { question_text: "درست ترتیب کون سی ہے؟", options: ["کھیل رہی ہے وہ", "وہ کھیل رہی ہے", "رہی ہے وہ کھیل", "کھیل وہ رہی ہے"], correct_option: 1 },
+    { question_text: "کون سا لفظ ہم آواز رکھتا ہے \"شپ\" کے ساتھ؟", options: ["شپ — شپ", "شپ — سب", "شپ — سر", "شپ — سن"], correct_option: 0 },
+    { question_text: "کون سا جملہ کھانے کے آداب دکھاتا ہے؟", options: ["جلدی کھاؤ", "منہ بند کر کے کھاؤ", "شور کرو", "کھڑے ہو کر کھاؤ"], correct_option: 1 },
+    { question_text: "نزولی ترتیب کون سی ہے؟", options: ["ا ب پ", "پ ب ا", "ب ا پ", "ا پ ب"], correct_option: 1 }
   ]
 };
