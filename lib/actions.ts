@@ -107,13 +107,9 @@ export async function updatePassword(currentState: any, formData: FormData) {
 
     if (!user) return { error: 'User not found' };
 
-    // If changing own password, verify current. If admin changing others, skip current?
-    if (targetUsername === payload.username) {
-        if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
-            return { error: 'Incorrect current password' };
-        }
-    } else if (payload.role !== 'admin') {
-        return { error: 'Unauthorized' };
+    // Admin can forcefully change any password, including their own
+    if (payload.role !== 'admin') {
+        return { error: 'Unauthorized. Only admins can reset passwords.' };
     }
 
     const newHash = bcrypt.hashSync(newPassword, 10);

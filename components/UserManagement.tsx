@@ -68,18 +68,6 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
             <form ref={formRef} action={handleSubmit} className="space-y-4">
                 <input type="hidden" name="username" value={selectedUsername} />
 
-                {isOwnAccount && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Current Password</label>
-                        <input
-                            name="current_password"
-                            type="password"
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                        />
-                    </div>
-                )}
-
                 <div>
                     <label className="block text-sm font-medium text-gray-700">New Password</label>
                     <input
