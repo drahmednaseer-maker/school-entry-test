@@ -123,7 +123,14 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
             <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
                 <div className="px-6 py-4 border-b flex items-center gap-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
                     <GraduationCap size={18} style={{ color: 'var(--primary)' }} />
-                    <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Admission Decision</h2>
+                    <div>
+                        <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                            {admissionStatus ? 'Change Admission Decision' : 'Admission Decision'}
+                        </h2>
+                        {admissionStatus && (
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Current status can be updated at any time</p>
+                        )}
+                    </div>
                     {admissionStatus === 'granted' && (
                         <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>
                             ✓ Granted — {student.admitted_class}

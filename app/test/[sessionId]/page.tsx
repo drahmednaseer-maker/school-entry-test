@@ -10,7 +10,8 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
     const db = getDb();
 
     const session = db.prepare(`
-        SELECT ts.*, s.name as student_name, s.father_name, s.photo as student_photo
+        SELECT ts.*, s.name as student_name, s.father_name, s.photo as student_photo,
+               s.class_level, s.gender
         FROM test_sessions ts
         JOIN students s ON ts.student_id = s.id
         WHERE ts.id = ?
@@ -45,6 +46,8 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
                 studentName={session.student_name}
                 fatherName={session.father_name}
                 studentPhoto={session.student_photo || undefined}
+                classLevel={session.class_level || ''}
+                gender={session.gender || ''}
             />
         </div>
     );

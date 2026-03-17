@@ -25,6 +25,8 @@ interface TestClientProps {
     studentName: string;
     fatherName: string;
     studentPhoto?: string;
+    classLevel?: string;
+    gender?: string;
 }
 
 export default function TestClient({
@@ -35,6 +37,8 @@ export default function TestClient({
     studentName,
     fatherName,
     studentPhoto,
+    classLevel,
+    gender,
 }: TestClientProps) {
     const router = useRouter();
     const [currentIdx, setCurrentIdx] = useState(0);
@@ -148,31 +152,80 @@ export default function TestClient({
                         {formatTime(timeLeft)}
                     </div>
 
-                    {/* Right: Student info + photo */}
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="text-right hidden sm:block min-w-0">
-                            <p className="font-bold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{studentName}</p>
-                            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>s/o {fatherName}</p>
-                        </div>
+                    {/* Right: Theme toggle */}
+                    <ThemeToggle />
+                </div>
+            </div>
+
+            {/* ── Student Info Header Card ─────────────────────── */}
+            <div className="max-w-3xl mx-auto w-full px-4 pt-5 pb-2">
+                <div
+                    className="rounded-2xl overflow-hidden shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}
+                >
+                    <div className="p-5 flex items-center gap-5">
+                        {/* Photo — large passport size */}
                         {studentPhoto ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                                 src={studentPhoto}
                                 alt={studentName}
-                                className="w-9 h-9 rounded-full object-cover border-2 shrink-0"
-                                style={{ borderColor: 'var(--primary)' }}
+                                style={{
+                                    width: '80px',
+                                    height: '100px',
+                                    objectFit: 'cover',
+                                    borderRadius: '12px',
+                                    border: '3px solid rgba(255,255,255,0.4)',
+                                    flexShrink: 0,
+                                }}
                             />
                         ) : (
-                            <div
-                                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
-                                style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}
-                            >
-                                {studentName.charAt(0).toUpperCase()}
+                            <div style={{
+                                width: '80px', height: '100px', borderRadius: '12px',
+                                background: 'rgba(255,255,255,0.2)', border: '3px solid rgba(255,255,255,0.3)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: 'white', fontSize: '28px', fontWeight: 900, flexShrink: 0,
+                            }}>
+                                {studentName?.charAt(0)?.toUpperCase()}
                             </div>
                         )}
-                        <ThemeToggle />
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                            <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">{schoolName}</p>
+                            <h2 className="text-white font-black text-xl leading-tight mb-0.5 truncate">{studentName}</h2>
+                            <p className="text-blue-100 text-sm font-medium mb-3">S/O: {fatherName}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                                {classLevel && (
+                                    <span className="text-blue-100 text-xs flex items-center gap-1">
+                                        🎓 {classLevel}
+                                    </span>
+                                )}
+                                {gender && (
+                                    <span className="text-blue-100 text-xs">
+                                        {gender === 'Male' ? '♂' : '♀'} {gender}
+                                    </span>
+                                )}
+                                <span className="text-blue-100 text-xs">
+                                    📋 {questions.length} Questions
+                                </span>
+                                <span className="text-blue-100 text-xs">
+                                    ⏱ 30 min
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Progress pill */}
+                        <div className="shrink-0 text-right hidden sm:block">
+                            <p className="text-blue-200 text-xs uppercase font-semibold tracking-wider mb-1">Answered</p>
+                            <p className="text-white text-3xl font-black">
+                                {answeredCount}
+                                <span className="text-blue-300 text-lg"> / {questions.length}</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
+            </div>
 
                 {/* Progress bar */}
                 <div className="h-1" style={{ background: 'var(--border)' }}>
