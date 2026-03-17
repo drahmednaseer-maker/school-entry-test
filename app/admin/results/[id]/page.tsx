@@ -4,8 +4,21 @@ import { CheckCircle2, XCircle, User, Calendar, BookOpen, AlertCircle, Hash, Che
 import clsx from 'clsx';
 import Link from 'next/link';
 import { setAdmissionStatus } from '@/lib/actions';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
+
+async function grantAdmission(fd: FormData) {
+    'use server';
+    await setAdmissionStatus(fd);
+    revalidatePath('/admin/results');
+}
+
+async function declineAdmission(fd: FormData) {
+    'use server';
+    await setAdmissionStatus(fd);
+    revalidatePath('/admin/results');
+}
 
 const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
 
@@ -130,7 +143,7 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
                                 <ThumbsUp size={18} style={{ color: 'var(--success)' }} />
                                 <p className="font-bold text-sm" style={{ color: 'var(--success)' }}>Grant Admission</p>
                             </div>
-                            <form action={async (fd) => { await setAdmissionStatus(fd); }} className="space-y-2">
+                            <form action={grantAdmission} className="space-y-2">
                                 <input type="hidden" name="student_id" value={studentId} />
                                 <input type="hidden" name="status" value="granted" />
                                 <select
@@ -157,7 +170,7 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
                             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                                 Marks the student as not granted. This can be changed at any time.
                             </p>
-                            <form action={async (fd) => { await setAdmissionStatus(fd); }}>
+                            <form action={declineAdmission}>
                                 <input type="hidden" name="student_id" value={studentId} />
                                 <input type="hidden" name="status" value="not_granted" />
                                 <button type="submit" className="w-full py-2 rounded-lg text-sm font-bold transition-all" style={{ background: 'var(--danger)', color: 'white' }}>
