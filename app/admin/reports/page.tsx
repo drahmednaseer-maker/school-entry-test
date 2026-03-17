@@ -59,7 +59,7 @@ export default function ReportsPage() {
     ];
 
     return (
-        <div className="space-y-8">
+        <div className="flex-1 overflow-y-auto space-y-8">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary-muted)' }}>

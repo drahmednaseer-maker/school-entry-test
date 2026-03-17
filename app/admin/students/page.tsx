@@ -9,7 +9,7 @@ export default function StudentsPage() {
     const students = db.prepare('SELECT * FROM students ORDER BY created_at DESC').all() as any[];
 
     return (
-        <div className="space-y-8">
+        <div className="flex-1 overflow-y-auto space-y-8">
             <div className="flex justify-between items-center">
                 <h2 className="text-3xl font-bold text-gray-800">Students & Access Codes</h2>
             </div>

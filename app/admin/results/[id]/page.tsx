@@ -29,14 +29,18 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
         );
     }
 
-    const questionIds = JSON.parse(session.question_ids);
+    const questionIds: number[] = JSON.parse(session.question_ids || '[]');
     const answers = JSON.parse(session.answers || '{}');
-    const questions = db.prepare(`SELECT * FROM questions WHERE id IN (${questionIds.join(',')})`).all() as any[];
-    const orderedQuestions = questionIds.map((id: number) => questions.find(q => q.id === id));
+    const questions = questionIds.length > 0
+        ? db.prepare(`SELECT * FROM questions WHERE id IN (${questionIds.join(',')})`).all() as any[]
+        : [];
+    const orderedQuestions = questionIds
+        .map((qid: number) => questions.find((q: any) => q.id === qid))
+        .filter(Boolean) as any[];
 
     const subjects = ['English', 'Urdu', 'Math'];
     const summary = subjects.map(sub => {
-        const subQs = orderedQuestions.filter((q: any) => q.subject === sub);
+        const subQs = orderedQuestions.filter((q: any) => q?.subject === sub);
         const total = subQs.length;
         const correct = subQs.filter((q: any) => answers[q.id] === q.correct_option).length;
         return { subject: sub, total, correct };
@@ -50,7 +54,7 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
     const admissionStatus = student.admission_status as string | null;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto"><div className="max-w-4xl mx-auto space-y-6">
             {/* Back link */}
             <Link href="/admin/results" className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors" style={{ color: 'var(--text-secondary)' }}>
                 <ChevronLeft size={16} /> All Results
@@ -250,6 +254,7 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
             <div className="flex justify-center pb-10">
                 <Link href="/admin/results" className="st-btn-ghost px-8 py-3">← Back to Results</Link>
             </div>
+        </div>
         </div>
     );
 }

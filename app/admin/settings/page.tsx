@@ -8,7 +8,7 @@ export default async function SettingsPage() {
     const currentUser = await getCurrentUser();
 
     return (
-        <div className="space-y-8">
+        <div className="flex-1 overflow-y-auto space-y-8">
             <h2 className="text-3xl font-bold text-gray-800">Admin Settings</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

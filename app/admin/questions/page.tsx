@@ -66,7 +66,7 @@ export default async function QuestionsPage({
     const diffBg: Record<string, string> = { Easy: '#f0fdf4', Medium: '#fffbeb', Hard: '#fef2f2' };
 
     return (
-        <div className="space-y-5">
+        <div className="flex-1 overflow-y-auto space-y-5">
             {/* Page header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">

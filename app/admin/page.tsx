@@ -28,7 +28,7 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="flex flex-col flex-1 min-h-0" style={{ gap: '1.5rem' }}>
             <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
 
             {/* Stats */}
@@ -53,9 +53,9 @@ export default function AdminDashboard() {
                 ))}
             </div>
 
-            {/* Recent Results */}
+            {/* Recent Results — fills remaining page height */}
             <div
-                className="rounded-xl overflow-hidden shadow-sm"
+                className="rounded-xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
             >
                 <div
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
                     </Link>
                 </div>
 
-                <div className="overflow-x-auto" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                <div className="overflow-x-auto flex-1 overflow-y-auto min-h-0">
                     <table className="w-full text-sm st-table">
                         <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface-2)' }}>
                             <tr>

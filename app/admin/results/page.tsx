@@ -15,7 +15,7 @@ export default function ResultsPage() {
     `).all() as any[];
 
     return (
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
