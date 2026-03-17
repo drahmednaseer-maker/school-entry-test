@@ -1,7 +1,8 @@
 import { getDb } from '@/lib/db';
-import { CheckCircle, XCircle, Home } from 'lucide-react';
+import { CheckCircle, Home, Award } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,11 +11,7 @@ export default async function ResultPage(props: { params: Promise<{ sessionId: s
     const db = getDb();
 
     const session = db.prepare('SELECT * FROM test_sessions WHERE id = ?').get(sessionId) as any;
-
-    if (!session || !session.end_time) {
-        // If not finished, redirect back to test
-        redirect(`/test/${sessionId}`);
-    }
+    if (!session || !session.end_time) redirect(`/test/${sessionId}`);
 
     const student = db.prepare('SELECT * FROM students WHERE id = ?').get(session.student_id) as any;
 
@@ -29,40 +26,93 @@ export default async function ResultPage(props: { params: Promise<{ sessionId: s
     else if (percentage >= 60) grade = 'C';
     else if (percentage >= 50) grade = 'D';
 
+    const gradeColor = grade === 'F' ? 'var(--danger)' : 'var(--success)';
+    const passed = grade !== 'F';
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg text-center space-y-8">
-                <div className="mx-auto bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 text-green-600">
-                    <CheckCircle size={40} />
+        <div
+            className="min-h-screen flex flex-col items-center justify-center p-4"
+            style={{ background: 'var(--bg-page)' }}
+        >
+            {/* Theme toggle corner */}
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
+
+            <div
+                className="w-full max-w-md rounded-2xl overflow-hidden shadow-xl"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+            >
+                {/* Top banner */}
+                <div
+                    className="p-8 text-center"
+                    style={{
+                        background: passed
+                            ? 'linear-gradient(135deg, #064e3b, #059669)'
+                            : 'linear-gradient(135deg, #7f1d1d, #dc2626)',
+                    }}
+                >
+                    <div className="mx-auto w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mb-4 border-2 border-white/40">
+                        {passed
+                            ? <CheckCircle size={32} className="text-white" />
+                            : <Award size={32} className="text-white" />
+                        }
+                    </div>
+                    <h1 className="text-2xl font-black text-white mb-1">Test Completed!</h1>
+                    <p className="text-white/80 text-sm">
+                        Well done, {student.name}. Here are your results.
+                    </p>
                 </div>
 
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Test Completed!</h1>
-                    <p className="text-gray-500 mt-2">Thank you, {student.name}. Your results are ready.</p>
-                </div>
-
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                        <div className="p-4 bg-white rounded-lg shadow-sm">
-                            <p className="text-sm text-gray-500 mb-1">Score</p>
-                            <p className="text-3xl font-bold text-blue-600">{score} <span className="text-lg text-gray-400 font-normal">/ {totalQuestions}</span></p>
+                {/* Scores */}
+                <div className="p-6 space-y-4">
+                    {/* Student photo + name */}
+                    {student.photo && (
+                        <div className="flex justify-center mb-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={student.photo}
+                                alt={student.name}
+                                className="w-16 h-16 rounded-full object-cover border-2"
+                                style={{ borderColor: 'var(--primary)' }}
+                            />
                         </div>
-                        <div className="p-4 bg-white rounded-lg shadow-sm">
-                            <p className="text-sm text-gray-500 mb-1">Percentage</p>
-                            <p className={`text-3xl font-bold ${percentage >= 50 ? 'text-green-600' : 'text-red-500'}`}>{percentage}%</p>
+                    )}
+
+                    <div
+                        className="rounded-xl p-5 grid grid-cols-3 gap-4 text-center"
+                        style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border)' }}
+                    >
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Score</p>
+                            <p className="text-2xl font-black" style={{ color: 'var(--primary)' }}>
+                                {score}<span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>/{totalQuestions}</span>
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Percentage</p>
+                            <p className="text-2xl font-black" style={{ color: passed ? 'var(--success)' : 'var(--danger)' }}>
+                                {percentage}%
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>Grade</p>
+                            <p className="text-3xl font-black" style={{ color: gradeColor }}>{grade}</p>
                         </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                        <p className="text-sm text-gray-400">Grade Achieved</p>
-                        <p className={`text-4xl font-extrabold mt-2 ${grade === 'F' ? 'text-red-500' : 'text-green-600'}`}>{grade}</p>
-                    </div>
-                </div>
+                    <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                        Your results have been recorded. You may now close this window or return home.
+                    </p>
 
-                <Link href="/" className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-medium transition-colors">
-                    <Home size={18} />
-                    <span>Return to Home</span>
-                </Link>
+                    <Link
+                        href="/"
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm text-white transition-all"
+                        style={{ background: 'var(--primary)' }}
+                    >
+                        <Home size={16} /> Return to Home
+                    </Link>
+                </div>
             </div>
         </div>
     );

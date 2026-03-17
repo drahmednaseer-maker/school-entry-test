@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { submitTest } from '@/lib/actions';
-import { Clock, CheckCircle } from 'lucide-react';
+import { Clock, CheckCircle, ChevronLeft, ChevronRight, Hash } from 'lucide-react';
 import clsx from 'clsx';
+import ThemeToggle from '@/components/ThemeToggle';
 
 type Question = {
     id: number;
@@ -12,7 +13,7 @@ type Question = {
     difficulty: string;
     question_text: string;
     image_path?: string;
-    options: string[]; // parsed
+    options: string[];
     correct_option: number;
 };
 
@@ -23,6 +24,7 @@ interface TestClientProps {
     schoolName: string;
     studentName: string;
     fatherName: string;
+    studentPhoto?: string;
 }
 
 export default function TestClient({
@@ -31,15 +33,15 @@ export default function TestClient({
     startTime,
     schoolName,
     studentName,
-    fatherName
+    fatherName,
+    studentPhoto,
 }: TestClientProps) {
     const router = useRouter();
     const [currentIdx, setCurrentIdx] = useState(0);
     const [answers, setAnswers] = useState<Record<number, number>>({});
-    const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds init
+    const [timeLeft, setTimeLeft] = useState(30 * 60);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Initialize timer based on start time
     useEffect(() => {
         const now = Date.now();
         const elapsedSeconds = Math.floor((now - startTime) / 1000);
@@ -89,139 +91,270 @@ export default function TestClient({
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
-    const progress = ((currentIdx + 1) / questions.length) * 100;
     const currentQ = questions[currentIdx];
+    const answeredCount = Object.keys(answers).length;
+    const isUrdu = currentQ.subject === 'Urdu';
+
+    const subjectColor: Record<string, string> = {
+        English: '#2563eb',
+        Urdu: '#7c3aed',
+        Math: '#059669',
+    };
+    const subjectBg: Record<string, string> = {
+        English: '#eff6ff',
+        Urdu: '#f5f3ff',
+        Math: '#ecfdf5',
+    };
 
     if (timeLeft === 0 && !isSubmitting) {
-        return <div className="text-center p-10 text-xl font-bold">Time's up! Submitting...</div>;
+        return <div className="text-center p-10 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Time's up! Submitting...</div>;
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-4 md:p-8">
-            {/* Header */}
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border-b-4 border-blue-500 flex flex-col md:flex-row justify-between items-center sticky top-4 z-10 gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl h-12 w-12 flex items-center justify-center">
-                        ST
+        <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-page)' }}>
+            {/* ── Sticky Top Bar ─────────────────────────────────── */}
+            <div
+                className="sticky top-0 z-20 border-b shadow-sm"
+                style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
+            >
+                <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+                    {/* Left: Logo + school */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0"
+                            style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)' }}
+                        >
+                            ST
+                        </div>
+                        <div className="min-w-0 hidden sm:block">
+                            <p className="font-bold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{schoolName}</p>
+                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Entry Examination</p>
+                        </div>
                     </div>
-                    <div className="flex flex-col items-center md:items-start">
-                        <h1 className="text-xl font-bold text-gray-800 line-clamp-1">{schoolName}</h1>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-sm font-semibold text-blue-600">SnapTest • Entry Examination</span>
-                            <span className="text-gray-300">|</span>
-                            <span className="text-sm text-gray-500 font-medium">
-                                Question {currentIdx + 1} of {questions.length}
-                            </span>
+
+                    {/* Center: Timer */}
+                    <div
+                        className={clsx(
+                            "flex items-center gap-2 px-4 py-2 rounded-xl font-mono font-bold text-lg shrink-0",
+                            timeLeft < 60 ? "animate-pulse" : ""
+                        )}
+                        style={{
+                            background: timeLeft < 60 ? 'var(--danger-bg)' : 'var(--primary-muted)',
+                            color: timeLeft < 60 ? 'var(--danger)' : 'var(--primary)',
+                            border: `1.5px solid ${timeLeft < 60 ? 'var(--danger-border)' : 'var(--primary-light)'}`,
+                        }}
+                    >
+                        <Clock size={16} strokeWidth={2.5} />
+                        {formatTime(timeLeft)}
+                    </div>
+
+                    {/* Right: Student info + photo */}
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="text-right hidden sm:block min-w-0">
+                            <p className="font-bold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{studentName}</p>
+                            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>s/o {fatherName}</p>
+                        </div>
+                        {studentPhoto ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={studentPhoto}
+                                alt={studentName}
+                                className="w-9 h-9 rounded-full object-cover border-2 shrink-0"
+                                style={{ borderColor: 'var(--primary)' }}
+                            />
+                        ) : (
+                            <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+                                style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}
+                            >
+                                {studentName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                        <ThemeToggle />
+                    </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-1" style={{ background: 'var(--border)' }}>
+                    <div
+                        className="h-full transition-all duration-300"
+                        style={{ width: `${((currentIdx + 1) / questions.length) * 100}%`, background: 'var(--primary)' }}
+                    />
+                </div>
+            </div>
+
+            {/* ── Main Content ──────────────────────────────────── */}
+            <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-5">
+
+                {/* Navigation progress line */}
+                <div className="flex items-center justify-between mb-4">
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                        Question <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{currentIdx + 1}</span> of {questions.length}
+                    </p>
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                        <span className="font-bold" style={{ color: 'var(--success)' }}>{answeredCount}</span> answered
+                    </p>
+                </div>
+
+                {/* ── Question Card ──────────────────────────────── */}
+                <div
+                    className="rounded-2xl mb-5 overflow-hidden shadow-sm"
+                    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+                >
+                    {/* Card header: subject badge + Q-ID chip */}
+                    <div
+                        className="px-5 py-3 border-b flex items-center justify-between"
+                        style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
+                    >
+                        <span
+                            className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                            style={{
+                                background: subjectBg[currentQ.subject] || 'var(--primary-muted)',
+                                color: subjectColor[currentQ.subject] || 'var(--primary)',
+                            }}
+                        >
+                            {currentQ.subject}
+                        </span>
+
+                        {/* Question ID chip */}
+                        <span className="q-id-chip">
+                            <Hash size={9} />
+                            Q-{currentQ.id}
+                        </span>
+                    </div>
+
+                    <div className="p-5 md:p-7">
+                        {/* Image */}
+                        {currentQ.image_path && (
+                            <div className="mb-5 flex justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={currentQ.image_path}
+                                    alt="Question reference"
+                                    className="max-h-56 object-contain rounded-xl border"
+                                    style={{ borderColor: 'var(--border)' }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Question text */}
+                        <h2
+                            className={clsx(
+                                "text-xl md:text-2xl font-semibold leading-relaxed mb-6",
+                                isUrdu ? 'font-urdu text-right' : 'text-left'
+                            )}
+                            dir={isUrdu ? 'rtl' : 'ltr'}
+                            style={{ color: 'var(--text-primary)' }}
+                        >
+                            {currentQ.question_text}
+                        </h2>
+
+                        {/* Options */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {currentQ.options.map((opt, i) => {
+                                const isSelected = answers[currentQ.id] === i;
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => handleAnswer(i)}
+                                        dir={isUrdu ? 'rtl' : 'ltr'}
+                                        className="relative p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98]"
+                                        style={{
+                                            background: isSelected ? 'var(--primary-muted)' : 'var(--bg-surface-2)',
+                                            borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                                            boxShadow: isSelected ? `0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent)` : 'none',
+                                        }}
+                                    >
+                                        <div className={clsx("flex items-center gap-3", isUrdu && "flex-row-reverse")}>
+                                            {/* Letter circle */}
+                                            <div
+                                                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border transition-all"
+                                                style={{
+                                                    background: isSelected ? 'var(--primary)' : 'var(--bg-surface)',
+                                                    borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                                                    color: isSelected ? 'white' : 'var(--text-secondary)',
+                                                }}
+                                            >
+                                                {String.fromCharCode(65 + i)}
+                                            </div>
+                                            <span
+                                                className={clsx(
+                                                    "text-base leading-snug flex-1",
+                                                    isUrdu && 'font-urdu'
+                                                )}
+                                                style={{ color: 'var(--text-primary)' }}
+                                            >
+                                                {opt}
+                                            </span>
+                                            {isSelected && (
+                                                <CheckCircle
+                                                    size={18}
+                                                    className="shrink-0"
+                                                    style={{ color: 'var(--primary)' }}
+                                                />
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center md:items-end">
-                    <div className="text-lg font-bold text-gray-900">{studentName}</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wider">s/o {fatherName}</div>
+                {/* ── Question Dot Navigator ─────────────────────── */}
+                <div className="flex flex-wrap gap-1.5 justify-center mb-5">
+                    {questions.map((q, i) => {
+                        const isAnswered = answers[q.id] !== undefined;
+                        const isCurrent = i === currentIdx;
+                        return (
+                            <button
+                                key={q.id}
+                                onClick={() => setCurrentIdx(i)}
+                                title={`Q${i + 1}${isAnswered ? ' ✓' : ''}`}
+                                className="w-7 h-7 rounded-lg text-xs font-bold transition-all"
+                                style={{
+                                    background: isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success-bg)' : 'var(--bg-surface-2)',
+                                    color: isCurrent ? 'white' : isAnswered ? 'var(--success)' : 'var(--text-muted)',
+                                    border: `1.5px solid ${isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success-border)' : 'var(--border)'}`,
+                                }}
+                            >
+                                {i + 1}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                <div className={clsx("flex items-center space-x-2 px-4 py-2 rounded-lg font-mono text-xl font-bold",
-                    timeLeft < 60 ? "bg-red-100 text-red-600 animate-pulse" : "bg-blue-50 text-blue-600"
-                )}>
-                    <Clock size={20} />
-                    <span>{formatTime(timeLeft)}</span>
-                </div>
-            </div>
+                {/* ── Navigation Buttons ─────────────────────────── */}
+                <div className="flex justify-between items-center">
+                    <button
+                        onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))}
+                        disabled={currentIdx === 0}
+                        className="st-btn-ghost text-sm px-5 py-2.5"
+                    >
+                        <ChevronLeft size={16} /> Previous
+                    </button>
 
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
-                <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-            </div>
-
-            {/* Question Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 md:p-10 mb-8 min-h-[400px] flex flex-col justify-center">
-                {currentQ.image_path && (
-                    <div className="mb-6 flex justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={currentQ.image_path}
-                            alt="Question Reference"
-                            className="max-h-64 object-contain rounded-lg border"
-                        />
-                    </div>
-                )}
-                <h2
-                    className={clsx("text-2xl font-medium text-gray-800 mb-8 leading-[2.5]",
-                        currentQ.subject === 'Urdu' ? 'font-urdu text-right pt-4' : 'text-left'
-                    )}
-                    dir={currentQ.subject === 'Urdu' ? 'rtl' : 'ltr'}
-                >
-                    {currentQ.question_text}
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentQ.options.map((opt, i) => (
+                    {currentIdx < questions.length - 1 ? (
                         <button
-                            key={i}
-                            onClick={() => handleAnswer(i)}
-                            className={clsx(
-                                "p-4 rounded-xl border-2 transition-all relative",
-                                currentQ.subject === 'Urdu' ? "text-right" : "text-left",
-                                answers[currentQ.id] === i
-                                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
-                                    : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                            )}
-                            dir={currentQ.subject === 'Urdu' ? 'rtl' : 'ltr'}
+                            onClick={() => setCurrentIdx(prev => Math.min(questions.length - 1, prev + 1))}
+                            className="st-btn-primary text-sm px-6 py-2.5"
                         >
-                            <div className={clsx(
-                                "flex items-center",
-                                currentQ.subject === 'Urdu' && "flex-row-reverse"
-                            )}>
-                                <div className={clsx("w-8 h-8 rounded-full flex items-center justify-center font-bold border shrink-0",
-                                    currentQ.subject === 'Urdu' ? "ml-3" : "mr-3",
-                                    answers[currentQ.id] === i ? "bg-blue-500 text-white border-blue-500" : "bg-white text-gray-500 border-gray-300"
-                                )}>
-                                    {String.fromCharCode(65 + i)}
-                                </div>
-                                <span className={clsx(
-                                    "text-lg text-gray-700",
-                                    currentQ.subject === 'Urdu' && "font-urdu"
-                                )}>{opt}</span>
-                            </div>
-                            {answers[currentQ.id] === i && (
-                                <CheckCircle className={clsx(
-                                    "absolute top-4",
-                                    currentQ.subject === 'Urdu' ? "left-4" : "right-4",
-                                    "text-blue-500"
-                                )} size={20} />
-                            )}
+                            Next <ChevronRight size={16} />
                         </button>
-                    ))}
+                    ) : (
+                        <button
+                            onClick={submit}
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 rounded-xl font-bold text-sm text-white transition-all"
+                            style={{
+                                background: isSubmitting ? 'var(--text-muted)' : 'var(--success)',
+                                opacity: isSubmitting ? 0.7 : 1,
+                            }}
+                        >
+                            {isSubmitting ? 'Submitting...' : '✓ Finish & Submit'}
+                        </button>
+                    )}
                 </div>
-            </div>
-
-            {/* Navigation */}
-            <div className="flex justify-between items-center">
-                <button
-                    onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))}
-                    disabled={currentIdx === 0}
-                    className="px-6 py-3 rounded-lg text-gray-600 font-medium hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Previous
-                </button>
-
-                {currentIdx < questions.length - 1 ? (
-                    <button
-                        onClick={() => setCurrentIdx(prev => Math.min(questions.length - 1, prev + 1))}
-                        className="px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
-                    >
-                        Next Question
-                    </button>
-                ) : (
-                    <button
-                        onClick={submit}
-                        disabled={isSubmitting}
-                        className="px-8 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-md hover:shadow-lg transition-all disabled:opacity-70"
-                    >
-                        {isSubmitting ? 'Submitting...' : 'Finish Test'}
-                    </button>
-                )}
             </div>
         </div>
     );

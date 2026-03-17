@@ -30,6 +30,18 @@ function initTables(database: any) {
     if (!studentCols.find((c: any) => c.name === 'father_mobile')) {
       database.exec('ALTER TABLE students ADD COLUMN father_mobile TEXT');
     }
+    if (!studentCols.find((c: any) => c.name === 'photo')) {
+      database.exec('ALTER TABLE students ADD COLUMN photo TEXT');
+    }
+    if (!studentCols.find((c: any) => c.name === 'gender')) {
+      database.exec('ALTER TABLE students ADD COLUMN gender TEXT');
+    }
+    if (!studentCols.find((c: any) => c.name === 'admission_status')) {
+      database.exec('ALTER TABLE students ADD COLUMN admission_status TEXT');
+    }
+    if (!studentCols.find((c: any) => c.name === 'admitted_class')) {
+      database.exec('ALTER TABLE students ADD COLUMN admitted_class TEXT');
+    }
 
     const adminCols = database.pragma('table_info(admin_users)');
     if (!adminCols.find((c: any) => c.name === 'role')) {

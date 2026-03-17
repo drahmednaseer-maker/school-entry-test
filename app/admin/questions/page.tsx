@@ -2,10 +2,11 @@ import { getDb } from '@/lib/db';
 import QuestionForm from '@/components/QuestionForm';
 import BulkUploadForm from '@/components/BulkUploadForm';
 import QuestionFilters from '@/components/QuestionFilters';
-import { Trash2, Image as ImageIcon, Pencil } from 'lucide-react';
+import { Trash2, Pencil, Hash, BookOpen } from 'lucide-react';
 import { deleteQuestion } from '@/lib/actions';
 import Image from 'next/image';
 import Link from 'next/link';
+import clsx from 'clsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +21,10 @@ export default async function QuestionsPage({
     const difficulty = typeof params.difficulty === 'string' ? params.difficulty : '';
     const level = typeof params.level === 'string' ? params.level : '';
     const editId = typeof params.edit === 'string' ? params.edit : '';
+    const qid = typeof params.qid === 'string' ? params.qid : '';
 
     const db = getDb();
 
-    // Fetch question if in edit mode
     let editQuestion = null;
     if (editId) {
         editQuestion = db.prepare('SELECT * FROM questions WHERE id = ?').get(editId);
@@ -33,140 +34,261 @@ export default async function QuestionsPage({
     let query = 'SELECT * FROM questions WHERE 1=1';
     const queryParams: any[] = [];
 
-    if (q) {
-        query += ' AND question_text LIKE ?';
-        queryParams.push(`%${q}%`);
-    }
-    if (subject) {
-        query += ' AND subject = ?';
-        queryParams.push(subject);
-    }
-    if (difficulty) {
-        query += ' AND difficulty = ?';
-        queryParams.push(difficulty);
-    }
-    if (level) {
-        query += ' AND class_level = ?';
-        queryParams.push(level);
+    // Search by exact ID
+    if (qid) {
+        query += ' AND id = ?';
+        queryParams.push(parseInt(qid));
+    } else {
+        if (q) {
+            query += ' AND question_text LIKE ?';
+            queryParams.push(`%${q}%`);
+        }
+        if (subject) {
+            query += ' AND subject = ?';
+            queryParams.push(subject);
+        }
+        if (difficulty) {
+            query += ' AND difficulty = ?';
+            queryParams.push(difficulty);
+        }
+        if (level) {
+            query += ' AND class_level = ?';
+            queryParams.push(level);
+        }
     }
 
     query += ' ORDER BY id DESC';
-
     const questions = db.prepare(query).all(...queryParams) as any[];
 
+    const subjectColor: Record<string, string> = { English: '#2563eb', Urdu: '#7c3aed', Math: '#059669' };
+    const subjectBg: Record<string, string> = { English: '#eff6ff', Urdu: '#f5f3ff', Math: '#ecfdf5' };
+    const diffColor: Record<string, string> = { Easy: '#15803d', Medium: '#d97706', Hard: '#dc2626' };
+    const diffBg: Record<string, string> = { Easy: '#f0fdf4', Medium: '#fffbeb', Hard: '#fef2f2' };
+
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-3xl font-bold text-gray-800">Question Bank</h2>
-                <div className="text-sm bg-blue-50 text-blue-700 px-4 py-2 rounded-full font-medium border border-blue-100">
-                    Total Questions: {questions.length}
+        <div className="space-y-5">
+            {/* Page header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                    <BookOpen size={22} style={{ color: 'var(--primary)' }} />
+                    <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Question Bank</h2>
                 </div>
+                <span
+                    className="text-sm font-semibold px-3 py-1.5 rounded-full"
+                    style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}
+                >
+                    {questions.length} question{questions.length !== 1 ? 's' : ''}
+                </span>
             </div>
 
             <QuestionFilters />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Form Section */}
-                <div className="lg:col-span-1 space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left: Form */}
+                <div className="lg:col-span-1 space-y-5">
                     <QuestionForm initialData={editQuestion} />
                     <BulkUploadForm />
                 </div>
 
-                {/* List Section */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-md overflow-hidden flex flex-col border border-gray-100">
-                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-gray-700">Questions</h3>
+                {/* Right: Question list */}
+                <div
+                    className="lg:col-span-2 rounded-xl overflow-hidden shadow-sm flex flex-col"
+                    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+                >
+                    {/* List header */}
+                    <div
+                        className="px-5 py-3.5 border-b flex justify-between items-center"
+                        style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
+                    >
+                        <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Questions</p>
                         {questions.length > 0 && (
-                            <span className="text-xs text-gray-500 font-medium">
-                                Showing {questions.length} question{questions.length !== 1 ? 's' : ''}
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                Showing {questions.length}
                             </span>
                         )}
                     </div>
-                    <div className="overflow-y-auto max-h-[1200px]">
+
+                    <div className="overflow-y-auto" style={{ maxHeight: '1200px' }}>
                         {questions.length === 0 ? (
-                            <div className="p-12 text-center text-gray-400">
-                                <p className="text-lg mb-2">No questions found matching your filters.</p>
-                                <p className="text-sm">Try adjusting your search or filters.</p>
+                            <div className="py-16 text-center space-y-2">
+                                <Hash size={40} className="mx-auto" style={{ color: 'var(--border)' }} />
+                                <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>No questions found</p>
+                                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Try adjusting your search or filters.</p>
                             </div>
                         ) : (
-                            <ul className="divide-y divide-gray-100">
-                                {questions.map((q) => (
-                                    <li key={q.id} className={`p-4 hover:bg-gray-50 transition-colors ${Number(editId) === q.id ? 'bg-blue-50/50' : ''}`}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <div className="flex flex-wrap items-center gap-2 mb-2">
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${q.subject === 'Math' ? 'bg-blue-100 text-blue-800' :
-                                                        q.subject === 'English' ? 'bg-green-100 text-green-800' :
-                                                            'bg-purple-100 text-purple-800'
-                                                        }`}>
-                                                        {q.subject}
-                                                    </span>
-                                                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${q.difficulty === 'Easy' ? 'bg-gray-100 text-gray-800' :
-                                                        q.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-red-100 text-red-800'
-                                                        }`}>
-                                                        {q.difficulty}
-                                                    </span>
-                                                    {q.class_level && (
-                                                        <span className="px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-800 font-medium">
-                                                            {q.class_level}
-                                                        </span>
-                                                    )}
-                                                </div>
+                            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                                {questions.map((question) => {
+                                    const isEdit = Number(editId) === question.id;
+                                    const isUrdu = question.subject === 'Urdu';
+                                    const opts = JSON.parse(question.options);
 
-                                                <div className="flex gap-4">
-                                                    {q.image_path && (
-                                                        <div className="relative w-24 h-24 flex-shrink-0 border rounded-lg overflow-hidden bg-gray-100">
-                                                            <Image
-                                                                src={q.image_path}
-                                                                alt="Question Image"
-                                                                fill
-                                                                className="object-cover"
-                                                                unoptimized={true}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                    <div className="flex-1">
-                                                        <p className={`text-gray-900 font-medium ${q.subject === 'Urdu' ? 'font-urdu text-2xl text-right direction-rtl' : ''}`}>
-                                                            {q.question_text}
-                                                        </p>
-                                                        <div className={`mt-2 text-sm text-gray-500 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 ${q.subject === 'Urdu' ? 'direction-rtl' : ''}`}>
-                                                            {JSON.parse(q.options).map((opt: string, i: number) => (
-                                                                <span key={i} className={`
-                                                                    ${i === q.correct_option ? 'text-green-600 font-bold flex items-center gap-1' : ''} 
-                                                                    ${q.subject === 'Urdu' ? 'font-urdu text-right text-lg' : ''}
-                                                                `}>
-                                                                    {q.subject === 'Urdu' ? (
-                                                                        <>{opt} . {i + 1}</>
-                                                                    ) : (
-                                                                        <>{i + 1}. {opt}</>
-                                                                    )}
-                                                                </span>
-                                                            ))}
+                                    return (
+                                        <li
+                                            key={question.id}
+                                            className="p-4 transition-colors"
+                                            style={{
+                                                background: isEdit ? 'var(--primary-muted)' : 'transparent',
+                                                borderColor: 'var(--border)'
+                                            }}
+                                        >
+                                            <div className="flex justify-between items-start gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Badges row: subject | difficulty | class + Q-ID chip */}
+                                                    <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                                                        {/* Q-ID — prominent */}
+                                                        <span
+                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-black shrink-0"
+                                                            style={{ background: 'var(--primary-muted)', color: 'var(--primary)', border: '1px solid var(--primary-light)', fontFamily: 'monospace' }}
+                                                        >
+                                                            <Hash size={10} />Q-{question.id}
+                                                        </span>
+
+                                                        <span
+                                                            className="px-2 py-0.5 text-xs rounded-full font-semibold"
+                                                            style={{ background: subjectBg[question.subject], color: subjectColor[question.subject] }}
+                                                        >
+                                                            {question.subject}
+                                                        </span>
+                                                        <span
+                                                            className="px-2 py-0.5 text-xs rounded-full font-semibold"
+                                                            style={{ background: diffBg[question.difficulty] || 'var(--bg-surface-2)', color: diffColor[question.difficulty] || 'var(--text-secondary)' }}
+                                                        >
+                                                            {question.difficulty}
+                                                        </span>
+                                                        {question.class_level && (
+                                                            <span
+                                                                className="px-2 py-0.5 text-xs rounded-full font-semibold"
+                                                                style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                                                            >
+                                                                {question.class_level}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Question + image */}
+                                                    <div className="flex gap-3">
+                                                        {question.image_path && (
+                                                            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
+                                                                <Image
+                                                                    src={question.image_path}
+                                                                    alt="Question Image"
+                                                                    fill
+                                                                    className="object-cover"
+                                                                    unoptimized={true}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p
+                                                                className={clsx(
+                                                                    'text-sm font-medium leading-relaxed mb-3',
+                                                                    isUrdu ? 'font-urdu text-xl text-right' : ''
+                                                                )}
+                                                                dir={isUrdu ? 'rtl' : 'ltr'}
+                                                                style={{ color: 'var(--text-primary)' }}
+                                                            >
+                                                                {question.question_text}
+                                                            </p>
+
+                                                            {/* Options — different layout for Urdu vs English/Math */}
+                                                            {isUrdu ? (
+                                                                /* Urdu: 2-col RTL grid — letter on LEFT, text on RIGHT (natural RTL) */
+                                                                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5" dir="rtl">
+                                                                    {opts.map((opt: string, i: number) => {
+                                                                        const isCorrect = i === question.correct_option;
+                                                                        return (
+                                                                            <div
+                                                                                key={i}
+                                                                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
+                                                                                style={{
+                                                                                    background: isCorrect ? 'var(--success-bg)' : 'var(--bg-surface-2)',
+                                                                                    border: `1px solid ${isCorrect ? 'var(--success-border)' : 'var(--border)'}`,
+                                                                                }}
+                                                                            >
+                                                                                {/* Letter circle on the start (right) side in RTL */}
+                                                                                <span
+                                                                                    className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-xs font-black"
+                                                                                    style={{
+                                                                                        background: isCorrect ? 'var(--success)' : 'var(--border-strong)',
+                                                                                        color: isCorrect ? 'white' : 'var(--bg-surface)',
+                                                                                    }}
+                                                                                >
+                                                                                    {String.fromCharCode(65 + i)}
+                                                                                </span>
+                                                                                <span
+                                                                                    className="font-urdu text-sm leading-loose flex-1 text-right"
+                                                                                    style={{ color: isCorrect ? 'var(--success)' : 'var(--text-secondary)', fontWeight: isCorrect ? 700 : 400 }}
+                                                                                >
+                                                                                    {opt}
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : (
+                                                                /* English / Math: clean 2-col LTR grid */
+                                                                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                                                                    {opts.map((opt: string, i: number) => {
+                                                                        const isCorrect = i === question.correct_option;
+                                                                        return (
+                                                                            <div
+                                                                                key={i}
+                                                                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
+                                                                                style={{
+                                                                                    background: isCorrect ? 'var(--success-bg)' : 'var(--bg-surface-2)',
+                                                                                    border: `1px solid ${isCorrect ? 'var(--success-border)' : 'var(--border)'}`,
+                                                                                }}
+                                                                            >
+                                                                                <span
+                                                                                    className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-xs font-black"
+                                                                                    style={{
+                                                                                        background: isCorrect ? 'var(--success)' : 'var(--border-strong)',
+                                                                                        color: isCorrect ? 'white' : 'var(--bg-surface)',
+                                                                                    }}
+                                                                                >
+                                                                                    {String.fromCharCode(65 + i)}
+                                                                                </span>
+                                                                                <span
+                                                                                    className="text-xs truncate"
+                                                                                    style={{ color: isCorrect ? 'var(--success)' : 'var(--text-secondary)', fontWeight: isCorrect ? 700 : 400 }}
+                                                                                >
+                                                                                    {opt}
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex flex-col gap-2 ml-4">
-                                                <Link
-                                                    href={`?${new URLSearchParams({ ...(params as any), edit: q.id.toString() }).toString()}`}
-                                                    className="text-gray-400 hover:text-blue-500 p-2 transition-colors bg-white rounded-full shadow-sm hover:shadow-md border border-gray-100"
-                                                    title="Edit Question"
-                                                >
-                                                    <Pencil size={18} />
-                                                </Link>
-                                                <form action={deleteQuestion.bind(null, q.id)}>
-                                                    <button
-                                                        className="text-gray-400 hover:text-red-500 p-2 transition-colors bg-white rounded-full shadow-sm hover:shadow-md border border-gray-100"
-                                                        title="Delete Question"
+
+                                                {/* Actions */}
+                                                <div className="flex flex-col gap-1.5 shrink-0">
+                                                    <Link
+                                                        href={`?${new URLSearchParams({ ...(params as any), edit: question.id.toString() }).toString()}`}
+                                                        className="p-2 rounded-lg transition-colors"
+                                                        style={{ color: 'var(--text-muted)', background: 'var(--bg-surface-2)', border: '1px solid var(--border)' }}
+                                                        title="Edit Question"
                                                     >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </form>
+                                                        <Pencil size={15} />
+                                                    </Link>
+                                                    <form action={deleteQuestion.bind(null, question.id)}>
+                                                        <button
+                                                            type="submit"
+                                                            className="p-2 rounded-lg transition-colors"
+                                                            style={{ color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}
+                                                            title="Delete Question"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </li>
-                                ))}
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         )}
                     </div>

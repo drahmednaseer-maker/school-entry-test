@@ -124,12 +124,12 @@ export async function getAllUsers() {
     return db.prepare('SELECT id, username, role FROM admin_users').all() as any[];
 }
 
-export async function generateStudentCode(name: string, fatherName: string, fatherMobile: string, classLevel: string) {
+export async function generateStudentCode(name: string, fatherName: string, fatherMobile: string, classLevel: string, photo?: string, gender?: string) {
     const db = getDb();
     const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     try {
-        db.prepare('INSERT INTO students (access_code, name, father_name, father_mobile, class_level) VALUES (?, ?, ?, ?, ?)').run(accessCode, name, fatherName, fatherMobile, classLevel);
+        db.prepare('INSERT INTO students (access_code, name, father_name, father_mobile, class_level, photo, gender) VALUES (?, ?, ?, ?, ?, ?, ?)').run(accessCode, name, fatherName, fatherMobile, classLevel, photo || null, gender || null);
         revalidatePath('/admin/students');
         return { success: true, code: accessCode };
     } catch (error) {
@@ -506,4 +506,23 @@ export async function submitTest(sessionId: number, answers: Record<number, numb
 
     revalidatePath('/admin');
     return { success: true, score };
+}
+
+export async function setAdmissionStatus(formData: FormData) {
+    const db = getDb();
+    const studentId = parseInt(formData.get('student_id') as string);
+    const status = formData.get('status') as string; // 'granted' | 'not_granted'
+    const admittedClass = formData.get('admitted_class') as string || null;
+
+    db.prepare(`
+        UPDATE students
+        SET admission_status = ?, admitted_class = ?
+        WHERE id = ?
+    `).run(status, admittedClass, studentId);
+
+    revalidatePath(`/admin/results/${studentId}`);
+    revalidatePath('/admin/results');
+    revalidatePath('/admin/reports');
+    revalidatePath('/admin');
+    return { success: true };
 }
