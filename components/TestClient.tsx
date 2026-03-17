@@ -227,13 +227,12 @@ export default function TestClient({
                 </div>
             </div>
 
-                {/* Progress bar */}
-                <div className="h-1" style={{ background: 'var(--border)' }}>
-                    <div
-                        className="h-full transition-all duration-300"
-                        style={{ width: `${((currentIdx + 1) / questions.length) * 100}%`, background: 'var(--primary)' }}
-                    />
-                </div>
+            {/* Progress bar — full width under student card */}
+            <div className="h-1" style={{ background: 'var(--border)' }}>
+                <div
+                    className="h-full transition-all duration-300"
+                    style={{ width: `${((currentIdx + 1) / questions.length) * 100}%`, background: 'var(--primary)' }}
+                />
             </div>
 
             {/* ── Main Content ──────────────────────────────────── */}
