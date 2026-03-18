@@ -7,14 +7,20 @@ export const dynamic = 'force-dynamic';
 export default function ReportsPage() {
     const db = getDb();
 
-    // Summary stats
-    const totalCompleted = (db.prepare("SELECT COUNT(*) as c FROM students WHERE status='completed'").get() as any).c;
-    const totalGranted = (db.prepare("SELECT COUNT(*) as c FROM students WHERE admission_status='granted'").get() as any).c;
-    const totalNotGranted = (db.prepare("SELECT COUNT(*) as c FROM students WHERE admission_status='not_granted'").get() as any).c;
-    const pendingDecision = (db.prepare("SELECT COUNT(*) as c FROM students WHERE status='completed' AND (admission_status IS NULL OR admission_status='')").get() as any).c;
+    // Active session
+    const activeSession = db.prepare('SELECT * FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+    const sid = activeSession?.id;
+    const sessionFilter = sid ? 'AND session_id = ?' : '';
+    const sessionArgs = sid ? [sid] : [];
 
-    const totalScore = (db.prepare("SELECT SUM(score) as s, COUNT(*) as c FROM students WHERE status='completed' AND score IS NOT NULL").get() as any);
-    const settingsRow = (db.prepare("SELECT english_questions, urdu_questions, math_questions FROM settings WHERE id=1").get() as any);
+    // Summary stats
+    const totalCompleted = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE status='completed' ${sessionFilter}`).get(...sessionArgs) as any).c;
+    const totalGranted = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE admission_status='granted' ${sessionFilter}`).get(...sessionArgs) as any).c;
+    const totalNotGranted = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE admission_status='not_granted' ${sessionFilter}`).get(...sessionArgs) as any).c;
+    const pendingDecision = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE status='completed' AND (admission_status IS NULL OR admission_status='') ${sessionFilter}`).get(...sessionArgs) as any).c;
+
+    const totalScore = (db.prepare(`SELECT SUM(score) as s, COUNT(*) as c FROM students WHERE status='completed' AND score IS NOT NULL ${sessionFilter}`).get(...sessionArgs) as any);
+    const settingsRow = (db.prepare('SELECT english_questions, urdu_questions, math_questions FROM settings WHERE id=1').get() as any);
     const totalQuestions = settingsRow ? (settingsRow.english_questions + settingsRow.urdu_questions + settingsRow.math_questions) : 30;
     const avgPercent = totalScore.c > 0 ? Math.round((totalScore.s / (totalScore.c * totalQuestions)) * 100) : 0;
 
@@ -25,9 +31,9 @@ export default function ReportsPage() {
                SUM(CASE WHEN admission_status='granted' THEN 1 ELSE 0 END) as granted,
                SUM(CASE WHEN admission_status='not_granted' THEN 1 ELSE 0 END) as not_granted,
                AVG(CASE WHEN score IS NOT NULL THEN CAST(score AS REAL) / ? * 100 ELSE NULL END) as avg_pct
-        FROM students WHERE status='completed' AND class_level IS NOT NULL
+        FROM students WHERE status='completed' AND class_level IS NOT NULL ${sessionFilter}
         GROUP BY class_level ORDER BY class_level
-    `).all(totalQuestions) as any[];
+    `).all(totalQuestions, ...sessionArgs) as any[];
 
     // Pie data
     const pieData = [
@@ -37,17 +43,17 @@ export default function ReportsPage() {
     ].filter(d => d.value > 0);
 
     // Gender data
-    const maleCount = (db.prepare("SELECT COUNT(*) as c FROM students WHERE gender='Male' AND status='completed'").get() as any).c;
-    const femaleCount = (db.prepare("SELECT COUNT(*) as c FROM students WHERE gender='Female' AND status='completed'").get() as any).c;
+    const maleCount = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE gender='Male' AND status='completed' ${sessionFilter}`).get(...sessionArgs) as any).c;
+    const femaleCount = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE gender='Female' AND status='completed' ${sessionFilter}`).get(...sessionArgs) as any).c;
     const genderData = [{ name: 'Applicants', Male: maleCount, Female: femaleCount }];
 
     // Time data (last 30 days)
     const timeRows = db.prepare(`
         SELECT DATE(created_at) as date, COUNT(*) as count
         FROM students WHERE status='completed'
-        AND created_at >= DATE('now', '-30 days')
+        AND created_at >= DATE('now', '-30 days') ${sessionFilter}
         GROUP BY DATE(created_at) ORDER BY date
-    `).all() as any[];
+    `).all(...sessionArgs) as any[];
     const timeData = timeRows.map(r => ({ date: r.date?.slice(5), count: r.count }));
 
     const statCards = [
@@ -67,7 +73,9 @@ export default function ReportsPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Analytics & Reports</h1>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Session-wise overview of test performance and admissions</p>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                        {activeSession ? `Session ${activeSession.name}` : 'All sessions'} — test performance overview
+                    </p>
                 </div>
             </div>
 

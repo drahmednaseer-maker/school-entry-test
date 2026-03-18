@@ -62,7 +62,8 @@ export default function StudentList({ initialStudents }: { initialStudents: Stud
                         <input
                             type="text"
                             placeholder="Search name..."
-                            className="st-input pl-9 py-2 text-sm w-full sm:w-52"
+                            className="st-input py-2 text-sm w-full sm:w-52"
+                            style={{ paddingLeft: '2.25rem' }}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />

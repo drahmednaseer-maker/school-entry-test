@@ -128,8 +128,12 @@ export async function generateStudentCode(name: string, fatherName: string, fath
     const db = getDb();
     const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // Get active session
+    const activeSession = db.prepare('SELECT id FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+    const sessionId = activeSession?.id || null;
+
     try {
-        db.prepare('INSERT INTO students (access_code, name, father_name, father_mobile, class_level, photo, gender) VALUES (?, ?, ?, ?, ?, ?, ?)').run(accessCode, name, fatherName, fatherMobile, classLevel, photo || null, gender || null);
+        db.prepare('INSERT INTO students (access_code, name, father_name, father_mobile, class_level, photo, gender, session_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(accessCode, name, fatherName, fatherMobile, classLevel, photo || null, gender || null, sessionId);
         revalidatePath('/admin/students');
         return { success: true, code: accessCode };
     } catch (error) {
@@ -524,5 +528,119 @@ export async function setAdmissionStatus(formData: FormData) {
     revalidatePath('/admin/results');
     revalidatePath('/admin/reports');
     revalidatePath('/admin');
+    return { success: true };
+}
+
+// --- Session Management ---
+
+export async function getSessions() {
+    const db = getDb();
+    return db.prepare(`
+        SELECT s.id, s.name, s.is_active, s.created_at,
+               COUNT(st.id) as student_count
+        FROM sessions s
+        LEFT JOIN students st ON st.session_id = s.id
+        GROUP BY s.id
+        ORDER BY s.created_at DESC
+    `).all() as any[];
+}
+
+export async function getActiveSession() {
+    const db = getDb();
+    return db.prepare('SELECT * FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+}
+
+export async function createSession(formData: FormData) {
+    const db = getDb();
+    const name = (formData.get('name') as string)?.trim();
+    if (!name) return { success: false, error: 'Session name is required' };
+    try {
+        db.prepare('INSERT INTO sessions (name, is_active) VALUES (?, 0)').run(name);
+        revalidatePath('/admin/settings');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message?.includes('UNIQUE') ? 'A session with that name already exists' : 'Failed to create session' };
+    }
+}
+
+export async function setActiveSession(formData: FormData) {
+    const db = getDb();
+    const id = parseInt(formData.get('session_id') as string);
+    if (!id) return { success: false, error: 'Invalid session' };
+    db.transaction(() => {
+        db.prepare('UPDATE sessions SET is_active = 0').run();
+        db.prepare('UPDATE sessions SET is_active = 1 WHERE id = ?').run(id);
+    })();
+    revalidatePath('/admin/settings');
+    revalidatePath('/admin');
+    revalidatePath('/admin/reports');
+    revalidatePath('/admin/results');
+    return { success: true };
+}
+
+export async function deleteSession(formData: FormData) {
+    const db = getDb();
+    const id = parseInt(formData.get('session_id') as string);
+    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as any;
+    if (!session) return { success: false, error: 'Session not found' };
+    if (session.is_active) return { success: false, error: 'Cannot delete the active session' };
+    const count = (db.prepare('SELECT COUNT(*) as c FROM students WHERE session_id = ?').get(id) as any).c;
+    if (count > 0) return { success: false, error: `Cannot delete — ${count} student(s) belong to this session` };
+    db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
+    revalidatePath('/admin/settings');
+    return { success: true };
+}
+
+export async function toggleRegistration(formData: FormData) {
+    const db = getDb();
+    const studentId = parseInt(formData.get('student_id') as string);
+    const current = (db.prepare('SELECT is_registered FROM students WHERE id = ?').get(studentId) as any)?.is_registered ?? 0;
+    db.prepare('UPDATE students SET is_registered = ? WHERE id = ?').run(current ? 0 : 1, studentId);
+    revalidatePath('/admin');
+    revalidatePath('/admin/results');
+    return { success: true };
+}
+
+// ============================================================================
+// SESSION SEATS ACTIONS
+// ============================================================================
+
+export async function getSessionSeatsStats(sessionId: number) {
+    const db = getDb();
+    const classLevels = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+    
+    const configuredRows = db.prepare('SELECT class_level, total_seats FROM session_seats WHERE session_id = ?').all(sessionId) as any[];
+    const seatsMap = new Map(configuredRows.map((r: any) => [r.class_level, r.total_seats]));
+    
+    // Registered means: is_registered = 1 AND admitted_class is populated
+    const registeredRows = db.prepare(`
+        SELECT admitted_class, COUNT(*) as count 
+        FROM students 
+        WHERE session_id = ? AND is_registered = 1 AND admitted_class IS NOT NULL
+        GROUP BY admitted_class
+    `).all(sessionId) as any[];
+    const registeredMap = new Map(registeredRows.map((r: any) => [r.admitted_class, r.count]));
+    
+    return classLevels.map(c => {
+        const total = seatsMap.get(c) || 0;
+        const registered = registeredMap.get(c) || 0;
+        return {
+            class_level: c,
+            total_seats: total,
+            registered: registered,
+            balance: total - registered
+        };
+    });
+}
+
+export async function updateSessionSeat(sessionId: number, classLevel: string, totalSeats: number) {
+    const db = getDb();
+    const exists = db.prepare('SELECT 1 FROM session_seats WHERE session_id = ? AND class_level = ?').get(sessionId, classLevel);
+    if (exists) {
+        db.prepare('UPDATE session_seats SET total_seats = ? WHERE session_id = ? AND class_level = ?').run(totalSeats, sessionId, classLevel);
+    } else {
+        db.prepare('INSERT INTO session_seats (session_id, class_level, total_seats) VALUES (?, ?, ?)').run(sessionId, classLevel, totalSeats);
+    }
+    revalidatePath('/admin/settings');
     return { success: true };
 }

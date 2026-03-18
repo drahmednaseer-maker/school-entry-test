@@ -7,12 +7,19 @@ export const dynamic = 'force-dynamic';
 
 export default function ResultsPage() {
     const db = getDb();
+    
+    // Active session
+    const activeSession = db.prepare('SELECT * FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+    const sid = activeSession?.id;
+    const sessionFilter = sid ? 'AND session_id = ?' : '';
+    const sessionArgs = sid ? [sid] : [];
+
     const results = db.prepare(`
-        SELECT id, name, father_name, class_level, score, created_at 
+        SELECT id, name, father_name, class_level, score, created_at, photo, admission_status, admitted_class, is_registered
         FROM students 
-        WHERE status = 'completed' 
+        WHERE status = 'completed' ${sessionFilter}
         ORDER BY created_at DESC
-    `).all() as any[];
+    `).all(...sessionArgs) as any[];
 
     return (
         <div className="flex-1 overflow-y-auto space-y-6">

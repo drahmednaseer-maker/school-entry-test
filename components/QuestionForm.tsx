@@ -185,7 +185,8 @@ export default function QuestionForm({ initialData, onCancel }: QuestionFormProp
                                     name={`option_${i}`}
                                     defaultValue={options[i] || ''}
                                     required
-                                    className="st-input text-sm pl-9"
+                                    className="st-input text-sm"
+                                    style={{ paddingLeft: '2.25rem' }}
                                     placeholder={`Option ${i + 1}`}
                                 />
                             </div>

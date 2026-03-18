@@ -23,6 +23,7 @@ function initTables(database: any) {
       CREATE TABLE IF NOT EXISTS test_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, student_id INTEGER NOT NULL, question_ids TEXT NOT NULL, answers TEXT, start_time DATETIME, end_time DATETIME, FOREIGN KEY (student_id) REFERENCES students(id));
       CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'admin');
       CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy', easy_percent INTEGER NOT NULL DEFAULT 40, medium_percent INTEGER NOT NULL DEFAULT 40, hard_percent INTEGER NOT NULL DEFAULT 20, english_questions INTEGER NOT NULL DEFAULT 10, urdu_questions INTEGER NOT NULL DEFAULT 10, math_questions INTEGER NOT NULL DEFAULT 10);
+      CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, is_active INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
     `);
 
     // Handle migrations for existing databases
@@ -41,6 +42,38 @@ function initTables(database: any) {
     }
     if (!studentCols.find((c: any) => c.name === 'admitted_class')) {
       database.exec('ALTER TABLE students ADD COLUMN admitted_class TEXT');
+    }
+    if (!studentCols.find((c: any) => c.name === 'session_id')) {
+      database.exec('ALTER TABLE students ADD COLUMN session_id INTEGER');
+    }
+    if (!studentCols.find((c: any) => c.name === 'is_registered')) {
+      database.exec('ALTER TABLE students ADD COLUMN is_registered INTEGER NOT NULL DEFAULT 0');
+    }
+
+    // Ensure sessions table exists (for older DBs that didn't get it in CREATE TABLE block)
+    database.exec(`CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, is_active INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);`);
+
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS session_seats (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id INTEGER NOT NULL,
+          class_level TEXT NOT NULL,
+          total_seats INTEGER NOT NULL DEFAULT 0,
+          UNIQUE(session_id, class_level)
+      );
+    `);
+
+    // Seed default active session 2026-2027 if none exist
+    const sessionCount = database.prepare('SELECT COUNT(*) as c FROM sessions').get() as any;
+    if (sessionCount.c === 0) {
+      database.prepare("INSERT INTO sessions (name, is_active) VALUES ('2026-2027', 1)").run();
+      console.log('[DB] Default session 2026-2027 created and set active');
+    }
+
+    // Migrate existing students with no session_id to the active session
+    const activeSession = database.prepare('SELECT id FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+    if (activeSession) {
+      database.prepare('UPDATE students SET session_id = ? WHERE session_id IS NULL').run(activeSession.id);
     }
 
     const adminCols = database.pragma('table_info(admin_users)');

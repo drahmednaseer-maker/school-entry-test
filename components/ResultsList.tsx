@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Search, Filter, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import RegisterCheckbox from '@/components/RegisterCheckbox';
 
 interface Result {
     id: number;
@@ -12,6 +13,9 @@ interface Result {
     score: number | null;
     created_at: string;
     photo?: string;
+    admission_status?: string | null;
+    admitted_class?: string | null;
+    is_registered: number;
 }
 
 export default function ResultsList({ initialResults }: { initialResults: Result[] }) {
@@ -57,7 +61,8 @@ export default function ResultsList({ initialResults }: { initialResults: Result
                         <input
                             type="text"
                             placeholder="Search student or father..."
-                            className="st-input pl-9 py-2 text-sm w-full sm:w-60"
+                            className="st-input py-2 text-sm w-full sm:w-60"
+                            style={{ paddingLeft: '2.25rem' }}
                             value={searchTerm}
                             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         />
@@ -84,7 +89,10 @@ export default function ResultsList({ initialResults }: { initialResults: Result
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Father's Name</th>
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Class</th>
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Score</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Date</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Admission</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Admitted In</th>
+                            <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Registered</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>Date</th>
                             <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Action</th>
                         </tr>
                     </thead>
@@ -116,7 +124,22 @@ export default function ResultsList({ initialResults }: { initialResults: Result
                                     <td className="px-5 py-3 text-sm hidden md:table-cell font-urdu" style={{ color: 'var(--text-secondary)' }}>{result.father_name}</td>
                                     <td className="px-5 py-3 text-xs hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>{result.class_level}</td>
                                     <td className="px-5 py-3 font-bold text-sm" style={{ color: 'var(--success)' }}>{result.score} / 30</td>
-                                    <td className="px-5 py-3 text-xs hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>{new Date(result.created_at).toLocaleDateString()}</td>
+                                    <td className="px-5 py-3 hidden sm:table-cell">
+                                        {result.admission_status === 'granted' ? (
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>Granted</span>
+                                        ) : result.admission_status === 'not_granted' ? (
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>Not Granted</span>
+                                        ) : (
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Pending</span>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-3 text-sm font-semibold hidden md:table-cell" style={{ color: 'var(--text-primary)' }}>
+                                        {result.admitted_class || <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>—</span>}
+                                    </td>
+                                    <td className="px-5 py-3">
+                                        <RegisterCheckbox studentId={result.id} isRegistered={result.is_registered} />
+                                    </td>
+                                    <td className="px-5 py-3 text-xs hidden lg:table-cell" style={{ color: 'var(--text-muted)' }}>{new Date(result.created_at).toLocaleDateString()}</td>
                                     <td className="px-5 py-3 text-right">
                                         <Link
                                             href={`/admin/results/${result.id}`}
@@ -130,7 +153,7 @@ export default function ResultsList({ initialResults }: { initialResults: Result
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                                <td colSpan={9} className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
                                     {searchTerm || classFilter !== 'All' ? 'No matching results found.' : 'No tests completed yet.'}
                                 </td>
                             </tr>

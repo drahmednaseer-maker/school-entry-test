@@ -86,7 +86,7 @@ export default async function QuestionsPage({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: Form */}
                 <div className="lg:col-span-1 space-y-5">
-                    <QuestionForm initialData={editQuestion} />
+                    <QuestionForm key={editQuestion ? editQuestion.id : 'new'} initialData={editQuestion} />
                     <BulkUploadForm />
                 </div>
 

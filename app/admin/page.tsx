@@ -1,19 +1,36 @@
 import { getDb } from '@/lib/db';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
+import RegisterCheckbox from '@/components/RegisterCheckbox';
 
 export const dynamic = 'force-dynamic';
 
 export default function AdminDashboard() {
     const db = getDb();
 
-    const studentCount = db.prepare('SELECT COUNT(*) as count FROM students').get() as { count: number };
-    const questionCount = db.prepare('SELECT COUNT(*) as count FROM questions').get() as { count: number };
-    const completedTests = db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'completed'").get() as { count: number };
-    const activeTests = db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'started'").get() as { count: number };
+    // Get active session
+    const activeSession = db.prepare('SELECT * FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+    const sessionId = activeSession?.id;
 
-    const recentResults = db.prepare(`
-        SELECT s.id, s.name, s.father_name, s.class_level, s.score, s.created_at, s.photo, s.admission_status
+    const studentCount = sessionId
+        ? db.prepare('SELECT COUNT(*) as count FROM students WHERE session_id = ?').get(sessionId) as { count: number }
+        : db.prepare('SELECT COUNT(*) as count FROM students').get() as { count: number };
+    const questionCount = db.prepare('SELECT COUNT(*) as count FROM questions').get() as { count: number };
+    const completedTests = sessionId
+        ? db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'completed' AND session_id = ?").get(sessionId) as { count: number }
+        : db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'completed'").get() as { count: number };
+    const activeTests = sessionId
+        ? db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'started' AND session_id = ?").get(sessionId) as { count: number }
+        : db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'started'").get() as { count: number };
+
+    const recentResults = sessionId ? db.prepare(`
+        SELECT s.id, s.name, s.father_name, s.class_level, s.score, s.created_at, s.photo, s.admission_status, s.admitted_class, s.is_registered
+        FROM students s
+        WHERE status = 'completed' AND session_id = ?
+        ORDER BY created_at DESC
+        LIMIT 50
+    `).all(sessionId) as any[] : db.prepare(`
+        SELECT s.id, s.name, s.father_name, s.class_level, s.score, s.created_at, s.photo, s.admission_status, s.admitted_class, s.is_registered
         FROM students s
         WHERE status = 'completed'
         ORDER BY created_at DESC
@@ -21,7 +38,7 @@ export default function AdminDashboard() {
     `).all() as any[];
 
     const statCards = [
-        { label: 'Total Students', value: studentCount.count, icon: Users, color: 'var(--primary)', bg: 'var(--primary-muted)' },
+        { label: 'Students (Session)', value: studentCount.count, icon: Users, color: 'var(--primary)', bg: 'var(--primary-muted)' },
         { label: 'Total Questions', value: questionCount.count, icon: FileText, color: '#7c3aed', bg: '#f5f3ff' },
         { label: 'Completed Tests', value: completedTests.count, icon: CheckCircle, color: 'var(--success)', bg: 'var(--success-bg)' },
         { label: 'Active Tests', value: activeTests.count, icon: Clock, color: '#d97706', bg: '#fffbeb' },
@@ -29,8 +46,14 @@ export default function AdminDashboard() {
 
     return (
         <div className="flex flex-col flex-1 min-h-0" style={{ gap: '1.5rem' }}>
-            <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
-
+            <div className="flex items-baseline gap-3">
+                <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
+                {activeSession && (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}>
+                        📅 {activeSession.name}
+                    </span>
+                )}
+            </div>
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {statCards.map(({ label, value, icon: Icon, color, bg }) => (
@@ -81,6 +104,8 @@ export default function AdminDashboard() {
                                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Class</th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Score</th>
                                 <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Admission</th>
+                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Admitted In</th>
+                                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Registered</th>
                                 <th className="px-5 py-3" />
                             </tr>
                         </thead>
@@ -113,6 +138,12 @@ export default function AdminDashboard() {
                                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Pending</span>
                                             )}
                                         </td>
+                                        <td className="px-5 py-3 text-sm font-semibold hidden md:table-cell" style={{ color: 'var(--text-primary)' }}>
+                                            {student.admitted_class || <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>—</span>}
+                                        </td>
+                                        <td className="px-5 py-3">
+                                            <RegisterCheckbox studentId={student.id} isRegistered={student.is_registered} />
+                                        </td>
                                         <td className="px-5 py-3 text-right">
                                             <Link href={`/admin/results/${student.id}`} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}>View</Link>
                                         </td>
@@ -120,7 +151,7 @@ export default function AdminDashboard() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No tests completed yet.</td>
+                                    <td colSpan={8} className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No tests completed yet.</td>
                                 </tr>
                             )}
                         </tbody>
