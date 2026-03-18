@@ -18,7 +18,15 @@ interface Result {
     is_registered: number;
 }
 
-export default function ResultsList({ initialResults }: { initialResults: Result[] }) {
+export default function ResultsList({ 
+    initialResults,
+    title = 'Attempted Papers',
+    showViewAll = false
+}: { 
+    initialResults: Result[],
+    title?: string,
+    showViewAll?: boolean
+}) {
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
     const [currentPage, setCurrentPage] = useState(1);
@@ -44,7 +52,7 @@ export default function ResultsList({ initialResults }: { initialResults: Result
 
     return (
         <div
-            className="rounded-xl overflow-hidden shadow-sm"
+            className="rounded-xl overflow-hidden shadow-sm flex flex-col flex-1 min-h-0"
             style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
         >
             {/* Filters */}
@@ -52,10 +60,21 @@ export default function ResultsList({ initialResults }: { initialResults: Result
                 className="p-4 border-b flex flex-col md:flex-row md:items-center justify-between gap-3"
                 style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
             >
-                <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                    Attempted Papers <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({filteredResults.length})</span>
-                </h3>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-sm shrink-0" style={{ color: 'var(--text-primary)' }}>
+                        {title} <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({filteredResults.length})</span>
+                    </h3>
+                    {showViewAll && (
+                        <Link
+                            href="/admin/results"
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                            style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}
+                        >
+                            View All →
+                        </Link>
+                    )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 mt-3 md:mt-0 w-full md:w-auto justify-end">
                     <div className="relative">
                         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
@@ -81,9 +100,9 @@ export default function ResultsList({ initialResults }: { initialResults: Result
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
                 <table className="w-full text-sm st-table">
-                    <thead>
+                    <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface-2)' }}>
                         <tr>
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Student</th>
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Father's Name</th>

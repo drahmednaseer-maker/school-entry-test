@@ -1,7 +1,7 @@
 import { getDb } from '@/lib/db';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
-import RegisterCheckbox from '@/components/RegisterCheckbox';
+import ResultsList from '@/components/ResultsList';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,87 +77,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Results — fills remaining page height */}
-            <div
-                className="rounded-xl overflow-hidden shadow-sm flex flex-col min-h-0 flex-1"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
-            >
-                <div
-                    className="px-5 py-4 border-b flex justify-between items-center"
-                    style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
-                >
-                    <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Recent Results</h3>
-                    <Link
-                        href="/admin/results"
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                        style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}
-                    >
-                        View All →
-                    </Link>
-                </div>
-
-                <div className="overflow-x-auto flex-1 overflow-y-auto min-h-0">
-                    <table className="w-full text-sm st-table">
-                        <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface-2)' }}>
-                            <tr>
-                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Student</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Father's Name</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Class</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Score</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Admission</th>
-                                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Admitted In</th>
-                                <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Registered</th>
-                                <th className="px-5 py-3" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {recentResults.length > 0 ? (
-                                recentResults.map((student) => (
-                                    <tr key={student.id}>
-                                        <td className="px-5 py-3">
-                                            <div className="flex items-center gap-2.5">
-                                                {student.photo ? (
-                                                    // eslint-disable-next-line @next/next/no-img-element
-                                                    <img src={student.photo} alt={student.name} className="w-8 h-8 rounded-full object-cover border shrink-0" style={{ borderColor: 'var(--border)' }} />
-                                                ) : (
-                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
-                                                        {student.name?.charAt(0)?.toUpperCase()}
-                                                    </div>
-                                                )}
-                                                <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{student.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-3 text-sm hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>{student.father_name}</td>
-                                        <td className="px-5 py-3 text-xs hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>{student.class_level}</td>
-                                        <td className="px-5 py-3 font-bold text-sm" style={{ color: 'var(--success)' }}>{student.score} / 30</td>
-                                        <td className="px-5 py-3 hidden sm:table-cell">
-                                            {student.admission_status === 'granted' ? (
-                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>Granted</span>
-                                            ) : student.admission_status === 'not_granted' ? (
-                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>Not Granted</span>
-                                            ) : (
-                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Pending</span>
-                                            )}
-                                        </td>
-                                        <td className="px-5 py-3 text-sm font-semibold hidden md:table-cell" style={{ color: 'var(--text-primary)' }}>
-                                            {student.admitted_class || <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>—</span>}
-                                        </td>
-                                        <td className="px-5 py-3">
-                                            <RegisterCheckbox studentId={student.id} isRegistered={student.is_registered} />
-                                        </td>
-                                        <td className="px-5 py-3 text-right">
-                                            <Link href={`/admin/results/${student.id}`} className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}>View</Link>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No tests completed yet.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <ResultsList initialResults={recentResults} title="Recent Results" showViewAll />
         </div>
     );
 }

@@ -557,6 +557,7 @@ export async function createSession(formData: FormData) {
     try {
         db.prepare('INSERT INTO sessions (name, is_active) VALUES (?, 0)').run(name);
         revalidatePath('/admin/settings');
+        revalidatePath('/admin/reports');
         return { success: true };
     } catch (e: any) {
         return { success: false, error: e.message?.includes('UNIQUE') ? 'A session with that name already exists' : 'Failed to create session' };
@@ -588,7 +589,31 @@ export async function deleteSession(formData: FormData) {
     if (count > 0) return { success: false, error: `Cannot delete — ${count} student(s) belong to this session` };
     db.prepare('DELETE FROM sessions WHERE id = ?').run(id);
     revalidatePath('/admin/settings');
+    revalidatePath('/admin/reports');
     return { success: true };
+}
+
+export async function renameSession(formData: FormData) {
+    const db = getDb();
+    const id = parseInt(formData.get('session_id') as string);
+    const name = (formData.get('name') as string)?.trim();
+    if (!id || !name) return { success: false, error: 'Invalid data' };
+    
+    const session = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as any;
+    if (!session) return { success: false, error: 'Session not found' };
+    if (session.is_active) return { success: false, error: 'Cannot edit the active session' };
+    
+    const count = (db.prepare('SELECT COUNT(*) as c FROM students WHERE session_id = ?').get(id) as any).c;
+    if (count > 0) return { success: false, error: `Cannot edit — ${count} student(s) belong to this session` };
+    
+    try {
+        db.prepare('UPDATE sessions SET name = ? WHERE id = ?').run(name, id);
+        revalidatePath('/admin/settings');
+        revalidatePath('/admin/reports');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message?.includes('UNIQUE') ? 'A session with that name already exists' : 'Failed to rename session' };
+    }
 }
 
 export async function toggleRegistration(formData: FormData) {
@@ -609,38 +634,51 @@ export async function getSessionSeatsStats(sessionId: number) {
     const db = getDb();
     const classLevels = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
     
-    const configuredRows = db.prepare('SELECT class_level, total_seats FROM session_seats WHERE session_id = ?').all(sessionId) as any[];
-    const seatsMap = new Map(configuredRows.map((r: any) => [r.class_level, r.total_seats]));
+    const configuredRows = db.prepare('SELECT class_level, total_seats, male_seats, female_seats FROM session_seats WHERE session_id = ?').all(sessionId) as any[];
+    const seatsMap = new Map(configuredRows.map((r: any) => [r.class_level, r]));
     
     // Registered means: is_registered = 1 AND admitted_class is populated
     const registeredRows = db.prepare(`
-        SELECT admitted_class, COUNT(*) as count 
+        SELECT admitted_class, 
+               SUM(CASE WHEN gender = 'Male' THEN 1 ELSE 0 END) as male_count,
+               SUM(CASE WHEN gender = 'Female' THEN 1 ELSE 0 END) as female_count,
+               COUNT(*) as total_count 
         FROM students 
         WHERE session_id = ? AND is_registered = 1 AND admitted_class IS NOT NULL
         GROUP BY admitted_class
     `).all(sessionId) as any[];
-    const registeredMap = new Map(registeredRows.map((r: any) => [r.admitted_class, r.count]));
+    const registeredMap = new Map(registeredRows.map((r: any) => [r.admitted_class, r]));
     
     return classLevels.map(c => {
-        const total = seatsMap.get(c) || 0;
-        const registered = registeredMap.get(c) || 0;
+        const conf = seatsMap.get(c) || { total_seats: 0, male_seats: 0, female_seats: 0 };
+        const reg = registeredMap.get(c) || { male_count: 0, female_count: 0, total_count: 0 };
         return {
             class_level: c,
-            total_seats: total,
-            registered: registered,
-            balance: total - registered
+            total_seats: conf.total_seats,
+            male_seats: conf.male_seats,
+            female_seats: conf.female_seats,
+            registered_total: reg.total_count,
+            registered_male: reg.male_count,
+            registered_female: reg.female_count,
+            balance_total: conf.total_seats - reg.total_count,
+            balance_male: conf.male_seats - reg.male_count,
+            balance_female: conf.female_seats - reg.female_count
         };
     });
 }
 
-export async function updateSessionSeat(sessionId: number, classLevel: string, totalSeats: number) {
+export async function updateSessionSeat(sessionId: number, classLevel: string, field: 'total_seats' | 'male_seats' | 'female_seats', value: number) {
     const db = getDb();
     const exists = db.prepare('SELECT 1 FROM session_seats WHERE session_id = ? AND class_level = ?').get(sessionId, classLevel);
+    
+    const safeField = ['total_seats', 'male_seats', 'female_seats'].includes(field) ? field : 'total_seats';
+
     if (exists) {
-        db.prepare('UPDATE session_seats SET total_seats = ? WHERE session_id = ? AND class_level = ?').run(totalSeats, sessionId, classLevel);
+        db.prepare(`UPDATE session_seats SET ${safeField} = ? WHERE session_id = ? AND class_level = ?`).run(value, sessionId, classLevel);
     } else {
-        db.prepare('INSERT INTO session_seats (session_id, class_level, total_seats) VALUES (?, ?, ?)').run(sessionId, classLevel, totalSeats);
+        db.prepare(`INSERT INTO session_seats (session_id, class_level, ${safeField}) VALUES (?, ?, ?)`).run(sessionId, classLevel, value);
     }
     revalidatePath('/admin/settings');
+    revalidatePath('/admin/reports');
     return { success: true };
 }

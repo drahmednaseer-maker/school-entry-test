@@ -1,6 +1,6 @@
 import { getDb } from '@/lib/db';
 import { notFound } from 'next/navigation';
-import { CheckCircle2, XCircle, User, Calendar, BookOpen, AlertCircle, Hash, ChevronLeft, GraduationCap, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { CheckCircle2, XCircle, User, Calendar, BookOpen, AlertCircle, Hash, ChevronLeft, GraduationCap, ThumbsUp, ThumbsDown, Clock, Timer } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
 import { setAdmissionStatus } from '@/lib/actions';
@@ -90,10 +90,29 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
                                 <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">{settings.school_name}</p>
                                 <h1 className="text-3xl font-black mb-1">{student.name}</h1>
                                 <p className="text-blue-100/80 font-medium">S/O: {student.father_name}</p>
-                                <div className="flex flex-wrap items-center gap-4 text-blue-100 text-sm mt-2">
-                                    <span className="flex items-center gap-1"><User size={14} /> {student.class_level}</span>
-                                    <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(student.created_at).toLocaleDateString()}</span>
-                                    {student.gender && <span className="flex items-center gap-1"><User size={14} /> {student.gender}</span>}
+                                <div className="flex flex-col gap-2 mt-3 text-sm text-blue-100/90 font-medium">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <span className="flex items-center gap-1"><User size={14} /> {student.class_level}</span>
+                                        <span className="flex items-center gap-1"><Calendar size={14} /> {new Date(student.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
+                                        {student.gender && <span className="flex items-center gap-1"><User size={14} /> {student.gender}</span>}
+                                    </div>
+                                    
+                                    {session.start_time && session.end_time && (
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-blue-100/80 mt-1 pb-1">
+                                            <span className="flex items-center gap-1" title="Start Time (PKT)">
+                                                <Clock size={12} className="text-blue-300" />
+                                                Started: {new Date(session.start_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            <span className="flex items-center gap-1" title="End Time (PKT)">
+                                                <Clock size={12} className="text-blue-300" />
+                                                Finished: {new Date(session.end_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            <span className="flex items-center gap-1 font-bold text-blue-50" title="Total Time Spent">
+                                                <Timer size={13} className="text-blue-200" />
+                                                Spent: {Math.floor((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 60000)}m {Math.floor(((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) % 60000) / 1000)}s
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

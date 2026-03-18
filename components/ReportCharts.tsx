@@ -86,7 +86,7 @@ export default function ReportCharts({ classData, pieData, genderData, timeData 
 
                 {/* Time line */}
                 <div className="rounded-2xl p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                    <p className="font-bold text-sm mb-5" style={{ color: 'var(--text-primary)' }}>Tests Over Time (Last 30 Days)</p>
+                    <p className="font-bold text-sm mb-5" style={{ color: 'var(--text-primary)' }}>Tests Over Active Session</p>
                     {timeData.length === 0 ? (
                         <div className="flex items-center justify-center h-40 text-sm" style={{ color: 'var(--text-muted)' }}>No data yet</div>
                     ) : (

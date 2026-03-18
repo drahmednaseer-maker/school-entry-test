@@ -1,6 +1,8 @@
 import { getDb } from '@/lib/db';
 import { BarChart2, Users, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
 import ReportCharts from '@/components/ReportCharts';
+import SessionManager from '@/components/SessionManager';
+import SessionSeats from '@/components/SessionSeats';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,12 @@ export default function ReportsPage() {
     const sid = activeSession?.id;
     const sessionFilter = sid ? 'AND session_id = ?' : '';
     const sessionArgs = sid ? [sid] : [];
+    
+    // All sessions for manager
+    const sessions = db.prepare(`
+        SELECT s.*, (SELECT COUNT(*) FROM students WHERE session_id = s.id) as student_count
+        FROM sessions s ORDER BY s.created_at DESC
+    `).all() as any[];
 
     // Summary stats
     const totalCompleted = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE status='completed' ${sessionFilter}`).get(...sessionArgs) as any).c;
@@ -19,10 +27,18 @@ export default function ReportsPage() {
     const totalNotGranted = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE admission_status='not_granted' ${sessionFilter}`).get(...sessionArgs) as any).c;
     const pendingDecision = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE status='completed' AND (admission_status IS NULL OR admission_status='') ${sessionFilter}`).get(...sessionArgs) as any).c;
 
-    const totalScore = (db.prepare(`SELECT SUM(score) as s, COUNT(*) as c FROM students WHERE status='completed' AND score IS NOT NULL ${sessionFilter}`).get(...sessionArgs) as any);
+    const seatsQuery = db.prepare(`
+        SELECT SUM(
+            CASE WHEN class_level LIKE 'Grade%' THEN male_seats + female_seats
+            ELSE total_seats END
+        ) as total
+        FROM session_seats
+        WHERE session_id = ?
+    `).get(sid) as any;
+    const totalAvailableSeats = seatsQuery?.total || 0;
+
     const settingsRow = (db.prepare('SELECT english_questions, urdu_questions, math_questions FROM settings WHERE id=1').get() as any);
     const totalQuestions = settingsRow ? (settingsRow.english_questions + settingsRow.urdu_questions + settingsRow.math_questions) : 30;
-    const avgPercent = totalScore.c > 0 ? Math.round((totalScore.s / (totalScore.c * totalQuestions)) * 100) : 0;
 
     // Class-wise data
     const classRows = db.prepare(`
@@ -47,11 +63,11 @@ export default function ReportsPage() {
     const femaleCount = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE gender='Female' AND status='completed' ${sessionFilter}`).get(...sessionArgs) as any).c;
     const genderData = [{ name: 'Applicants', Male: maleCount, Female: femaleCount }];
 
-    // Time data (last 30 days)
+    // Time data (entire session)
     const timeRows = db.prepare(`
         SELECT DATE(created_at) as date, COUNT(*) as count
         FROM students WHERE status='completed'
-        AND created_at >= DATE('now', '-30 days') ${sessionFilter}
+        ${sessionFilter}
         GROUP BY DATE(created_at) ORDER BY date
     `).all(...sessionArgs) as any[];
     const timeData = timeRows.map(r => ({ date: r.date?.slice(5), count: r.count }));
@@ -61,7 +77,7 @@ export default function ReportsPage() {
         { label: 'Admission Granted', value: totalGranted, icon: CheckCircle, color: 'var(--success)', bg: 'var(--success-bg)' },
         { label: 'Not Granted', value: totalNotGranted, icon: XCircle, color: 'var(--danger)', bg: 'var(--danger-bg)' },
         { label: 'Pending Decision', value: pendingDecision, icon: Clock, color: '#d97706', bg: '#fffbeb' },
-        { label: 'Avg Score', value: `${avgPercent}%`, icon: TrendingUp, color: '#7c3aed', bg: '#f5f3ff' },
+        { label: 'Available Admission Seats', value: totalAvailableSeats, icon: TrendingUp, color: '#7c3aed', bg: '#f5f3ff' },
     ];
 
     return (
@@ -93,6 +109,10 @@ export default function ReportsPage() {
                     </div>
                 ))}
             </div>
+
+            {/* Session Management */}
+            <SessionManager sessions={sessions} />
+            <SessionSeats sessions={sessions} />
 
             {/* Charts */}
             <ReportCharts

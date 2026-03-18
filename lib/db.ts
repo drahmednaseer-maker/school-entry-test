@@ -59,9 +59,18 @@ function initTables(database: any) {
           session_id INTEGER NOT NULL,
           class_level TEXT NOT NULL,
           total_seats INTEGER NOT NULL DEFAULT 0,
+          male_seats INTEGER NOT NULL DEFAULT 0,
+          female_seats INTEGER NOT NULL DEFAULT 0,
           UNIQUE(session_id, class_level)
       );
     `);
+
+    try {
+        database.exec('ALTER TABLE session_seats ADD COLUMN male_seats INTEGER NOT NULL DEFAULT 0;');
+        database.exec('ALTER TABLE session_seats ADD COLUMN female_seats INTEGER NOT NULL DEFAULT 0;');
+    } catch (e) {
+        // Columns already exist
+    }
 
     // Seed default active session 2026-2027 if none exist
     const sessionCount = database.prepare('SELECT COUNT(*) as c FROM sessions').get() as any;

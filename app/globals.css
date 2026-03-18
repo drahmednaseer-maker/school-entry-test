@@ -157,7 +157,14 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
-
+.show-spinners::-webkit-inner-spin-button,
+.show-spinners::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button !important;
+  opacity: 1 !important;
+}
+.show-spinners {
+  -moz-appearance: auto !important;
+}
 /* Urdu */
 .font-urdu {
   font-family: var(--font-urdu), serif;
