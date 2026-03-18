@@ -106,7 +106,7 @@ export default function StudentForm() {
 
                     <div>
                         <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                            Class / Grade
+                            Class seeking admission in
                         </label>
                         <select name="class_level" className="st-input text-sm select-arrow">
                             <option value="PlayGroup">PlayGroup</option>
