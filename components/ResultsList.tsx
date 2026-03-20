@@ -101,7 +101,7 @@ export default function ResultsList({
 
             {/* Table */}
             <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
-                <table className="w-full text-sm st-table">
+                <table className="w-full text-sm st-table min-w-[1000px]">
                     <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface-2)' }}>
                         <tr>
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Student</th>

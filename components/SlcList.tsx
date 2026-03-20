@@ -178,7 +178,7 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
 
             {/* Table */}
             <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0 text-sm">
-                <table className="w-full st-table">
+                <table className="w-full st-table min-w-[1000px]">
                     <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface-2)' }}>
                         <tr>
                             <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Student</th>
