@@ -519,7 +519,7 @@ export async function getAIResultAssessment(studentId: number, mode: 'standard' 
 
         prompt = `
         Act as a Master Education Assessment Analyst for ${settings.school_name}. 
-        Perform a Deep, Detailed AI Assessment for the following student:
+        Perform a Deep, Comprehensive, and Highly Detailed AI Assessment for the following student:
         
         Student Name: ${student.name}
         Gender: ${student.gender}
@@ -536,24 +536,29 @@ export async function getAIResultAssessment(studentId: number, mode: 'standard' 
         DETAILED QUESTION RESPONSES:
         ${detailedQA}
         
-        GUIDELINES FOR REPORT:
-        1. Use the student's name (${student.name}) naturally throughout the report.
-        2. NO EMOJIS ALLOWED at all.
-        3. Tone: Professional, highly analytical context, like a seasoned educator evaluating specific skills.
-        4. Admission Threshold: 50%.
-        5. DO NOT use ALL CAPS for paragraphs.
-        6. EACH SECTION MUST START WITH THE HEADING IN THE EXACT FORMAT '#### HEADING_NAME:' (bold markdown).
-        7. Analyze the specific questions they got wrong vs right to identify patterns (e.g. struggles with specific math concepts, or strong grammar). DO NOT quote questions directly, analyze the skills broadly.
+        CRITICAL INSTRUCTIONS FOR THIS REPORT (YOU MUST FOLLOW THESE STRICTLY):
+        1. LENGTH & DEPTH: This is a DETAILED assessment. Your response MUST be comprehensive, highly detailed, and span at least 400-600 words. Do NOT provide brief summaries. Each section must have deep, insightful paragraphs.
+        2. HEADINGS: You MUST use the exact markdown headings requested below. Do NOT use standard bullet points for headings. Do NOT use ** for headings. YOU MUST prefix sections with '#### '.
+        3. TONE: Professional, highly analytical, and empathetic, like a seasoned educator evaluating specific skills to parents and administrators.
+        4. ANALYSIS: Do not quote the questions verbatim. Instead, synthesize the data to explain the student's mastery of specific logical, linguistic, or mathematical concepts. If they rushed, analyze how that impacted their correctness.
+        5. Use the student's name naturally throughout the deep analysis.
         
-        STRUCTURE:
-        - #### DETAILED PERFORMANCE ANALYSIS: A deep dive into their skills, identifying patterns in their correct and incorrect answers. Make sure to discuss their time management if they rushed.
-        - #### STRENGTH AREAS: Specific skills they have mastered based on the data.
-        - #### WEAKNESS AREAS: Specific skills they need to focus on based on what they got wrong.
-        - #### SPECIFIC RECOMMENDATIONS: Actionable advice on what they need to study to improve.
-        - #### ADMISSION DECISION SUGGESTION: A firm recommendation on suitability (Grant, Offer lower class, or Deny).
+        REQUIRED REPORT STRUCTURE:
         
-        FORMAT:
-        Return ONLY the report text with clear headings prefixed with '#### ' and ending with ':'.
+        #### DETAILED PERFORMANCE ANALYSIS:
+        (Write a multi-paragraph deep dive into their overall skills across subjects. Discuss their time management if applicable, and how their pace correlated with their errors or successes.)
+        
+        #### STRENGTH AREAS:
+        (Write a detailed paragraph identifying 2-3 specific academic concepts they have mastered, referencing their successful subjects.)
+        
+        #### WEAKNESS AREAS:
+        (Write a detailed paragraph identifying 2-3 specific concepts they struggled with, analyzing patterns in what they got wrong.)
+        
+        #### SPECIFIC RECOMMENDATIONS:
+        (Provide actionable, detailed advice on exact topics or study habits the student needs to focus on to improve.)
+        
+        #### ADMISSION DECISION SUGGESTION:
+        (Conclude with a firm 1-2 sentence recommendation: Grant admission, Offer lower class, or Deny admission.)
         `;
     } else {
         prompt = `
