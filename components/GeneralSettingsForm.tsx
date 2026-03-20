@@ -83,25 +83,25 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
             <div className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden">
                 <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-100"><Sparkles size={22} /></div>
-                        <h2 className="text-xl font-black tracking-tight text-gray-900 uppercase">Active AI Provider Strategy</h2>
+                        <div className="p-2 rounded-lg bg-indigo-600 text-white shadow"><Sparkles size={18} /></div>
+                        <h2 className="text-lg font-bold text-gray-900">Active AI Provider Strategy</h2>
                     </div>
                 </div>
                 <div className="p-8 space-y-6">
                     <div className="flex flex-col items-center justify-between gap-8">
                         <div className="w-full">
-                            <h4 className="text-base font-bold text-gray-900 mb-2">Select Engine</h4>
-                            <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                            <h4 className="text-sm font-bold text-gray-900 mb-1">Select Engine</h4>
+                            <p className="text-sm text-gray-500 font-medium">
                                 Choose which artificial intelligence provider will drive the student performance evaluations.
                             </p>
                         </div>
-                        <div className="flex bg-gray-100 p-2 rounded-2xl w-full">
+                        <div className="flex bg-gray-100 p-1.5 rounded-xl w-full">
                             <button
                                 type="button"
                                 onClick={() => setActiveProvider('groq')}
                                 className={clsx(
-                                    "flex-1 px-8 py-3.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest",
-                                    activeProvider === 'groq' ? "bg-white text-blue-600 shadow-xl" : "text-gray-400 hover:text-gray-600"
+                                    "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all",
+                                    activeProvider === 'groq' ? "bg-white text-blue-600 shadow" : "text-gray-500 hover:text-gray-700"
                                 )}
                             >
                                 GROQ
@@ -110,8 +110,8 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                                 type="button"
                                 onClick={() => setActiveProvider('gemini')}
                                 className={clsx(
-                                    "flex-1 px-8 py-3.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest",
-                                    activeProvider === 'gemini' ? "bg-white text-blue-600 shadow-xl" : "text-gray-400 hover:text-gray-600"
+                                    "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all",
+                                    activeProvider === 'gemini' ? "bg-white text-blue-600 shadow" : "text-gray-500 hover:text-gray-700"
                                 )}
                             >
                                 Gemini
@@ -125,7 +125,7 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                         <button
                             onClick={handleProviderUpdate}
                             disabled={isPending}
-                            className="bg-gray-900 hover:bg-black text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center gap-2 active:scale-95"
+                            className="bg-gray-900 hover:bg-black text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2 active:scale-95"
                         >
                             <CheckCircle2 size={16} />
                             Set Active Engine
@@ -141,11 +141,11 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
             )}>
                 <div className="p-7 border-b border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-50"><Zap size={20} /></div>
-                        <h3 className="text-lg font-black tracking-tight text-gray-900 uppercase">GROQ Core Settings</h3>
+                        <div className="p-2 rounded-lg bg-emerald-600 text-white shadow"><Zap size={18} /></div>
+                        <h3 className="text-lg font-bold text-gray-900">GROQ Core Settings</h3>
                     </div>
                     {isGroqConfigured && (
-                        <div className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-full border border-emerald-100 flex items-center gap-2 uppercase tracking-tight">
+                        <div className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-100 flex items-center gap-2">
                             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                             Active Credentials
                         </div>
@@ -156,13 +156,13 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                 
                 <div className="p-8 flex-1 flex flex-col justify-between space-y-8">
                     <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Secret API Access Token</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-2">Secret API Access Token</label>
                         <input
                             name="groq_api_key"
                             type="password"
                             defaultValue={initialSettings.groq_api_key || ''}
                             placeholder="Enter gsk_..."
-                            className="w-full rounded-2xl border-gray-200 shadow-inner p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm bg-gray-50/50"
+                            className="w-full rounded-xl border-gray-200 shadow-sm p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm bg-gray-50"
                         />
                     </div>
 
@@ -173,9 +173,9 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-emerald-100 transition-all flex items-center gap-2 active:scale-95"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2 active:scale-95"
                         >
-                            <Save size={18} />
+                            <Save size={16} />
                             Save GROQ Key
                         </button>
                     </div>
@@ -189,11 +189,11 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
             )}>
                 <div className="p-7 border-b border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-50"><Sparkles size={20} /></div>
-                        <h3 className="text-lg font-black tracking-tight text-gray-900 uppercase">Gemini Core Settings</h3>
+                        <div className="p-2 rounded-lg bg-orange-600 text-white shadow"><Sparkles size={18} /></div>
+                        <h3 className="text-lg font-bold text-gray-900">Gemini Core Settings</h3>
                     </div>
                     {isGeminiConfigured && (
-                        <div className="px-3 py-1 bg-orange-50 text-orange-700 text-[10px] font-black rounded-full border border-orange-100 flex items-center gap-2 uppercase tracking-tight">
+                        <div className="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-semibold rounded-full border border-orange-100 flex items-center gap-2">
                             <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
                             Active Credentials
                         </div>
@@ -205,22 +205,22 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                 <div className="p-8 flex-1 flex flex-col justify-between space-y-8">
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Secret API Access Token</label>
+                            <label className="block text-xs font-semibold text-gray-500 mb-2">Secret API Access Token</label>
                             <input
                                 name="gemini_api_key"
                                 type="password"
                                 defaultValue={initialSettings.gemini_api_key || ''}
                                 placeholder="Enter AIza..."
-                                className="w-full rounded-2xl border-gray-200 shadow-inner p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm bg-gray-50/50"
+                                className="w-full rounded-xl border-gray-200 shadow-sm p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm bg-gray-50"
                             />
                         </div>
                         
                         <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">AI Intelligence Tier</label>
+                            <label className="block text-xs font-semibold text-gray-500 mb-2">AI Intelligence Tier</label>
                             <select 
                                 name="gemini_model" 
                                 defaultValue={initialSettings.gemini_model || 'gemini-2.5-flash'}
-                                className="w-full rounded-2xl border-gray-200 p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm font-black bg-white appearance-none cursor-pointer"
+                                className="w-full rounded-xl border-gray-200 p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-semibold bg-white cursor-pointer"
                             >
                                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                 <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
@@ -237,9 +237,9 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-orange-100 transition-all flex items-center gap-2 active:scale-95"
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all flex items-center gap-2 active:scale-95"
                         >
-                            <Save size={18} />
+                            <Save size={16} />
                             Save Gemini
                         </button>
                     </div>
@@ -290,32 +290,32 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
         <form action={handleGeneralSubmit} ref={formRef} className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden mb-8 col-span-1">
             <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-100"><ShieldCheck size={22} /></div>
-                    <h2 className="text-xl font-black tracking-tight text-gray-900 uppercase">General System Configuration</h2>
+                    <div className="p-2 rounded-lg bg-blue-600 text-white shadow"><ShieldCheck size={18} /></div>
+                    <h2 className="text-lg font-bold text-gray-900">General System Configuration</h2>
                 </div>
             </div>
             
             <div className="p-8 space-y-10">
-                <div className="space-y-8">
+                <div className="space-y-6">
                     {/* School Name */}
                     <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Institutional Identity</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-2">Institutional Identity</label>
                         <input
                             name="school_name"
                             type="text"
                             defaultValue={initialSettings.school_name}
                             placeholder="Enter School Name"
                             required
-                            className="w-full rounded-2xl border-gray-200 shadow-sm p-4 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-lg font-bold"
+                            className="w-full rounded-xl border-gray-200 shadow-sm p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base font-semibold"
                         />
                     </div>
 
                     {/* Question Composition */}
-                    <div className="space-y-5">
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest">Question Bank Distribution</label>
+                    <div className="space-y-4">
+                        <label className="block text-xs font-semibold text-gray-500">Question Bank Distribution</label>
                         <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"/> English</label>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"/> English</label>
                                 <input
                                     name="english_questions"
                                     type="number"
@@ -326,7 +326,7 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-purple-500 rounded-full"/> Urdu</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-purple-500 rounded-full"/> Urdu</label>
                                 <input
                                     name="urdu_questions"
                                     type="number"
@@ -337,7 +337,7 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/> Math</label>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/> Math</label>
                                 <input
                                     name="math_questions"
                                     type="number"
@@ -355,11 +355,11 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                     </div>
 
                     {/* Difficulty Profile */}
-                    <div className="space-y-5">
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest">Difficulty Gradient (%)</label>
+                    <div className="space-y-4">
+                        <label className="block text-xs font-semibold text-gray-500">Difficulty Gradient (%)</label>
                         <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase text-center block">Easy</label>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase text-center block">Easy</label>
                                 <input
                                     name="easy_percent"
                                     type="number"
@@ -370,8 +370,8 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                     className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase text-center block">Medium</label>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase text-center block">Medium</label>
                                 <input
                                     name="medium_percent"
                                     type="number"
@@ -382,8 +382,8 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                     className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-500 uppercase text-center block">Hard</label>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase text-center block">Hard</label>
                                 <input
                                     name="hard_percent"
                                     type="number"
@@ -405,17 +405,17 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                     </div>
 
                     {/* Security */}
-                    <div className="rounded-2xl bg-gray-50 p-6 border border-gray-100">
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <div className="rounded-xl bg-gray-50 p-5 border border-gray-100">
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
                             <ShieldCheck size={14} className="text-gray-400" /> Admin Access Controls
                         </label>
                         <div>
-                            <label className="text-[11px] font-bold text-gray-600 uppercase mb-2 block">Master Security Password</label>
+                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Master Security Password</label>
                             <input
                                 name="master_password"
                                 type="text"
                                 defaultValue={initialSettings.master_password || '1234'}
-                                className="w-full rounded-xl border-gray-200 p-4 border font-mono text-sm bg-white"
+                                className="w-full rounded-xl border-gray-200 p-3 border font-mono text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                             />
                             <p className="mt-2 text-[10px] text-gray-400 font-medium italic">
                                 Required for Staff & Exam roles to authorize record deletions or modifications.
@@ -436,9 +436,9 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                     <button
                         type="submit"
                         disabled={isPending || !isPercentValid}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black px-10 py-4 rounded-2xl shadow-xl shadow-blue-100 transition-all flex items-center gap-3 text-sm uppercase tracking-widest active:scale-95"
+                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm active:scale-95"
                     >
-                        <Save size={20} />
+                        <Save size={18} />
                         Update System
                     </button>
                 </div>

@@ -559,6 +559,11 @@ export async function getAIResultAssessment(studentId: number, mode: 'standard' 
         
         #### ADMISSION DECISION SUGGESTION:
         (Conclude with a firm 1-2 sentence recommendation: Grant admission, Offer lower class, or Deny admission.)
+        
+        FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
+        Do NOT wrap the response in markdown code blocks like \`\`\`markdown.
+        Return ONLY the raw report text. 
+        Ensure you use EXACTLY the '#### ' markdown headers so the system can parse the sections.
         `;
     } else {
         prompt = `
@@ -629,7 +634,7 @@ export async function getAIResultAssessment(studentId: number, mode: 'standard' 
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 2048
+                        maxOutputTokens: 8192
                     }
                 })
             });
@@ -644,7 +649,7 @@ export async function getAIResultAssessment(studentId: number, mode: 'standard' 
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: prompt }] }],
-                            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+                            generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
                         })
                     });
                     const fallbackData = await fallbackResponse.json();
