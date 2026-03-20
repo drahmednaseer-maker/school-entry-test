@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { deleteStudent, updateStudent } from '@/lib/actions';
 import { Trash2, Edit2, Search, Filter, User, X, Check, Loader2, Phone, BookOpen } from 'lucide-react';
+import MasterPasswordModal from './MasterPasswordModal';
 
 interface Student {
     id: number;
@@ -21,7 +22,7 @@ interface Student {
 const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
 const GENDERS = ['Male', 'Female'];
 
-export default function StudentList({ initialStudents }: { initialStudents: Student[] }) {
+export default function StudentList({ initialStudents, userRole }: { initialStudents: Student[], userRole: string }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
     const [isPending, startTransition] = useTransition();
@@ -36,6 +37,19 @@ export default function StudentList({ initialStudents }: { initialStudents: Stud
         gender: ''
     });
 
+    // Master Password Modal State
+    const [passwordModal, setPasswordModal] = useState<{
+        isOpen: boolean;
+        onSuccess: () => void;
+        title: string;
+        description: string;
+    }>({
+        isOpen: false,
+        onSuccess: () => {},
+        title: '',
+        description: ''
+    });
+
     const filteredStudents = initialStudents.filter(student => {
         const matchesSearch =
             (student.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -45,25 +59,51 @@ export default function StudentList({ initialStudents }: { initialStudents: Stud
     });
 
     const handleDelete = async (id: number) => {
-        if (confirm('Delete this student record? This will also delete their test sessions.')) {
-            const res = await deleteStudent(id);
-            if (res.success) {
-                window.location.reload();
-            } else {
-                alert('Error: ' + res.error);
+        const performDelete = async () => {
+            if (confirm('Delete this student record? This will also delete their test sessions.')) {
+                const res = await deleteStudent(id);
+                if (res.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + res.error);
+                }
             }
+        };
+
+        if (userRole === 'admin') {
+            performDelete();
+        } else {
+            setPasswordModal({
+                isOpen: true,
+                onSuccess: performDelete,
+                title: "Confirm Deletion",
+                description: "Deletion requires the master password. All test data for this student will be lost."
+            });
         }
     };
 
     const openEditModal = (student: Student) => {
-        setEditingStudent(student);
-        setEditForm({
-            name: student.name || '',
-            fatherName: student.father_name || '',
-            fatherMobile: student.father_mobile || '',
-            classLevel: student.class_level || 'PlayGroup',
-            gender: student.gender || 'Male'
-        });
+        const performOpen = () => {
+            setEditingStudent(student);
+            setEditForm({
+                name: student.name || '',
+                fatherName: student.father_name || '',
+                fatherMobile: student.father_mobile || '',
+                classLevel: student.class_level || 'PlayGroup',
+                gender: student.gender || 'Male'
+            });
+        };
+
+        if (userRole === 'admin') {
+            performOpen();
+        } else {
+            setPasswordModal({
+                isOpen: true,
+                onSuccess: performOpen,
+                title: "Edit Student Record",
+                description: "Editing student records requires the master password."
+            });
+        }
     };
 
     const handleUpdate = async (e: React.FormEvent) => {
@@ -358,6 +398,15 @@ export default function StudentList({ initialStudents }: { initialStudents: Stud
                     </div>
                 </div>
             )}
+
+            {/* Master Password Prompt */}
+            <MasterPasswordModal
+                isOpen={passwordModal.isOpen}
+                title={passwordModal.title}
+                description={passwordModal.description}
+                onClose={() => setPasswordModal({ ...passwordModal, isOpen: false })}
+                onSuccess={passwordModal.onSuccess}
+            />
         </div>
     );
 }

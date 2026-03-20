@@ -380,6 +380,11 @@ export async function getSettings() {
         english_questions: number;
         urdu_questions: number;
         math_questions: number;
+        master_password?: string;
+        groq_api_key?: string;
+        gemini_api_key?: string;
+        active_ai_provider?: string;
+        gemini_model?: string;
     };
 }
 
@@ -393,6 +398,12 @@ export async function updateSettings(currentState: any, formData: FormData) {
     const urduQuestions = parseInt(formData.get('urdu_questions') as string) || 10;
     const mathQuestions = parseInt(formData.get('math_questions') as string) || 10;
 
+    const masterPassword = formData.get('master_password') as string || '1234';
+    const groqApiKey = formData.get('groq_api_key') as string;
+    const geminiApiKey = formData.get('gemini_api_key') as string;
+    const activeAiProvider = formData.get('active_ai_provider') as string || 'groq';
+    const geminiModel = formData.get('gemini_model') as string || 'gemini-1.5-flash';
+
     if (easyPercent + mediumPercent + hardPercent !== 100) {
         return { error: 'Percentages must total 100%' };
     }
@@ -401,17 +412,251 @@ export async function updateSettings(currentState: any, formData: FormData) {
         db.prepare(`
             UPDATE settings 
             SET school_name = ?, easy_percent = ?, medium_percent = ?, hard_percent = ?,
-                english_questions = ?, urdu_questions = ?, math_questions = ?
+                english_questions = ?, urdu_questions = ?, math_questions = ?, 
+                master_password = ?, groq_api_key = ?, gemini_api_key = ?, 
+                active_ai_provider = ?, gemini_model = ?
             WHERE id = 1
-        `).run(schoolName, easyPercent, mediumPercent, hardPercent, englishQuestions, urduQuestions, mathQuestions);
+        `).run(schoolName, easyPercent, mediumPercent, hardPercent, englishQuestions, urduQuestions, mathQuestions, masterPassword, groqApiKey, geminiApiKey, activeAiProvider, geminiModel);
 
         revalidatePath('/admin/settings');
         revalidatePath('/admin');
         revalidatePath('/');
         return { success: 'Settings updated successfully' };
-    } catch (error) {
-        console.error('Failed to update settings:', error);
-        return { error: 'Failed to update settings' };
+    } catch (e: any) {
+        console.error('Update settings error:', e);
+        return { error: 'Failed: ' + e.message };
+    }
+}
+
+export async function updateActiveAIProvider(provider: string) {
+    const db = getDb();
+    try {
+        db.prepare('UPDATE settings SET active_ai_provider = ? WHERE id = 1').run(provider);
+        revalidatePath('/admin/settings');
+        return { success: 'AI Provider updated' };
+    } catch (e: any) {
+        return { error: 'Failed: ' + e.message };
+    }
+}
+
+export async function updateGROQConfig(apiKey: string) {
+    const db = getDb();
+    try {
+        db.prepare('UPDATE settings SET groq_api_key = ? WHERE id = 1').run(apiKey);
+        revalidatePath('/admin/settings');
+        return { success: 'GROQ key saved' };
+    } catch (e: any) {
+        return { error: 'Failed: ' + e.message };
+    }
+}
+
+export async function updateGeminiConfig(apiKey: string, model: string) {
+    const db = getDb();
+    try {
+        db.prepare('UPDATE settings SET gemini_api_key = ?, gemini_model = ? WHERE id = 1').run(apiKey, model);
+        revalidatePath('/admin/settings');
+        return { success: 'Gemini configuration saved' };
+    } catch (e: any) {
+        return { error: 'Failed: ' + e.message };
+    }
+}
+
+export async function verifyMasterPassword(password: string) {
+    const db = getDb();
+    const settings = db.prepare('SELECT master_password FROM settings WHERE id = 1').get() as any;
+    return password === settings?.master_password;
+}
+
+export async function getAIResultAssessment(studentId: number, mode: 'standard' | 'detailed' = 'standard') {
+    const db = getDb();
+    const student = db.prepare('SELECT * FROM students WHERE id = ?').get(studentId) as any;
+    if (!student) return { error: 'Student not found' };
+
+    const session = db.prepare('SELECT * FROM test_sessions WHERE student_id = ?').get(studentId) as any;
+    if (!session || !session.answers) return { error: 'No test session results found' };
+
+    const settings = await getSettings();
+    const provider = settings.active_ai_provider || 'groq';
+    const apiKey = provider === 'groq' ? settings.groq_api_key : settings.gemini_api_key;
+
+    if (!apiKey) return { error: `${provider.toUpperCase()} API Key is not configured in Settings.` };
+
+    const questionIds = JSON.parse(session.question_ids);
+    const answers = JSON.parse(session.answers);
+    const questions = db.prepare(`SELECT * FROM questions WHERE id IN (${questionIds.join(',')})`).all() as any[];
+    
+    // Performance Summary
+    const subjects = ['English', 'Urdu', 'Math'];
+    const summary = subjects.map(sub => {
+        const subQs = questions.filter(q => q.subject === sub);
+        const total = subQs.length;
+        const correct = subQs.filter(q => answers[q.id] === q.correct_option).length;
+        return { subject: sub, total, correct };
+    });
+
+    const totalQuestions = questionIds.length;
+    const totalCorrect = student.score;
+    const percentage = (totalCorrect / totalQuestions) * 100;
+
+    let prompt = '';
+
+    if (mode === 'detailed') {
+        const startTime = new Date(session.start_time).getTime();
+        const endTime = new Date(session.end_time).getTime();
+        const timeTakenMinutes = Math.round((endTime - startTime) / 60000);
+        
+        const timeClause = timeTakenMinutes < 20 
+            ? `The student completed the 30-minute test in only ${timeTakenMinutes} minutes, which indicates they may have rushed. Please discuss this rushing behavior in the analysis.` 
+            : `The student took ${timeTakenMinutes} minutes, which is an adequate use of the 30-minute time limit. You do not need to mention time management.`;
+
+        const detailedQA = questions.map((q, index) => {
+            const stAns = answers[q.id];
+            const isCorrect = stAns === q.correct_option;
+            // Shortened text to save tokens, but enough for skill analysis
+            const qStr = q.question_text.substring(0, 100).replace(/\n/g, ' '); 
+            return `Q${index+1} (${q.subject} - ${q.difficulty}): Status: ${isCorrect ? 'Correct' : 'Incorrect'}. Content: ${qStr}...`;
+        }).join('\n          ');
+
+        prompt = `
+        Act as a Master Education Assessment Analyst for ${settings.school_name}. 
+        Perform a Deep, Detailed AI Assessment for the following student:
+        
+        Student Name: ${student.name}
+        Gender: ${student.gender}
+        Class Seeking Admission In: ${student.class_level}
+        
+        TEST PERFORMANCE DATA:
+        - Total Score: ${totalCorrect} / ${totalQuestions} (${percentage.toFixed(1)}%)
+        - Performance Breakdown:
+          ${summary.map(s => `${s.subject}: ${s.correct}/${s.total}`).join('\n          ')}
+          
+        TIME MANAGEMENT:
+        ${timeClause}
+        
+        DETAILED QUESTION RESPONSES:
+        ${detailedQA}
+        
+        GUIDELINES FOR REPORT:
+        1. Use the student's name (${student.name}) naturally throughout the report.
+        2. NO EMOJIS ALLOWED at all.
+        3. Tone: Professional, highly analytical context, like a seasoned educator evaluating specific skills.
+        4. Admission Threshold: 50%.
+        5. DO NOT use ALL CAPS for paragraphs.
+        6. EACH SECTION MUST START WITH THE HEADING IN THE EXACT FORMAT '#### HEADING_NAME:' (bold markdown).
+        7. Analyze the specific questions they got wrong vs right to identify patterns (e.g. struggles with specific math concepts, or strong grammar). DO NOT quote questions directly, analyze the skills broadly.
+        
+        STRUCTURE:
+        - #### DETAILED PERFORMANCE ANALYSIS: A deep dive into their skills, identifying patterns in their correct and incorrect answers. Make sure to discuss their time management if they rushed.
+        - #### STRENGTH AREAS: Specific skills they have mastered based on the data.
+        - #### WEAKNESS AREAS: Specific skills they need to focus on based on what they got wrong.
+        - #### SPECIFIC RECOMMENDATIONS: Actionable advice on what they need to study to improve.
+        - #### ADMISSION DECISION SUGGESTION: A firm recommendation on suitability (Grant, Offer lower class, or Deny).
+        
+        FORMAT:
+        Return ONLY the report text with clear headings prefixed with '#### ' and ending with ':'.
+        `;
+    } else {
+        prompt = `
+        Act as an expert Academic Evaluator for ${settings.school_name}. 
+        Perform a professional, personalized assessment for the following student:
+        
+        Sudent Name: ${student.name}
+        Gender: ${student.gender}
+        Class Seeking Admission In: ${student.class_level}
+        
+        TEST PERFORMANCE DATA:
+        - Total Score: ${totalCorrect} / ${totalQuestions} (${percentage.toFixed(1)}%)
+        - Performance Breakdown:
+          ${summary.map(s => `${s.subject}: ${s.correct}/${s.total}`).join('\n          ')}
+        
+        GUIDELINES FOR REPORT:
+        1. Use the student's name (${student.name}) naturally throughout the report.
+        2. NO EMOJIS ALLOWED at all.
+        3. Professional, academic, and encouraging tone.
+        4. Admission Threshold: 50%.
+        5. DO NOT use ALL CAPS for the body text. Use standard sentence casing and proper Title Case for names.
+        6. EACH SECTION MUST START WITH THE HEADING IN THE EXACT FORMAT '#### HEADING_NAME:' (bold markdown).
+        
+        STRUCTURE:
+        - #### GENERAL DISCUSSION: One professional paragraph about their overall performance.
+        - #### STRENGTHS: Key areas where they excelled.
+        - #### WEAKNESSES: Areas requiring improvement.
+        - #### RECOMMENDATION: A firm recommendation on suitability. 
+          Suggest one of these: 
+          - Grant admission in requested class (${student.class_level}).
+          - Offer admission in one step lower class (if performance is weak but promising).
+          - Do not grant admission (if performance is far below potential).
+        
+        FORMAT:
+        Return ONLY the report text with clear headings prefixed with '#### ' and ending with ':'.
+        `;
+    }
+
+    try {
+        let assessment = '';
+        if (provider === 'groq') {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            assessment = data.choices[0].message.content;
+        } else {
+            // Gemini API
+            const model = settings.gemini_model || 'gemini-2.5-flash';
+            const apiVersion = model.includes('exp') || (model.includes('2.0') && !model.includes('lite')) ? 'v1beta' : 'v1';
+            const response = await fetch(`https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 2048
+                    }
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                // Try fallback to v1beta if v1 failed (or vice versa)
+                if (data.error.status === 'NOT_FOUND' || data.error.code === 404) {
+                    const fallbackVersion = apiVersion === 'v1' ? 'v1beta' : 'v1';
+                    const fallbackResponse = await fetch(`https://generativelanguage.googleapis.com/${fallbackVersion}/models/${model}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+                        })
+                    });
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData.error) throw new Error(fallbackData.error.message);
+                    assessment = fallbackData.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error(data.error.message);
+                }
+            } else {
+                assessment = data.candidates[0].content.parts[0].text;
+            }
+        }
+        
+        return { assessment };
+    } catch (e: any) {
+        console.error('AI Assessment Error:', e);
+        return { error: 'Failed to generate AI assessment: ' + e.message };
     }
 }
 
@@ -775,4 +1020,110 @@ export async function getSlcStats(sessionId: number) {
     `).all(sessionId) as any[];
 
     return { total, classDistribution };
+}
+
+export async function deleteSlc(id: number) {
+    const db = getDb();
+    const slc = db.prepare('SELECT * FROM slcs WHERE id = ?').get(id) as any;
+    if (!slc) return { success: false, error: 'SLC record not found' };
+
+    try {
+        db.transaction(() => {
+            // 1. Delete the record
+            db.prepare('DELETE FROM slcs WHERE id = ?').run(id);
+
+            // 2. Reverse the seat increment if session exists
+            if (slc.session_id) {
+                const seats = db.prepare('SELECT * FROM session_seats WHERE session_id = ? AND class_level = ?').get(slc.session_id, slc.class_level) as any;
+                if (seats) {
+                    db.prepare(`
+                        UPDATE session_seats 
+                        SET total_seats = ?, male_seats = ?, female_seats = ?
+                        WHERE id = ?
+                    `).run(
+                        Math.max(0, (seats.total_seats || 0) - 1),
+                        Math.max(0, (seats.male_seats || 0) - (slc.gender === 'Male' ? 1 : 0)),
+                        Math.max(0, (seats.female_seats || 0) - (slc.gender === 'Female' ? 1 : 0)),
+                        seats.id
+                    );
+                }
+            }
+        })();
+
+        revalidatePath('/admin/slc');
+        revalidatePath('/admin/reports');
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting SLC:', error);
+        return { success: false, error: 'Failed to delete SLC record' };
+    }
+}
+
+export async function updateSlc(id: number, formData: FormData) {
+    const db = getDb();
+    const oldSlc = db.prepare('SELECT * FROM slcs WHERE id = ?').get(id) as any;
+    if (!oldSlc) return { success: false, error: 'SLC record not found' };
+
+    const name = formData.get('name') as string;
+    const fatherName = formData.get('father_name') as string;
+    const classLevel = formData.get('class_level') as string;
+    const section = formData.get('section') as string;
+    const gender = formData.get('gender') as string;
+    const dateIssued = formData.get('date_issued') as string;
+
+    try {
+        db.transaction(() => {
+            // 1. Update the record
+            db.prepare(`
+                UPDATE slcs 
+                SET name = ?, father_name = ?, class_level = ?, section = ?, gender = ?, date_issued = ?
+                WHERE id = ?
+            `).run(name, fatherName, classLevel, section, gender, dateIssued, id);
+
+            // 2. Handle seat adjustments if class or gender changed
+            if (oldSlc.session_id && (oldSlc.class_level !== classLevel || oldSlc.gender !== gender)) {
+                // Decrement old seats
+                const oldSeats = db.prepare('SELECT * FROM session_seats WHERE session_id = ? AND class_level = ?').get(oldSlc.session_id, oldSlc.class_level) as any;
+                if (oldSeats) {
+                    db.prepare(`
+                        UPDATE session_seats 
+                        SET total_seats = ?, male_seats = ?, female_seats = ?
+                        WHERE id = ?
+                    `).run(
+                        Math.max(0, (oldSeats.total_seats || 0) - 1),
+                        Math.max(0, (oldSeats.male_seats || 0) - (oldSlc.gender === 'Male' ? 1 : 0)),
+                        Math.max(0, (oldSeats.female_seats || 0) - (oldSlc.gender === 'Female' ? 1 : 0)),
+                        oldSeats.id
+                    );
+                }
+
+                // Increment new seats
+                const newSeats = db.prepare('SELECT * FROM session_seats WHERE session_id = ? AND class_level = ?').get(oldSlc.session_id, classLevel) as any;
+                if (newSeats) {
+                    db.prepare(`
+                        UPDATE session_seats 
+                        SET total_seats = ?, male_seats = ?, female_seats = ?
+                        WHERE id = ?
+                    `).run(
+                        (newSeats.total_seats || 0) + 1,
+                        (newSeats.male_seats || 0) + (gender === 'Male' ? 1 : 0),
+                        (newSeats.female_seats || 0) + (gender === 'Female' ? 1 : 0),
+                        newSeats.id
+                    );
+                } else {
+                    db.prepare(`
+                        INSERT INTO session_seats (session_id, class_level, total_seats, male_seats, female_seats)
+                        VALUES (?, ?, ?, ?, ?)
+                    `).run(oldSlc.session_id, classLevel, 1, gender === 'Male' ? 1 : 0, gender === 'Female' ? 1 : 0);
+                }
+            }
+        })();
+
+        revalidatePath('/admin/slc');
+        revalidatePath('/admin/reports');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating SLC:', error);
+        return { success: false, error: 'Failed to update SLC record' };
+    }
 }

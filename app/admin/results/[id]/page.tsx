@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import Link from 'next/link';
 import { setAdmissionStatus } from '@/lib/actions';
 import { revalidatePath } from 'next/cache';
+import AIAssessment from '@/components/AIAssessment';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,7 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
         return { subject: sub, total, correct };
     });
 
-    const settings = db.prepare('SELECT school_name FROM settings WHERE id = 1').get() as { school_name: string };
+    const settings = db.prepare('SELECT school_name, active_ai_provider FROM settings WHERE id = 1').get() as { school_name: string, active_ai_provider: string };
 
     const subjectColor: Record<string, string> = { English: '#2563eb', Urdu: '#7c3aed', Math: '#059669' };
     const subjectBg: Record<string, string> = { English: '#eff6ff', Urdu: '#f5f3ff', Math: '#ecfdf5' };
@@ -72,6 +73,14 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
             <Link href="/admin/results" className="inline-flex items-center gap-1.5 text-sm font-medium transition-colors" style={{ color: 'var(--text-secondary)' }}>
                 <ChevronLeft size={16} /> All Results
             </Link>
+
+            {/* AI Assessment Trigger */}
+            <AIAssessment 
+                studentId={studentId} 
+                studentName={student.name} 
+                classLevel={student.class_level} 
+                activeProvider={settings.active_ai_provider || 'groq'}
+            />
 
             {/* ── Header Card ─────────────────────────────────── */}
             <div className="rounded-2xl overflow-hidden shadow-sm" style={{ border: '1px solid var(--border)' }}>

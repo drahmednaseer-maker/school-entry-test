@@ -1,5 +1,5 @@
 import { getSettings, getAllUsers, getCurrentUser } from '@/lib/actions';
-import GeneralSettingsForm from '@/components/GeneralSettingsForm';
+import { AISettingsForm, SystemSettingsForm } from '@/components/GeneralSettingsForm';
 import UserManagement from '@/components/UserManagement';
 
 export default async function SettingsPage() {
@@ -8,12 +8,18 @@ export default async function SettingsPage() {
     const currentUser = await getCurrentUser();
 
     return (
-        <div className="flex-1 overflow-y-auto space-y-8">
-            <h2 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Admin Settings</h2>
+        <div className="flex-1 overflow-y-auto space-y-8 pb-10">
+            <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>ADMIN DASHBOARD SETTINGS</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <GeneralSettingsForm initialSettings={settings} />
-                <UserManagement users={users} currentUsername={currentUser?.username || null} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                {/* LEFT SIDE: AI CONFIGURATION */}
+                <AISettingsForm initialSettings={settings} />
+
+                {/* RIGHT SIDE: SYSTEM & USER MANAGEMENT */}
+                <div className="space-y-8">
+                    <SystemSettingsForm initialSettings={settings} />
+                    <UserManagement users={users} currentUsername={currentUser?.username || null} />
+                </div>
             </div>
         </div>
     );

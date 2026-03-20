@@ -22,12 +22,29 @@ function initTables(database: any) {
       CREATE TABLE IF NOT EXISTS students (id INTEGER PRIMARY KEY AUTOINCREMENT, access_code TEXT UNIQUE NOT NULL, name TEXT, father_name TEXT, father_mobile TEXT, class_level TEXT, status TEXT DEFAULT 'pending', score INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
       CREATE TABLE IF NOT EXISTS test_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, student_id INTEGER NOT NULL, question_ids TEXT NOT NULL, answers TEXT, start_time DATETIME, end_time DATETIME, FOREIGN KEY (student_id) REFERENCES students(id));
       CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'admin');
-      CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy', easy_percent INTEGER NOT NULL DEFAULT 40, medium_percent INTEGER NOT NULL DEFAULT 40, hard_percent INTEGER NOT NULL DEFAULT 20, english_questions INTEGER NOT NULL DEFAULT 10, urdu_questions INTEGER NOT NULL DEFAULT 10, math_questions INTEGER NOT NULL DEFAULT 10);
+      CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy', easy_percent INTEGER NOT NULL DEFAULT 40, medium_percent INTEGER NOT NULL DEFAULT 40, hard_percent INTEGER NOT NULL DEFAULT 20, english_questions INTEGER NOT NULL DEFAULT 10, urdu_questions INTEGER NOT NULL DEFAULT 10, math_questions INTEGER NOT NULL DEFAULT 10, master_password TEXT NOT NULL DEFAULT '1234', groq_api_key TEXT, gemini_api_key TEXT, active_ai_provider TEXT DEFAULT 'groq', gemini_model TEXT DEFAULT 'gemini-1.5-flash');
       CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, is_active INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
       CREATE TABLE IF NOT EXISTS slcs (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, name TEXT NOT NULL, father_name TEXT, class_level TEXT, section TEXT, gender TEXT, date_issued DATE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
     `);
 
     // Handle migrations for existing databases
+    const settingCols = database.pragma('table_info(settings)');
+    if (!settingCols.find((c: any) => c.name === 'master_password')) {
+      database.exec("ALTER TABLE settings ADD COLUMN master_password TEXT NOT NULL DEFAULT '1234'");
+    }
+    if (!settingCols.find((c: any) => c.name === 'groq_api_key')) {
+      database.exec("ALTER TABLE settings ADD COLUMN groq_api_key TEXT");
+    }
+    if (!settingCols.find((c: any) => c.name === 'gemini_api_key')) {
+      database.exec("ALTER TABLE settings ADD COLUMN gemini_api_key TEXT");
+    }
+    if (!settingCols.find((c: any) => c.name === 'active_ai_provider')) {
+      database.exec("ALTER TABLE settings ADD COLUMN active_ai_provider TEXT DEFAULT 'groq'");
+    }
+    if (!settingCols.find((c: any) => c.name === 'gemini_model')) {
+      database.exec("ALTER TABLE settings ADD COLUMN gemini_model TEXT DEFAULT 'gemini-1.5-flash'");
+    }
+
     const studentCols = database.pragma('table_info(students)');
     if (!studentCols.find((c: any) => c.name === 'father_mobile')) {
       database.exec('ALTER TABLE students ADD COLUMN father_mobile TEXT');

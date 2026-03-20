@@ -1,10 +1,11 @@
 import { getDb } from '@/lib/db';
 import StudentForm from '@/components/StudentForm';
 import StudentList from '@/components/StudentList';
+import { getCurrentUser } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
-export default function StudentsPage() {
+export default async function StudentsPage() {
     const db = getDb();
     const students = db.prepare('SELECT * FROM students ORDER BY created_at DESC').all() as any[];
 
@@ -22,7 +23,7 @@ export default function StudentsPage() {
 
                 {/* List Section */}
                 <div className="lg:col-span-2">
-                    <StudentList initialStudents={students} />
+                    <StudentList initialStudents={students} userRole={(await getCurrentUser())?.role || 'staff'} />
                 </div>
             </div>
         </div>

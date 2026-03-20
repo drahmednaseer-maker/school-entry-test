@@ -1,9 +1,11 @@
 'use client';
 
-import { updateSettings } from '@/lib/actions';
-import { useRef, useState } from 'react';
+import { updateSettings, updateActiveAIProvider, updateGROQConfig, updateGeminiConfig } from '@/lib/actions';
+import { useRef, useState, useTransition } from 'react';
+import { CheckCircle2, ShieldCheck, Zap, Sparkles, Save, Info } from 'lucide-react';
+import clsx from 'clsx';
 
-interface Settings {
+export interface Settings {
     school_name: string;
     easy_percent: number;
     medium_percent: number;
@@ -11,11 +13,245 @@ interface Settings {
     english_questions: number;
     urdu_questions: number;
     math_questions: number;
+    master_password?: string;
+    groq_api_key?: string;
+    gemini_api_key?: string;
+    active_ai_provider?: string;
+    gemini_model?: string;
 }
 
-export default function GeneralSettingsForm({ initialSettings }: { initialSettings: Settings }) {
+export function AISettingsForm({ initialSettings }: { initialSettings: Settings }) {
+    const [isPending, startTransition] = useTransition();
+    const [activeProvider, setActiveProvider] = useState(initialSettings.active_ai_provider || 'groq');
+    
+    // Status and Messages for each section
+    const [providerMsg, setProviderMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [groqMsg, setGroqMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [geminiMsg, setGeminiMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // Track configured status locally for immediate UI update
+    const [isGroqConfigured, setIsGroqConfigured] = useState(!!initialSettings.groq_api_key);
+    const [isGeminiConfigured, setIsGeminiConfigured] = useState(!!initialSettings.gemini_api_key);
+
+    async function handleProviderUpdate() {
+        setProviderMsg(null);
+        startTransition(async () => {
+            const res = await updateActiveAIProvider(activeProvider);
+            if (res.success) {
+                setProviderMsg({ type: 'success', text: res.success });
+                setTimeout(() => setProviderMsg(null), 3000);
+            } else {
+                setProviderMsg({ type: 'error', text: res.error || 'Failed to update' });
+            }
+        });
+    }
+
+    async function handleGroqUpdate(formData: FormData) {
+        setGroqMsg(null);
+        const apiKey = formData.get('groq_api_key') as string;
+        startTransition(async () => {
+            const res = await updateGROQConfig(apiKey);
+            if (res.success) {
+                setGroqMsg({ type: 'success', text: res.success });
+                setIsGroqConfigured(!!apiKey);
+                setTimeout(() => setGroqMsg(null), 3000);
+            } else {
+                setGroqMsg({ type: 'error', text: res.error || 'Failed to update' });
+            }
+        });
+    }
+
+    async function handleGeminiUpdate(formData: FormData) {
+        setGeminiMsg(null);
+        const apiKey = formData.get('gemini_api_key') as string;
+        const model = formData.get('gemini_model') as string;
+        startTransition(async () => {
+            const res = await updateGeminiConfig(apiKey, model);
+            if (res.success) {
+                setGeminiMsg({ type: 'success', text: res.success });
+                setIsGeminiConfigured(!!apiKey);
+                setTimeout(() => setGeminiMsg(null), 3000);
+            } else {
+                setGeminiMsg({ type: 'error', text: res.error || 'Failed to update' });
+            }
+        });
+    }
+
+    return (
+        <div className="space-y-8 h-full">
+            {/* 1. Provider Selection Card */}
+            <div className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden">
+                <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-100"><Sparkles size={22} /></div>
+                        <h2 className="text-xl font-black tracking-tight text-gray-900 uppercase">Active AI Provider Strategy</h2>
+                    </div>
+                </div>
+                <div className="p-8 space-y-6">
+                    <div className="flex flex-col items-center justify-between gap-8">
+                        <div className="w-full">
+                            <h4 className="text-base font-bold text-gray-900 mb-2">Select Engine</h4>
+                            <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                                Choose which artificial intelligence provider will drive the student performance evaluations.
+                            </p>
+                        </div>
+                        <div className="flex bg-gray-100 p-2 rounded-2xl w-full">
+                            <button
+                                type="button"
+                                onClick={() => setActiveProvider('groq')}
+                                className={clsx(
+                                    "flex-1 px-8 py-3.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest",
+                                    activeProvider === 'groq' ? "bg-white text-blue-600 shadow-xl" : "text-gray-400 hover:text-gray-600"
+                                )}
+                            >
+                                GROQ
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveProvider('gemini')}
+                                className={clsx(
+                                    "flex-1 px-8 py-3.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest",
+                                    activeProvider === 'gemini' ? "bg-white text-blue-600 shadow-xl" : "text-gray-400 hover:text-gray-600"
+                                )}
+                            >
+                                Gemini
+                            </button>
+                        </div>
+                    </div>
+                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                        <div className="min-h-[20px]">
+                            {providerMsg && <span className="text-xs font-bold text-indigo-600 animate-in fade-in">{providerMsg.text}</span>}
+                        </div>
+                        <button
+                            onClick={handleProviderUpdate}
+                            disabled={isPending}
+                            className="bg-gray-900 hover:bg-black text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center gap-2 active:scale-95"
+                        >
+                            <CheckCircle2 size={16} />
+                            Set Active Engine
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. GROQ Config Card */}
+            <form action={handleGroqUpdate} className={clsx(
+                "flex flex-col rounded-3xl bg-white shadow-xl transition-all duration-500 border-2",
+                activeProvider === 'groq' ? "border-blue-500 ring-8 ring-blue-50/50" : "border-gray-100 grayscale-[0.6] opacity-70"
+            )}>
+                <div className="p-7 border-b border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-50"><Zap size={20} /></div>
+                        <h3 className="text-lg font-black tracking-tight text-gray-900 uppercase">GROQ Core Settings</h3>
+                    </div>
+                    {isGroqConfigured && (
+                        <div className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-full border border-emerald-100 flex items-center gap-2 uppercase tracking-tight">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                            Active Credentials
+                        </div>
+                    )}
+                </div>
+                
+                {isGroqConfigured && <div className="h-1.5 bg-emerald-500 w-full" />}
+                
+                <div className="p-8 flex-1 flex flex-col justify-between space-y-8">
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Secret API Access Token</label>
+                        <input
+                            name="groq_api_key"
+                            type="password"
+                            defaultValue={initialSettings.groq_api_key || ''}
+                            placeholder="Enter gsk_..."
+                            className="w-full rounded-2xl border-gray-200 shadow-inner p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm bg-gray-50/50"
+                        />
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                        <div className="min-h-[20px]">
+                            {groqMsg && <span className="text-xs font-bold text-emerald-600 animate-in fade-in">{groqMsg.text}</span>}
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={isPending}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-emerald-100 transition-all flex items-center gap-2 active:scale-95"
+                        >
+                            <Save size={18} />
+                            Save GROQ Key
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {/* 3. Gemini Config Card */}
+            <form action={handleGeminiUpdate} className={clsx(
+                "flex flex-col rounded-3xl bg-white shadow-xl transition-all duration-500 border-2",
+                activeProvider === 'gemini' ? "border-blue-500 ring-8 ring-blue-50/50" : "border-gray-100 grayscale-[0.6] opacity-70"
+            )}>
+                <div className="p-7 border-b border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-50"><Sparkles size={20} /></div>
+                        <h3 className="text-lg font-black tracking-tight text-gray-900 uppercase">Gemini Core Settings</h3>
+                    </div>
+                    {isGeminiConfigured && (
+                        <div className="px-3 py-1 bg-orange-50 text-orange-700 text-[10px] font-black rounded-full border border-orange-100 flex items-center gap-2 uppercase tracking-tight">
+                            <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                            Active Credentials
+                        </div>
+                    )}
+                </div>
+                
+                {isGeminiConfigured && <div className="h-1.5 bg-emerald-500 w-full" />}
+
+                <div className="p-8 flex-1 flex flex-col justify-between space-y-8">
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Secret API Access Token</label>
+                            <input
+                                name="gemini_api_key"
+                                type="password"
+                                defaultValue={initialSettings.gemini_api_key || ''}
+                                placeholder="Enter AIza..."
+                                className="w-full rounded-2xl border-gray-200 shadow-inner p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm bg-gray-50/50"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">AI Intelligence Tier</label>
+                            <select 
+                                name="gemini_model" 
+                                defaultValue={initialSettings.gemini_model || 'gemini-2.5-flash'}
+                                className="w-full rounded-2xl border-gray-200 p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm font-black bg-white appearance-none cursor-pointer"
+                            >
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+                                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Exp)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                        <div className="min-h-[20px]">
+                            {geminiMsg && <span className="text-xs font-bold text-orange-600 animate-in fade-in">{geminiMsg.text}</span>}
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={isPending}
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-orange-100 transition-all flex items-center gap-2 active:scale-95"
+                        >
+                            <Save size={18} />
+                            Save Gemini
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+export function SystemSettingsForm({ initialSettings }: { initialSettings: Settings }) {
     const formRef = useRef<HTMLFormElement>(null);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [isPending, startTransition] = useTransition();
     const [percents, setPercents] = useState({
         easy: initialSettings.easy_percent,
         medium: initialSettings.medium_percent,
@@ -27,157 +263,186 @@ export default function GeneralSettingsForm({ initialSettings }: { initialSettin
         math: initialSettings.math_questions
     });
 
+    const [generalMsg, setGeneralMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
     const totalPercent = percents.easy + percents.medium + percents.hard;
     const isPercentValid = totalPercent === 100;
     const totalQuestions = counts.english + counts.urdu + counts.math;
 
-    async function handleSubmit(formData: FormData) {
+    async function handleGeneralSubmit(formData: FormData) {
         if (!isPercentValid) {
-            setMessage({ type: 'error', text: 'Percentages must total 100%' });
+            setGeneralMsg({ type: 'error', text: 'Percentages must total 100%' });
             return;
         }
-
-        setMessage(null);
-        const res = await updateSettings(null, formData);
-
-        if (res.success) {
-            setMessage({ type: 'success', text: res.success });
-        } else if (res.error) {
-            setMessage({ type: 'error', text: res.error as string });
-        }
+        setGeneralMsg(null);
+        startTransition(async () => {
+            const res = await updateSettings(null, formData);
+            if (res.success) {
+                setGeneralMsg({ type: 'success', text: res.success });
+                setTimeout(() => setGeneralMsg(null), 3000);
+            } else {
+                setGeneralMsg({ type: 'error', text: res.error as string || 'Failed to update' });
+            }
+        });
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md max-w-lg">
-            <h3 className="text-xl font-bold mb-4">General Settings</h3>
+        <form action={handleGeneralSubmit} ref={formRef} className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden mb-8 col-span-1">
+            <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-100"><ShieldCheck size={22} /></div>
+                    <h2 className="text-xl font-black tracking-tight text-gray-900 uppercase">General System Configuration</h2>
+                </div>
+            </div>
+            
+            <div className="p-8 space-y-10">
+                <div className="space-y-8">
+                    {/* School Name */}
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Institutional Identity</label>
+                        <input
+                            name="school_name"
+                            type="text"
+                            defaultValue={initialSettings.school_name}
+                            placeholder="Enter School Name"
+                            required
+                            className="w-full rounded-2xl border-gray-200 shadow-sm p-4 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-lg font-bold"
+                        />
+                    </div>
 
-            <form ref={formRef} action={handleSubmit} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">School Name</label>
-                    <input
-                        name="school_name"
-                        type="text"
-                        defaultValue={initialSettings.school_name}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    {/* Question Composition */}
+                    <div className="space-y-5">
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest">Question Bank Distribution</label>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"/> English</label>
+                                <input
+                                    name="english_questions"
+                                    type="number"
+                                    min="0"
+                                    value={counts.english}
+                                    onChange={(e) => setCounts({ ...counts, english: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-purple-500 rounded-full"/> Urdu</label>
+                                <input
+                                    name="urdu_questions"
+                                    type="number"
+                                    min="0"
+                                    value={counts.urdu}
+                                    onChange={(e) => setCounts({ ...counts, urdu: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/> Math</label>
+                                <input
+                                    name="math_questions"
+                                    type="number"
+                                    min="0"
+                                    value={counts.math}
+                                    onChange={(e) => setCounts({ ...counts, math: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded-xl flex items-center justify-between">
+                            <span className="text-xs font-bold text-blue-700 uppercase">Total Questions</span>
+                            <span className="text-lg font-black text-blue-900">{totalQuestions}</span>
+                        </div>
+                    </div>
+
+                    {/* Difficulty Profile */}
+                    <div className="space-y-5">
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest">Difficulty Gradient (%)</label>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase text-center block">Easy</label>
+                                <input
+                                    name="easy_percent"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={percents.easy}
+                                    onChange={(e) => setPercents({ ...percents, easy: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase text-center block">Medium</label>
+                                <input
+                                    name="medium_percent"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={percents.medium}
+                                    onChange={(e) => setPercents({ ...percents, medium: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase text-center block">Hard</label>
+                                <input
+                                    name="hard_percent"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={percents.hard}
+                                    onChange={(e) => setPercents({ ...percents, hard: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                />
+                            </div>
+                        </div>
+                        <div className={clsx(
+                            "p-3 rounded-xl flex items-center justify-between transition-colors",
+                            isPercentValid ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                        )}>
+                            <span className="text-xs font-bold uppercase">Target Allocation</span>
+                            <span className="text-lg font-black">{totalPercent}% {isPercentValid ? '✓' : '⚠️'}</span>
+                        </div>
+                    </div>
+
+                    {/* Security */}
+                    <div className="rounded-2xl bg-gray-50 p-6 border border-gray-100">
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <ShieldCheck size={14} className="text-gray-400" /> Admin Access Controls
+                        </label>
+                        <div>
+                            <label className="text-[11px] font-bold text-gray-600 uppercase mb-2 block">Master Security Password</label>
+                            <input
+                                name="master_password"
+                                type="text"
+                                defaultValue={initialSettings.master_password || '1234'}
+                                className="w-full rounded-xl border-gray-200 p-4 border font-mono text-sm bg-white"
+                            />
+                            <p className="mt-2 text-[10px] text-gray-400 font-medium italic">
+                                Required for Staff & Exam roles to authorize record deletions or modifications.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="space-y-4">
-                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Test Composition (Question Counts)</h4>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">English</label>
-                            <input
-                                name="english_questions"
-                                type="number"
-                                min="0"
-                                value={counts.english}
-                                onChange={(e) => setCounts({ ...counts, english: parseInt(e.target.value) || 0 })}
-                                required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Urdu</label>
-                            <input
-                                name="urdu_questions"
-                                type="number"
-                                min="0"
-                                value={counts.urdu}
-                                onChange={(e) => setCounts({ ...counts, urdu: parseInt(e.target.value) || 0 })}
-                                required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Math</label>
-                            <input
-                                name="math_questions"
-                                type="number"
-                                min="0"
-                                value={counts.math}
-                                onChange={(e) => setCounts({ ...counts, math: parseInt(e.target.value) || 0 })}
-                                required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                            />
-                        </div>
+                <div className="pt-8 border-t border-gray-50 flex items-center justify-between">
+                    <div>
+                        {generalMsg && (
+                            <div className={clsx("px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-left-2", generalMsg.type === 'success' ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>
+                                {generalMsg.type === 'success' ? <CheckCircle2 size={16} /> : <Info size={16} />}
+                                {generalMsg.text}
+                            </div>
+                        )}
                     </div>
-                    <div className="text-sm font-bold text-blue-600">
-                        Total Questions: {totalQuestions}
-                    </div>
+                    <button
+                        type="submit"
+                        disabled={isPending || !isPercentValid}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black px-10 py-4 rounded-2xl shadow-xl shadow-blue-100 transition-all flex items-center gap-3 text-sm uppercase tracking-widest active:scale-95"
+                    >
+                        <Save size={20} />
+                        Update System
+                    </button>
                 </div>
-
-                <div className="space-y-4">
-                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Difficulty Distribution (%)</h4>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Easy</label>
-                            <input
-                                name="easy_percent"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={percents.easy}
-                                onChange={(e) => setPercents({ ...percents, easy: parseInt(e.target.value) || 0 })}
-                                required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Medium</label>
-                            <input
-                                name="medium_percent"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={percents.medium}
-                                onChange={(e) => setPercents({ ...percents, medium: parseInt(e.target.value) || 0 })}
-                                required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Hard</label>
-                            <input
-                                name="hard_percent"
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={percents.hard}
-                                onChange={(e) => setPercents({ ...percents, hard: parseInt(e.target.value) || 0 })}
-                                required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                            />
-                        </div>
-                    </div>
-
-                    <div className={clsx(
-                        "text-sm font-medium",
-                        isPercentValid ? "text-green-600" : "text-red-600"
-                    )}>
-                        Total: {totalPercent}% {isPercentValid ? '✓' : '(Must be 100%)'}
-                    </div>
-                </div>
-
-                {message && (
-                    <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                        {message.text}
-                    </div>
-                )}
-
-                <button
-                    type="submit"
-                    disabled={!isPercentValid}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold"
-                >
-                    Save Settings
-                </button>
-            </form>
-        </div>
+            </div>
+        </form>
     );
-}
-
-function clsx(...classes: any[]) {
-    return classes.filter(Boolean).join(' ');
 }

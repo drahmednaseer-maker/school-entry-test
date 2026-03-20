@@ -1,6 +1,7 @@
 import { getSlcs } from '@/lib/actions';
 import SlcForm from '@/components/SlcForm';
 import SlcList from '@/components/SlcList';
+import { getCurrentUser } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export default async function SlcPage() {
 
                 {/* List at the bottom */}
                 <div className="flex-1 min-h-0 flex flex-col">
-                    <SlcList initialSlcs={slcs} />
+                    <SlcList initialSlcs={slcs} userRole={(await getCurrentUser())?.role || 'staff'} />
                 </div>
             </div>
         </div>
