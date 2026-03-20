@@ -146,6 +146,15 @@ function initTables(database: any) {
       }
     }
 
+    // Ensure qbank user exists
+    const qbankUser = database.prepare("SELECT * FROM admin_users WHERE username = ?").get('qbank');
+    if (!qbankUser) {
+      const bcrypt = require('bcryptjs');
+      const qbankHash = bcrypt.hashSync('admin123', 10);
+      database.prepare("INSERT INTO admin_users (username, password_hash, role) VALUES (?, ?, ?)").run('qbank', qbankHash, 'qbank');
+      console.log('[DB] Default qbank user created (qbank/admin123)');
+    }
+
     // V1 Migration: Shift classes and capitalize difficulty
     const currentVersion = database.pragma('user_version', { simple: true });
     if (currentVersion === 0) {

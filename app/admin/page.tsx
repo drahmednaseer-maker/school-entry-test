@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import ResultsList from '@/components/ResultsList';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,39 +46,63 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="flex flex-col flex-1 min-h-0" style={{ gap: '1.5rem' }}>
-            <div className="flex items-baseline gap-3">
-                <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
-                {activeSession && (
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}>
-                        📅 {activeSession.name}
-                    </span>
-                )}
+        <div className="flex flex-col flex-1 min-h-0 space-y-6">
+            {/* Premium Header Card */}
+            <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
+                <div className="p-7 text-white" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Mardan Youth's Academy</p>
+                            <h1 className="text-3xl font-black mb-1">Admin Dashboard</h1>
+                            <p className="text-blue-100/80 font-medium text-sm">Real-time statistics and system overview</p>
+                        </div>
+                        {activeSession ? (
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-xl backdrop-blur-sm">
+                                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                                    <span className="text-sm font-bold text-white">Active Session: {activeSession.name}</span>
+                                </div>
+                                <div className="hidden md:block shrink-0"><ThemeToggle isPremium /></div>
+                            </div>
+                        ) : (
+                            <div className="hidden md:block shrink-0"><ThemeToggle isPremium /></div>
+                        )}
+                    </div>
+                </div>
             </div>
+
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 shrink-0">
                 {statCards.map(({ label, value, icon: Icon, color, bg }) => (
                     <div
                         key={label}
-                        className="rounded-xl p-5 flex items-center gap-4 shadow-sm"
+                        className="rounded-2xl p-6 flex flex-col gap-4 shadow-sm relative overflow-hidden group"
                         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
                     >
-                        <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: bg }}
-                        >
-                            <Icon size={22} style={{ color }} />
+                        <div className="flex items-center justify-between">
+                            <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: bg }}
+                            >
+                                <Icon size={24} style={{ color }} />
+                            </div>
+                            <span className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{value}</span>
                         </div>
-                        <div className="min-w-0">
-                            <p className="text-xs font-medium truncate" style={{ color: 'var(--text-muted)' }}>{label}</p>
-                            <p className="text-2xl font-black mt-0.5" style={{ color: 'var(--text-primary)' }}>{value}</p>
+                        <p className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
+                        <div className="absolute -bottom-6 -right-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
+                             <Icon size={120} style={{ color }} />
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Recent Results — fills remaining page height */}
-            <ResultsList initialResults={recentResults} title="Recent Results" showViewAll />
+            {/* Recent Results */}
+            <div
+                className="flex-1 min-h-0 rounded-2xl shadow-sm overflow-hidden flex flex-col"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+            >
+                <ResultsList initialResults={recentResults} title="Recent Results" showViewAll />
+            </div>
         </div>
     );
 }

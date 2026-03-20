@@ -80,28 +80,28 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
     return (
         <div className="space-y-8 h-full">
             {/* 1. Provider Selection Card */}
-            <div className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden">
-                <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+            <div className="st-surface rounded-2xl shadow-sm overflow-hidden">
+                <div className="p-7 border-b st-border flex items-center justify-between st-surface-2">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-indigo-600 text-white shadow"><Sparkles size={18} /></div>
-                        <h2 className="text-lg font-bold text-gray-900">Active AI Provider Strategy</h2>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Active AI Provider Strategy</h2>
                     </div>
                 </div>
                 <div className="p-8 space-y-6">
                     <div className="flex flex-col items-center justify-between gap-8">
                         <div className="w-full">
-                            <h4 className="text-sm font-bold text-gray-900 mb-1">Select Engine</h4>
-                            <p className="text-sm text-gray-500 font-medium">
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Select Engine</h4>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                                 Choose which artificial intelligence provider will drive the student performance evaluations.
                             </p>
                         </div>
-                        <div className="flex bg-gray-100 p-1.5 rounded-xl w-full">
+                        <div className="flex st-surface-2 p-1.5 st-border rounded-xl w-full">
                             <button
                                 type="button"
                                 onClick={() => setActiveProvider('groq')}
                                 className={clsx(
                                     "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all",
-                                    activeProvider === 'groq' ? "bg-white text-blue-600 shadow" : "text-gray-500 hover:text-gray-700"
+                                    activeProvider === 'groq' ? "st-surface shadow-sm text-blue-600 st-border" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                 )}
                             >
                                 GROQ
@@ -111,14 +111,14 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                                 onClick={() => setActiveProvider('gemini')}
                                 className={clsx(
                                     "flex-1 px-4 py-2.5 text-sm font-bold rounded-lg transition-all",
-                                    activeProvider === 'gemini' ? "bg-white text-blue-600 shadow" : "text-gray-500 hover:text-gray-700"
+                                    activeProvider === 'gemini' ? "st-surface shadow-sm text-blue-600 st-border" : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                 )}
                             >
                                 Gemini
                             </button>
                         </div>
                     </div>
-                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                    <div className="pt-4 border-t st-border flex items-center justify-between">
                         <div className="min-h-[20px]">
                             {providerMsg && <span className="text-xs font-bold text-indigo-600 animate-in fade-in">{providerMsg.text}</span>}
                         </div>
@@ -136,13 +136,13 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
 
             {/* 2. GROQ Config Card */}
             <form action={handleGroqUpdate} className={clsx(
-                "flex flex-col rounded-3xl bg-white shadow-xl transition-all duration-500 border-2",
-                activeProvider === 'groq' ? "border-blue-500 ring-8 ring-blue-50/50" : "border-gray-100 grayscale-[0.6] opacity-70"
+                "st-surface flex flex-col rounded-3xl transition-all duration-500 border-2",
+                activeProvider === 'groq' ? "border-blue-500 ring-8 ring-blue-50/50 dark:ring-blue-900/40" : "st-border grayscale-[0.6] opacity-70"
             )}>
-                <div className="p-7 border-b border-gray-50 flex items-center justify-between">
+                <div className="p-7 border-b st-border flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-emerald-600 text-white shadow"><Zap size={18} /></div>
-                        <h3 className="text-lg font-bold text-gray-900">GROQ Core Settings</h3>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">GROQ Core Settings</h3>
                     </div>
                     {isGroqConfigured && (
                         <div className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-100 flex items-center gap-2">
@@ -156,13 +156,13 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                 
                 <div className="p-8 flex-1 flex flex-col justify-between space-y-8">
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-2">Secret API Access Token</label>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Secret API Access Token</label>
                         <input
                             name="groq_api_key"
                             type="password"
                             defaultValue={initialSettings.groq_api_key || ''}
                             placeholder="Enter gsk_..."
-                            className="w-full rounded-xl border-gray-200 shadow-sm p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm bg-gray-50"
+                            className="st-input !rounded-xl !p-3 font-mono !text-sm"
                         />
                     </div>
 
@@ -184,13 +184,13 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
 
             {/* 3. Gemini Config Card */}
             <form action={handleGeminiUpdate} className={clsx(
-                "flex flex-col rounded-3xl bg-white shadow-xl transition-all duration-500 border-2",
-                activeProvider === 'gemini' ? "border-blue-500 ring-8 ring-blue-50/50" : "border-gray-100 grayscale-[0.6] opacity-70"
+                "st-surface flex flex-col rounded-3xl transition-all duration-500 border-2",
+                activeProvider === 'gemini' ? "border-blue-500 ring-8 ring-blue-50/50 dark:ring-blue-900/40" : "st-border grayscale-[0.6] opacity-70"
             )}>
-                <div className="p-7 border-b border-gray-50 flex items-center justify-between">
+                <div className="p-7 border-b st-border flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-orange-600 text-white shadow"><Sparkles size={18} /></div>
-                        <h3 className="text-lg font-bold text-gray-900">Gemini Core Settings</h3>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Gemini Core Settings</h3>
                     </div>
                     {isGeminiConfigured && (
                         <div className="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-semibold rounded-full border border-orange-100 flex items-center gap-2">
@@ -205,22 +205,22 @@ export function AISettingsForm({ initialSettings }: { initialSettings: Settings 
                 <div className="p-8 flex-1 flex flex-col justify-between space-y-8">
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-2">Secret API Access Token</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Secret API Access Token</label>
                             <input
                                 name="gemini_api_key"
                                 type="password"
                                 defaultValue={initialSettings.gemini_api_key || ''}
                                 placeholder="Enter AIza..."
-                                className="w-full rounded-xl border-gray-200 shadow-sm p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm bg-gray-50"
+                                className="st-input !rounded-xl !p-3 font-mono !text-sm"
                             />
                         </div>
                         
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-2">AI Intelligence Tier</label>
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">AI Intelligence Tier</label>
                             <select 
                                 name="gemini_model" 
                                 defaultValue={initialSettings.gemini_model || 'gemini-2.5-flash'}
-                                className="w-full rounded-xl border-gray-200 p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-semibold bg-white cursor-pointer"
+                                className="st-input !rounded-xl !p-3 text-sm font-semibold"
                             >
                                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                 <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
@@ -287,11 +287,11 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
     }
 
     return (
-        <form action={handleGeneralSubmit} ref={formRef} className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden mb-8 col-span-1">
-            <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+        <form action={handleGeneralSubmit} ref={formRef} className="st-surface rounded-2xl shadow-sm overflow-hidden mb-8 col-span-1">
+            <div className="p-7 border-b st-border flex items-center justify-between st-surface-2">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-600 text-white shadow"><ShieldCheck size={18} /></div>
-                    <h2 className="text-lg font-bold text-gray-900">General System Configuration</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">General System Configuration</h2>
                 </div>
             </div>
             
@@ -299,67 +299,67 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                 <div className="space-y-6">
                     {/* School Name */}
                     <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-2">Institutional Identity</label>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Institutional Identity</label>
                         <input
                             name="school_name"
                             type="text"
                             defaultValue={initialSettings.school_name}
                             placeholder="Enter School Name"
                             required
-                            className="w-full rounded-xl border-gray-200 shadow-sm p-3 border focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-base font-semibold"
+                            className="st-input !rounded-xl !p-3 font-semibold text-base"
                         />
                     </div>
 
                     {/* Question Composition */}
                     <div className="space-y-4">
-                        <label className="block text-xs font-semibold text-gray-500">Question Bank Distribution</label>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Question Bank Distribution</label>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"/> English</label>
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-blue-500 rounded-full"/> English</label>
                                 <input
                                     name="english_questions"
                                     type="number"
                                     min="0"
                                     value={counts.english}
                                     onChange={(e) => setCounts({ ...counts, english: parseInt(e.target.value) || 0 })}
-                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                    className="st-input !rounded-xl !p-3 font-bold text-center"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-purple-500 rounded-full"/> Urdu</label>
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-purple-500 rounded-full"/> Urdu</label>
                                 <input
                                     name="urdu_questions"
                                     type="number"
                                     min="0"
                                     value={counts.urdu}
                                     onChange={(e) => setCounts({ ...counts, urdu: parseInt(e.target.value) || 0 })}
-                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                    className="st-input !rounded-xl !p-3 font-bold text-center"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/> Math</label>
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"/> Math</label>
                                 <input
                                     name="math_questions"
                                     type="number"
                                     min="0"
                                     value={counts.math}
                                     onChange={(e) => setCounts({ ...counts, math: parseInt(e.target.value) || 0 })}
-                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                    className="st-input !rounded-xl !p-3 font-bold text-center"
                                 />
                             </div>
                         </div>
-                        <div className="p-3 bg-blue-50 rounded-xl flex items-center justify-between">
-                            <span className="text-xs font-bold text-blue-700 uppercase">Total Questions</span>
-                            <span className="text-lg font-black text-blue-900">{totalQuestions}</span>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/40 rounded-xl flex items-center justify-between">
+                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300 uppercase">Total Questions</span>
+                            <span className="text-lg font-black text-blue-900 dark:text-blue-100">{totalQuestions}</span>
                         </div>
                     </div>
 
                     {/* Difficulty Profile */}
                     <div className="space-y-4">
-                        <label className="block text-xs font-semibold text-gray-500">Difficulty Gradient (%)</label>
+                        <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400">Difficulty Gradient (%)</label>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase text-center block">Easy</label>
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase text-center block">Easy</label>
                                 <input
                                     name="easy_percent"
                                     type="number"
@@ -367,11 +367,11 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                     max="100"
                                     value={percents.easy}
                                     onChange={(e) => setPercents({ ...percents, easy: parseInt(e.target.value) || 0 })}
-                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                    className="st-input !rounded-xl !p-3 font-bold text-center"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase text-center block">Medium</label>
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase text-center block">Medium</label>
                                 <input
                                     name="medium_percent"
                                     type="number"
@@ -379,11 +379,11 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                     max="100"
                                     value={percents.medium}
                                     onChange={(e) => setPercents({ ...percents, medium: parseInt(e.target.value) || 0 })}
-                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                    className="st-input !rounded-xl !p-3 font-bold text-center"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase text-center block">Hard</label>
+                                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase text-center block">Hard</label>
                                 <input
                                     name="hard_percent"
                                     type="number"
@@ -391,13 +391,13 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                                     max="100"
                                     value={percents.hard}
                                     onChange={(e) => setPercents({ ...percents, hard: parseInt(e.target.value) || 0 })}
-                                    className="w-full rounded-xl border-gray-200 p-3 border font-bold text-center"
+                                    className="st-input !rounded-xl !p-3 font-bold text-center"
                                 />
                             </div>
                         </div>
                         <div className={clsx(
                             "p-3 rounded-xl flex items-center justify-between transition-colors",
-                            isPercentValid ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                            isPercentValid ? "bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-400"
                         )}>
                             <span className="text-xs font-bold uppercase">Target Allocation</span>
                             <span className="text-lg font-black">{totalPercent}% {isPercentValid ? '✓' : '⚠️'}</span>
@@ -405,17 +405,17 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                     </div>
 
                     {/* Security */}
-                    <div className="rounded-xl bg-gray-50 p-5 border border-gray-100">
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
+                    <div className="rounded-xl st-surface-2 st-border p-5 border border-gray-100 dark:border-slate-700">
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-3 flex items-center gap-2">
                             <ShieldCheck size={14} className="text-gray-400" /> Admin Access Controls
                         </label>
                         <div>
-                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Master Security Password</label>
+                            <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 block">Master Security Password</label>
                             <input
                                 name="master_password"
                                 type="text"
                                 defaultValue={initialSettings.master_password || '1234'}
-                                className="w-full rounded-xl border-gray-200 p-3 border font-mono text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                className="st-input !rounded-xl !p-3 font-mono !text-sm"
                             />
                             <p className="mt-2 text-[10px] text-gray-400 font-medium italic">
                                 Required for Staff & Exam roles to authorize record deletions or modifications.
@@ -424,7 +424,7 @@ export function SystemSettingsForm({ initialSettings }: { initialSettings: Setti
                     </div>
                 </div>
 
-                <div className="pt-8 border-t border-gray-50 flex items-center justify-between">
+                <div className="pt-8 border-t st-border flex items-center justify-between">
                     <div>
                         {generalMsg && (
                             <div className={clsx("px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-left-2", generalMsg.type === 'success' ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700")}>

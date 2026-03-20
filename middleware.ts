@@ -48,6 +48,12 @@ export async function middleware(request: NextRequest) {
                 if (restricted.some(route => pathname.startsWith(route))) {
                     return NextResponse.redirect(new URL('/admin', request.url));
                 }
+            } else if (role === 'qbank') {
+                // Question Bank Editor ONLY allowed /admin/questions and /admin/settings
+                const allowed = ['/admin/questions', '/admin/settings'];
+                if (!allowed.some(route => pathname === route || pathname.startsWith(route + '/'))) {
+                    return NextResponse.redirect(new URL('/admin/questions', request.url));
+                }
             }
             // Admin has full access
 

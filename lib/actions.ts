@@ -70,9 +70,9 @@ export async function logout() {
     redirect('/admin/login');
 }
 
-export async function updatePassword(currentState: any, formData: FormData) {
+export async function updatePassword(_currentState: any, formData: FormData) {
     const db = getDb();
-    const currentPassword = formData.get('current_password') as string;
+    
     const newPassword = formData.get('new_password') as string;
     const confirmPassword = formData.get('confirm_password') as string;
 
@@ -388,7 +388,7 @@ export async function getSettings() {
     };
 }
 
-export async function updateSettings(currentState: any, formData: FormData) {
+export async function updateSettings(_currentState: any, formData: FormData) {
     const db = getDb();
     const schoolName = formData.get('school_name') as string;
     const easyPercent = parseInt(formData.get('easy_percent') as string);

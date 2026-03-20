@@ -1,9 +1,10 @@
 import { getDb } from '@/lib/db';
-import { BarChart2, Users, CheckCircle, XCircle, Clock, TrendingUp, FileText } from 'lucide-react';
+import { Users, CheckCircle, XCircle, TrendingUp, FileText } from 'lucide-react';
 import ReportCharts from '@/components/ReportCharts';
 import SessionManager from '@/components/SessionManager';
 import SessionSeats from '@/components/SessionSeats';
 import { getSessions, getSlcStats } from '@/lib/actions';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,29 +86,41 @@ export default async function ReportsPage() {
 
     return (
         <div className="flex-1 overflow-y-auto space-y-8">
-            {/* Header */}
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary-muted)' }}>
-                    <BarChart2 size={20} style={{ color: 'var(--primary)' }} />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Analytics & Reports</h1>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {activeSession ? `Session ${activeSession.name}` : 'All sessions'} — performance overview
-                    </p>
+            {/* Premium Header Card */}
+            <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
+                <div className="p-7 text-white" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-5">
+                            <div>
+                                <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Mardan Youth's Academy</p>
+                                <h1 className="text-3xl font-black mb-1">Analytics & Reports</h1>
+                                <p className="text-blue-100/80 font-medium text-sm">
+                                    {activeSession ? `Session ${activeSession.name}` : 'All sessions'} — performance overview
+                                </p>
+                            </div>
+                        </div>
+                        <div className="hidden md:block shrink-0"><ThemeToggle isPremium /></div>
+                    </div>
                 </div>
             </div>
 
             {/* Summary stat cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-                    <div key={label} className="rounded-xl p-4 flex flex-col gap-3" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>
-                            <Icon size={18} style={{ color }} />
+                    <div
+                        key={label}
+                        className="rounded-2xl p-5 flex flex-col gap-3 shadow-sm relative overflow-hidden group"
+                        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+                    >
+                        <div className="flex items-center justify-between z-10">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>
+                                <Icon size={20} style={{ color }} />
+                            </div>
+                            <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{value}</span>
                         </div>
-                        <div>
-                            <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{label}</p>
-                            <p className="text-2xl font-black mt-0.5" style={{ color: 'var(--text-primary)' }}>{value}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide z-10" style={{ color: 'var(--text-muted)' }}>{label}</p>
+                        <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:scale-110 transition-transform duration-500">
+                             <Icon size={80} style={{ color }} />
                         </div>
                     </div>
                 ))}

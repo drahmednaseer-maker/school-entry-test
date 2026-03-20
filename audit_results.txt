@@ -1,0 +1,11 @@
+app/admin/page.tsx(3,1): error TS6133: 'Link' is declared but its value is never read.
+app/admin/reports/page.tsx(6,10): error TS6133: 'getSessions' is declared but its value is never read.
+app/api/health/route.ts(1,1): error TS6133: 'NextResponse' is declared but its value is never read.
+components/AdminLayout.tsx(5,68): error TS6133: 'X' is declared but its value is never read.
+components/AdminLayout.tsx(48,11): error TS6133: 'currentItem' is declared but its value is never read.
+components/AIAssessment.tsx(15,76): error TS6133: 'activeProvider' is declared but its value is never read.
+components/AIAssessmentReport.tsx(4,32): error TS6133: 'CheckCircle2' is declared but its value is never read.
+components/QuestionFilters.tsx(29,11): error TS6133: 'diffColors' is declared but its value is never read.
+components/ReportCharts.tsx(15,7): error TS6133: 'COLORS' is declared but its value is never read.
+components/TestClient.tsx(41,5): error TS6133: 'gender' is declared but its value is never read.
+

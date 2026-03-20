@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { setAdmissionStatus } from '@/lib/actions';
 import { revalidatePath } from 'next/cache';
 import AIAssessment from '@/components/AIAssessment';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,9 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
                                     <ThumbsDown size={14} /> Not Admitted
                                 </span>
                             )}
+                            <div className="mt-4 flex justify-end hidden md:flex">
+                                <ThemeToggle isPremium />
+                            </div>
                         </div>
                     </div>
                 </div>

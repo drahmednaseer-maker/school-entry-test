@@ -24,7 +24,7 @@ function NumberControl({ value, onChange, onSave, disabled }: { value: number, o
     };
 
     return (
-        <div className="flex items-center justify-center border rounded-md overflow-hidden bg-white" style={{ borderColor: 'var(--input-border)', height: '34px', width: '82px', margin: '0 auto' }}>
+        <div className="flex items-center justify-center border rounded-md overflow-hidden transition-colors" style={{ background: 'var(--bg-surface)', borderColor: 'var(--input-border)', height: '34px', width: '82px', margin: '0 auto' }}>
             <input 
                 type="number" 
                 min="0"
@@ -43,7 +43,7 @@ function NumberControl({ value, onChange, onSave, disabled }: { value: number, o
             <div className="flex flex-col border-l h-full shrink-0" style={{ borderColor: 'var(--input-border)', width: '22px', background: 'var(--bg-surface-2)' }}>
                 <button 
                     type="button" 
-                    className="flex-1 flex items-center justify-center hover:bg-gray-200 border-b outline-none" style={{ borderColor: 'var(--input-border)' }}
+                    className="flex-1 flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/5 border-b outline-none" style={{ borderColor: 'var(--input-border)' }}
                     onClick={() => handleChange(localVal + 1)}
                     disabled={disabled}
                 >
@@ -51,7 +51,7 @@ function NumberControl({ value, onChange, onSave, disabled }: { value: number, o
                 </button>
                 <button 
                     type="button" 
-                    className="flex-1 flex items-center justify-center hover:bg-gray-200 outline-none"
+                    className="flex-1 flex items-center justify-center transition-colors hover:bg-black/5 dark:hover:bg-white/5 outline-none"
                     onClick={() => handleChange(localVal - 1)}
                     disabled={disabled}
                 >
@@ -194,10 +194,10 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
                                             </td>
 
                                             <td className="px-3 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
-                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs" style={{ background: stat.registered_male > 0 ? 'var(--primary-muted)' : 'var(--bg-surface-2)', color: stat.registered_male > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>{stat.registered_male}</span>
+                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs transition-colors" style={{ background: stat.registered_male > 0 ? 'var(--primary-muted)' : 'var(--bg-surface-2)', color: stat.registered_male > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>{stat.registered_male}</span>
                                             </td>
                                             <td className="px-3 py-3 text-center">
-                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs" style={{ background: stat.registered_female > 0 ? '#fdf2f8' : 'var(--bg-surface-2)', color: stat.registered_female > 0 ? '#db2777' : 'var(--text-muted)' }}>{stat.registered_female}</span>
+                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs transition-colors" style={{ background: stat.registered_female > 0 ? 'rgba(219, 39, 119, 0.1)' : 'var(--bg-surface-2)', color: stat.registered_female > 0 ? '#db2777' : 'var(--text-muted)' }}>{stat.registered_female}</span>
                                             </td>
 
                                             <td className="px-3 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>

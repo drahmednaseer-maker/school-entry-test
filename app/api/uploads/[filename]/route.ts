@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 
 export async function GET(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: { filename: string } }
 ) {
     const filename = params.filename;
@@ -27,7 +27,7 @@ export async function GET(
         else if (ext === '.webp') contentType = 'image/webp';
         else if (ext === '.svg') contentType = 'image/svg+xml';
 
-        return new NextResponse(fileBuffer, {
+        return new NextResponse(fileBuffer as any, {
             headers: {
                 'Content-Type': contentType,
                 'Cache-Control': 'public, max-age=31536000, immutable',

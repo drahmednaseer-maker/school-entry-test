@@ -20,8 +20,38 @@ const notNastaliqUrdu = Noto_Nastaliq_Urdu({
 });
 
 export const metadata: Metadata = {
-  title: "SnapTest - Mardan Youth's Academy",
-  description: "Computerized Entry Test System for Mardan Youth's Academy",
+  title: {
+    default: "SnapTest | Mardan Youth's Academy",
+    template: "%s | SnapTest - MYA",
+  },
+  description: "The premier computerized entry test system and question bank management platform for Mardan Youth's Academy. Secure, transparent, and efficient student evaluation.",
+  keywords: ["Mardan Youth's Academy", "Entry Test", "Student Evaluation", "Computerized Testing", "Education", "MYA", "SnapTest"],
+  authors: [{ name: "Mardan Youth's Academy" }],
+  creator: "Mardan Youth's Academy",
+  publisher: "Mardan Youth's Academy",
+  openGraph: {
+    type: "website",
+    locale: "en_PK",
+    title: "SnapTest - Mardan Youth's Academy Entry Test System",
+    description: "The premier computerized entry test system and question bank management platform for Mardan Youth's Academy.",
+    siteName: "SnapTest",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SnapTest - Mardan Youth's Academy",
+    description: "The premier computerized entry test system and question bank management platform.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({

@@ -62,67 +62,70 @@ export default function StudentForm() {
             </div>
 
             <div className="p-5">
-                <form ref={formRef} action={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                            Student Name
-                        </label>
-                        <input
-                            type="text"
-                            name="name"
-                            required
-                            className="st-input text-sm"
-                            placeholder="Full name"
-                        />
-                    </div>
+                <form ref={formRef} action={handleSubmit} className="space-y-6">
+                    {/* Inputs */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Student Name
+                            </label>
+                            <input
+                                type="text"
+                                name="name"
+                                required
+                                className="st-input text-sm"
+                                placeholder="Full name"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                            Father's Name
-                        </label>
-                        <input
-                            type="text"
-                            name="father_name"
-                            required
-                            className="st-input text-sm"
-                            placeholder="Father's full name"
-                        />
-                    </div>
+                        <div>
+                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Father's Name
+                            </label>
+                            <input
+                                type="text"
+                                name="father_name"
+                                required
+                                className="st-input text-sm"
+                                placeholder="Father's full name"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                            Father's Mobile (11 digits)
-                        </label>
-                        <input
-                            type="tel"
-                            name="father_mobile"
-                            required
-                            pattern="\d{11}"
-                            title="Must be 11 digits"
-                            className="st-input text-sm"
-                            placeholder="03XXXXXXXXX"
-                        />
-                    </div>
+                        <div>
+                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Father's Mobile (11 digits)
+                            </label>
+                            <input
+                                type="tel"
+                                name="father_mobile"
+                                required
+                                pattern="\d{11}"
+                                title="Must be 11 digits"
+                                className="st-input text-sm"
+                                placeholder="03XXXXXXXXX"
+                            />
+                        </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-                            Class seeking admission in
-                        </label>
-                        <select name="class_level" className="st-input text-sm select-arrow">
-                            <option value="PlayGroup">PlayGroup</option>
-                            <option value="KG 1">KG 1</option>
-                            <option value="KG 2">KG 2</option>
-                            <option value="Grade 1">Grade 1</option>
-                            <option value="Grade 2">Grade 2</option>
-                            <option value="Grade 3">Grade 3</option>
-                            <option value="Grade 4">Grade 4</option>
-                            <option value="Grade 5">Grade 5</option>
-                            <option value="Grade 6">Grade 6</option>
-                            <option value="Grade 7">Grade 7</option>
-                            <option value="Grade 8">Grade 8</option>
-                            <option value="Grade 9">Grade 9</option>
-                            <option value="Grade 10">Grade 10</option>
-                        </select>
+                        <div>
+                            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                                Class seeking admission in
+                            </label>
+                            <select name="class_level" className="st-input text-sm select-arrow">
+                                <option value="PlayGroup">PlayGroup</option>
+                                <option value="KG 1">KG 1</option>
+                                <option value="KG 2">KG 2</option>
+                                <option value="Grade 1">Grade 1</option>
+                                <option value="Grade 2">Grade 2</option>
+                                <option value="Grade 3">Grade 3</option>
+                                <option value="Grade 4">Grade 4</option>
+                                <option value="Grade 5">Grade 5</option>
+                                <option value="Grade 6">Grade 6</option>
+                                <option value="Grade 7">Grade 7</option>
+                                <option value="Grade 8">Grade 8</option>
+                                <option value="Grade 9">Grade 9</option>
+                                <option value="Grade 10">Grade 10</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Gender */}
@@ -130,7 +133,7 @@ export default function StudentForm() {
                         <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Gender</label>
                         <div className="flex gap-3">
                             {['Male', 'Female'].map(g => (
-                                <label key={g} className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border text-sm font-medium transition-all" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)', color: 'var(--text-secondary)' }}>
+                                <label key={g} className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border text-sm font-medium transition-all hover:bg-black/5 dark:hover:bg-white/5" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)', color: 'var(--text-secondary)' }}>
                                     <input type="radio" name="gender" value={g} className="accent-blue-600" />
                                     {g === 'Male' ? '♂ Male' : '♀ Female'}
                                 </label>
@@ -140,23 +143,27 @@ export default function StudentForm() {
 
                     {/* Photo capture */}
                     <div
-                        className="pt-3 border-t"
+                        className="pt-5 border-t"
                         style={{ borderColor: 'var(--border)' }}
                     >
-                        <WebcamCapture
-                            capturedPhoto={photo}
-                            onCapture={(b64) => setPhoto(b64)}
-                            onClear={() => setPhoto(null)}
-                        />
+                        <div className="max-w-[400px] mx-auto w-full">
+                            <WebcamCapture
+                                capturedPhoto={photo}
+                                onCapture={(b64) => setPhoto(b64)}
+                                onClear={() => setPhoto(null)}
+                            />
+                        </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="st-btn-primary w-full text-sm py-2.5 mt-1"
-                    >
-                        {loading ? 'Generating...' : 'Generate Access Code'}
-                    </button>
+                    <div className="pt-2">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="st-btn-primary w-full text-base py-3 font-black shadow-md"
+                        >
+                            {loading ? 'Generating...' : 'Generate Access Code'}
+                        </button>
+                    </div>
                 </form>
 
                 {/* Success display */}

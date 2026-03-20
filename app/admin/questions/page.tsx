@@ -2,11 +2,12 @@ import { getDb } from '@/lib/db';
 import QuestionForm from '@/components/QuestionForm';
 import BulkUploadForm from '@/components/BulkUploadForm';
 import QuestionFilters from '@/components/QuestionFilters';
-import { Trash2, Pencil, Hash, BookOpen } from 'lucide-react';
+import { Trash2, Pencil, Hash, } from 'lucide-react';
 import { deleteQuestion } from '@/lib/actions';
 import Image from 'next/image';
 import Link from 'next/link';
 import clsx from 'clsx';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,18 +68,27 @@ export default async function QuestionsPage({
 
     return (
         <div className="flex-1 overflow-y-auto space-y-5">
-            {/* Page header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                    <BookOpen size={22} style={{ color: 'var(--primary)' }} />
-                    <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Question Bank</h2>
+            {/* Premium Header Card */}
+            <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
+                <div className="p-7 text-white" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div className="flex items-center gap-5">
+                            <div>
+                                <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Mardan Youth's Academy</p>
+                                <h1 className="text-3xl font-black mb-1">Question Bank</h1>
+                                <p className="text-blue-100/80 font-medium text-sm">Create, manage, and filter the repository of test questions</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-5 py-2.5 rounded-xl backdrop-blur-sm">
+                                <span className="text-sm font-bold text-white">
+                                    {questions.length} Question{questions.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <div className="hidden md:block shrink-0"><ThemeToggle isPremium /></div>
+                        </div>
+                    </div>
                 </div>
-                <span
-                    className="text-sm font-semibold px-3 py-1.5 rounded-full"
-                    style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}
-                >
-                    {questions.length} question{questions.length !== 1 ? 's' : ''}
-                </span>
             </div>
 
             <QuestionFilters />

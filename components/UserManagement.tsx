@@ -43,11 +43,11 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
     }
 
     return (
-        <div className="rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden">
-            <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+        <div className="st-surface rounded-2xl shadow-sm overflow-hidden">
+            <div className="st-surface-2 p-7 border-b st-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-800 text-white shadow-lg shadow-slate-100"><Users size={22} /></div>
-                    <h2 className="text-xl font-black tracking-tight text-gray-900 uppercase">User Password Management</h2>
+                    <div className="p-2.5 rounded-xl bg-slate-800 text-white shadow-lg shadow-slate-100/10 dark:shadow-none"><Users size={22} /></div>
+                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase">User Password Management</h2>
                 </div>
             </div>
 
@@ -57,7 +57,7 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
                     <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Target Administrative Account</label>
                     <div className="relative group">
                         <select
-                            className="w-full rounded-2xl border-gray-200 p-5 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-sm font-black bg-gray-50/50 appearance-none cursor-pointer transition-all hover:bg-white"
+                            className="st-input !rounded-2xl !p-4 !text-sm font-black"
                             value={selectedUsername}
                             onChange={(e) => setSelectedUsername(e.target.value)}
                         >
@@ -86,25 +86,25 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
                                 type="password"
                                 required
                                 placeholder="••••••••"
-                                className="w-full rounded-xl border-gray-200 p-4 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm"
+                                className="st-input !rounded-xl !p-3 font-mono !text-sm"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2 mb-2">
-                                <ShieldAlert size={12} className="text-blue-500" /> Confirm Identity
+                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2 mb-2">
+                                <ShieldAlert size={12} className="text-blue-500" /> Re-Enter New Password
                             </label>
                             <input
                                 name="confirm_password"
                                 type="password"
                                 required
                                 placeholder="••••••••"
-                                className="w-full rounded-xl border-gray-200 p-4 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm"
+                                className="w-full rounded-xl border-gray-200 dark:border-slate-700 p-4 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm dark:bg-slate-800 dark:text-white"
                             />
                         </div>
                     </div>
 
-                    <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
+                    <div className="pt-6 border-t st-border flex items-center justify-between">
                         <div className="min-h-[20px]">
                             {message && (
                                 <div className={clsx(
@@ -118,7 +118,7 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
                         </div>
                         <button
                             type="submit"
-                            className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl transition-all flex items-center gap-2 active:scale-95"
+                            className="st-btn-primary !px-8 !py-4 !rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl"
                         >
                             <Save size={18} />
                             Update Credentials

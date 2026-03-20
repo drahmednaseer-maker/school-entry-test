@@ -5,9 +5,10 @@ import { useTheme } from './ThemeProvider';
 
 interface ThemeToggleProps {
     className?: string;
+    isPremium?: boolean;
 }
 
-export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
+export default function ThemeToggle({ className = '', isPremium = false }: ThemeToggleProps) {
     const { theme, toggle } = useTheme();
 
     return (
@@ -16,7 +17,11 @@ export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme"
             className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${className}`}
-            style={{
+            style={isPremium ? {
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+            } : {
                 background: 'var(--bg-surface-2)',
                 border: '1.5px solid var(--border)',
                 color: 'var(--text-secondary)',
