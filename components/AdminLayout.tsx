@@ -150,7 +150,7 @@ export default function AdminLayout({ children, settings, userRole, username }: 
             )}
 
             {/* Main */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
                 {/* Header (Mobile Only) */}
                 <header
                     className="md:hidden shrink-0 flex items-center justify-between px-4 h-14 border-b"
@@ -172,7 +172,7 @@ export default function AdminLayout({ children, settings, userRole, username }: 
                 </header>
 
                 {/* Page content */}
-                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 min-h-0">
                     {children}
                 </main>
             </div>

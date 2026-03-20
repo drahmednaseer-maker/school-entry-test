@@ -46,7 +46,7 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="flex flex-col flex-1 min-h-0 space-y-6 h-full">
             {/* Premium Header Card */}
             <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
                 <div className="p-7 text-white" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}>
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
 
             {/* Recent Results */}
             <div
-                className="rounded-2xl shadow-sm overflow-hidden"
+                className="flex-1 min-h-[400px] md:min-h-0 rounded-2xl shadow-sm overflow-hidden flex flex-col"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
             >
                 <ResultsList initialResults={recentResults} title="Recent Results" showViewAll />
