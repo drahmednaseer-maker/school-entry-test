@@ -51,7 +51,9 @@ export default function AIAssessment({ studentId, studentName, classLevel, activ
               <Sparkles size={24} className={loading ? "animate-pulse" : ""} />
             </div>
             <div>
-              <h3 className="font-black text-gray-900 text-xl tracking-tight">{activeProvider.toUpperCase()}</h3>
+              <h3 className="font-black text-gray-900 text-xl tracking-tight leading-tight">
+                MYA AI<br />Buddy
+              </h3>
             </div>
           </div>
 
