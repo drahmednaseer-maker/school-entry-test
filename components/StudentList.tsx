@@ -165,7 +165,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
 
             {/* Table */}
             <div className="overflow-x-auto">
-                <table className="w-full text-sm st-table">
+                <table className="w-full text-sm st-table min-w-[1000px]">
                     <thead>
                         <tr>
                             <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Student</th>
