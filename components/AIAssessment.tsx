@@ -51,7 +51,7 @@ export default function AIAssessment({ studentId, studentName, classLevel, activ
               <Sparkles size={24} className={loading ? "animate-pulse" : ""} />
             </div>
             <div>
-              <h3 className="font-black text-gray-900 text-xl tracking-tight">{activeProvider.toUpperCase()} AI</h3>
+              <h3 className="font-black text-gray-900 text-xl tracking-tight">{activeProvider.toUpperCase()}</h3>
             </div>
           </div>
 
@@ -82,7 +82,7 @@ export default function AIAssessment({ studentId, studentName, classLevel, activ
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Perform AI Assessment
+                  AI Assessment
                 </>
               )}
             </button>
@@ -104,7 +104,7 @@ export default function AIAssessment({ studentId, studentName, classLevel, activ
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Perform Detailed AI Assessment
+                  Detailed AI Assessment
                 </>
               )}
             </button>
