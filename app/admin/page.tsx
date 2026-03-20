@@ -98,7 +98,7 @@ export default function AdminDashboard() {
 
             {/* Recent Results */}
             <div
-                className="flex-1 min-h-0 rounded-2xl shadow-sm overflow-hidden flex flex-col"
+                className="flex-1 min-h-[400px] rounded-2xl shadow-sm overflow-hidden flex flex-col"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
             >
                 <ResultsList initialResults={recentResults} title="Recent Results" showViewAll />

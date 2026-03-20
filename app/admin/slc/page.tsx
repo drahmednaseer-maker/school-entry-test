@@ -10,7 +10,7 @@ export default async function SlcPage() {
     const slcs = await getSlcs();
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col min-h-full">
             {/* Premium Header Card */}
             <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0 mb-6">
                 <div className="p-7 text-white" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}>
@@ -25,14 +25,14 @@ export default async function SlcPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex flex-col flex-1 min-h-0 gap-6">
                 {/* Form at the top */}
                 <div className="shrink-0">
                     <SlcForm />
                 </div>
 
                 {/* List at the bottom */}
-                <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-[400px] flex flex-col">
                     <SlcList initialSlcs={slcs} userRole={(await getCurrentUser())?.role || 'staff'} />
                 </div>
             </div>
