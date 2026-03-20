@@ -45,5 +45,13 @@ next-env.d.ts
 *.db-journal
 *.db-shm
 *.db-wal
+/data/
+/uploads/
 railway_data.json
 railway_backup.sql
+keys.txt
+tmp/
+*.js
+!next.config.ts
+!postcss.config.mjs
+!rename-keys.js

@@ -24,6 +24,7 @@ function initTables(database: any) {
       CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'admin');
       CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), school_name TEXT NOT NULL DEFAULT 'Mardan Youth''s Academy', easy_percent INTEGER NOT NULL DEFAULT 40, medium_percent INTEGER NOT NULL DEFAULT 40, hard_percent INTEGER NOT NULL DEFAULT 20, english_questions INTEGER NOT NULL DEFAULT 10, urdu_questions INTEGER NOT NULL DEFAULT 10, math_questions INTEGER NOT NULL DEFAULT 10);
       CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, is_active INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+      CREATE TABLE IF NOT EXISTS slcs (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, name TEXT NOT NULL, father_name TEXT, class_level TEXT, section TEXT, gender TEXT, date_issued DATE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
     `);
 
     // Handle migrations for existing databases
@@ -50,8 +51,15 @@ function initTables(database: any) {
       database.exec('ALTER TABLE students ADD COLUMN is_registered INTEGER NOT NULL DEFAULT 0');
     }
 
-    // Ensure sessions table exists (for older DBs that didn't get it in CREATE TABLE block)
+    // Ensure sessions and slcs tables exist (for older DBs that didn't get them in CREATE TABLE block)
     database.exec(`CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, is_active INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);`);
+    database.exec(`CREATE TABLE IF NOT EXISTS slcs (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, name TEXT NOT NULL, father_name TEXT, class_level TEXT, section TEXT, gender TEXT, date_issued DATE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);`);
+
+    // Ensure session_id exists in slcs (migration for the very first SLC version)
+    const slcCols = database.prepare("PRAGMA table_info(slcs)").all();
+    if (!slcCols.find((c: any) => c.name === 'session_id')) {
+      database.exec('ALTER TABLE slcs ADD COLUMN session_id INTEGER');
+    }
 
     database.exec(`
       CREATE TABLE IF NOT EXISTS session_seats (

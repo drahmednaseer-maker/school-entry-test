@@ -31,6 +31,7 @@ export default function AdminLayout({ children, settings, userRole, username }: 
         { href: '/admin/questions', label: 'Question Bank', icon: FileText, roles: ['admin'] },
         { href: '/admin/students', label: 'Students & Codes', icon: Users, roles: ['admin', 'exam_coordinator', 'staff'] },
         { href: '/admin/reports', label: 'Reports', icon: BarChart2, roles: ['admin', 'exam_coordinator'] },
+        { href: '/admin/slc', label: 'SLC', icon: FileText, roles: ['admin', 'exam_coordinator', 'staff'] },
         { href: '/admin/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
     ];
 

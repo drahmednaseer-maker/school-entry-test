@@ -157,6 +157,24 @@ export async function deleteStudent(id: number) {
     }
 }
 
+export async function updateStudent(id: number, data: { name: string, fatherName: string, fatherMobile: string, classLevel: string, gender: string }) {
+    const db = getDb();
+    try {
+        db.prepare(`
+            UPDATE students 
+            SET name = ?, father_name = ?, father_mobile = ?, class_level = ?, gender = ?
+            WHERE id = ?
+        `).run(data.name, data.fatherName, data.fatherMobile, data.classLevel, data.gender, id);
+        
+        revalidatePath('/admin/students');
+        revalidatePath('/admin');
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating student:', error);
+        return { success: false, error: 'Failed to update student' };
+    }
+}
+
 // --- Question Management ---
 
 export async function addQuestion(formData: FormData) {
@@ -681,4 +699,80 @@ export async function updateSessionSeat(sessionId: number, classLevel: string, f
     revalidatePath('/admin/settings');
     revalidatePath('/admin/reports');
     return { success: true };
+}
+
+// ============================================================================
+// SLC ACTIONS
+// ============================================================================
+
+export async function addSlc(formData: FormData) {
+    const db = getDb();
+    const name = formData.get('name') as string;
+    const fatherName = formData.get('father_name') as string;
+    const classLevel = formData.get('class_level') as string;
+    const section = formData.get('section') as string;
+    const gender = formData.get('gender') as string;
+    const dateIssued = formData.get('date_issued') as string;
+
+    if (!name || !classLevel || !gender || !dateIssued) {
+        return { success: false, error: 'Required fields missing' };
+    }
+
+    const activeSession = db.prepare('SELECT id FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
+    const sessionId = activeSession?.id || null;
+
+    db.transaction(() => {
+        // 1. Insert SLC record
+        db.prepare(`
+            INSERT INTO slcs (session_id, name, father_name, class_level, section, gender, date_issued)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(sessionId, name, fatherName, classLevel, section, gender, dateIssued);
+
+        // 2. Update session seats for active session
+        if (sessionId) {
+            const sid = sessionId;
+            const existing = db.prepare('SELECT * FROM session_seats WHERE session_id = ? AND class_level = ?').get(sid, classLevel) as any;
+            
+            if (existing) {
+                const total = (existing.total_seats || 0) + 1;
+                const male = (existing.male_seats || 0) + (gender === 'Male' ? 1 : 0);
+                const female = (existing.female_seats || 0) + (gender === 'Female' ? 1 : 0);
+                
+                db.prepare(`
+                    UPDATE session_seats 
+                    SET total_seats = ?, male_seats = ?, female_seats = ?
+                    WHERE session_id = ? AND class_level = ?
+                `).run(total, male, female, sid, classLevel);
+            } else {
+                // If no capacity row exists yet, create one with 1 seat
+                db.prepare(`
+                    INSERT INTO session_seats (session_id, class_level, total_seats, male_seats, female_seats)
+                    VALUES (?, ?, ?, ?, ?)
+                `).run(sid, classLevel, 1, gender === 'Male' ? 1 : 0, gender === 'Female' ? 1 : 0);
+            }
+        }
+    })();
+
+    revalidatePath('/admin/slc');
+    revalidatePath('/admin/reports');
+    return { success: true };
+}
+
+export async function getSlcs() {
+    const db = getDb();
+    return db.prepare('SELECT * FROM slcs ORDER BY date_issued DESC, created_at DESC').all() as any[];
+}
+
+export async function getSlcStats(sessionId: number) {
+    const db = getDb();
+    const total = (db.prepare('SELECT COUNT(*) as count FROM slcs WHERE session_id = ?').get(sessionId) as any).count || 0;
+    const classDistribution = db.prepare(`
+        SELECT class_level, COUNT(*) as count 
+        FROM slcs 
+        WHERE session_id = ? 
+        GROUP BY class_level 
+        ORDER BY count DESC
+    `).all(sessionId) as any[];
+
+    return { total, classDistribution };
 }

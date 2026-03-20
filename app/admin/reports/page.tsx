@@ -1,12 +1,13 @@
 import { getDb } from '@/lib/db';
-import { BarChart2, Users, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
+import { BarChart2, Users, CheckCircle, XCircle, Clock, TrendingUp, FileText } from 'lucide-react';
 import ReportCharts from '@/components/ReportCharts';
 import SessionManager from '@/components/SessionManager';
 import SessionSeats from '@/components/SessionSeats';
+import { getSessions, getSlcStats } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
-export default function ReportsPage() {
+export default async function ReportsPage() {
     const db = getDb();
 
     // Active session
@@ -72,11 +73,13 @@ export default function ReportsPage() {
     `).all(...sessionArgs) as any[];
     const timeData = timeRows.map(r => ({ date: r.date?.slice(5), count: r.count }));
 
+    const slcStats = await getSlcStats(sid || 0);
+
     const statCards = [
         { label: 'Total Tests Taken', value: totalCompleted, icon: Users, color: 'var(--primary)', bg: 'var(--primary-muted)' },
         { label: 'Admission Granted', value: totalGranted, icon: CheckCircle, color: 'var(--success)', bg: 'var(--success-bg)' },
         { label: 'Not Granted', value: totalNotGranted, icon: XCircle, color: 'var(--danger)', bg: 'var(--danger-bg)' },
-        { label: 'Pending Decision', value: pendingDecision, icon: Clock, color: '#d97706', bg: '#fffbeb' },
+        { label: 'Total SLCs Issued', value: slcStats.total, icon: FileText, color: '#ec4899', bg: '#fdf2f8' },
         { label: 'Available Admission Seats', value: totalAvailableSeats, icon: TrendingUp, color: '#7c3aed', bg: '#f5f3ff' },
     ];
 
@@ -90,7 +93,7 @@ export default function ReportsPage() {
                 <div>
                     <h1 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>Analytics & Reports</h1>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        {activeSession ? `Session ${activeSession.name}` : 'All sessions'} — test performance overview
+                        {activeSession ? `Session ${activeSession.name}` : 'All sessions'} — performance overview
                     </p>
                 </div>
             </div>
@@ -158,6 +161,44 @@ export default function ReportsPage() {
                                                 </div>
                                                 <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{Math.round(row.avg_pct || 0)}%</span>
                                             </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* SLC Breakdown */}
+            <div className="rounded-2xl overflow-hidden mt-8" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
+                    <div className="flex items-center gap-2">
+                        <FileText size={16} style={{ color: '#ec4899' }} />
+                        <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>SLC Distribution (Class-wise)</h2>
+                    </div>
+                </div>
+                {slcStats.classDistribution.length === 0 ? (
+                    <div className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No SLCs recorded for this session.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm st-table">
+                            <thead>
+                                <tr style={{ background: 'var(--bg-surface-2)' }}>
+                                    <th className="px-6 py-3 text-left font-bold uppercase text-xs" style={{ color: 'var(--text-secondary)' }}>Class Level</th>
+                                    <th className="px-6 py-3 text-center font-bold uppercase text-xs" style={{ color: 'var(--text-secondary)' }}>Total SLCs Issued</th>
+                                    <th className="px-6 py-3 text-right font-bold uppercase text-xs" style={{ color: 'var(--text-secondary)' }}>Contribution</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                                {slcStats.classDistribution.map((row) => (
+                                    <tr key={row.class_level} className="hover:bg-slate-50 transition-colors [&:nth-child(even)]:bg-[#fcf8ff]">
+                                        <td className="px-6 py-4 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.class_level}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="px-3 py-1 rounded-full font-black text-sm" style={{ background: '#fdf2f8', color: '#ec4899' }}>{row.count}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-medium" style={{ color: 'var(--text-muted)' }}>
+                                            {slcStats.total > 0 ? ((row.count / slcStats.total) * 100).toFixed(1) : 0}%
                                         </td>
                                     </tr>
                                 ))}
