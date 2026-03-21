@@ -121,9 +121,13 @@ export default function AdminLayout({ children, settings, userRole, username }: 
                                 </div>
                             </div>
                         )}
+                        <div className="flex items-center gap-2 mb-2">
+                            <ThemeToggle isPremium />
+                        </div>
                         <button
                             onClick={() => logout()}
                             className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl transition-all text-sm font-semibold text-red-300 hover:text-white hover:bg-red-500/20 hover:border-red-500/30 border border-transparent"
+                            style={{ minHeight: '44px' }}
                         >
                             <LogOut size={18} />
                             <span>Secure Logout</span>
@@ -227,20 +231,28 @@ export default function AdminLayout({ children, settings, userRole, username }: 
             <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
                 {/* Header (Mobile Only) */}
                 <header
-                    className="md:hidden shrink-0 flex items-center justify-between px-4 h-14 border-b"
+                    className="md:hidden shrink-0 flex items-center justify-between px-3 h-14 border-b"
                     style={{ background: 'var(--header-bg)', borderColor: 'var(--header-border)' }}
                 >
-                    <div className="flex items-center gap-3">
-                        {/* Mobile hamburger */}
+                    <div className="flex items-center gap-2">
+                        {/* Mobile hamburger — min 44×44px touch target */}
                         <button
-                            className="p-2 rounded-lg transition-colors"
-                            style={{ color: 'var(--text-secondary)' }}
+                            className="flex items-center justify-center rounded-xl transition-colors"
+                            style={{ color: 'var(--text-secondary)', minWidth: '44px', minHeight: '44px' }}
                             onClick={() => setSidebarOpen(true)}
+                            aria-label="Open navigation"
                         >
-                            <Menu size={20} />
+                            <Menu size={22} />
                         </button>
+                        {/* Brand label */}
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs" style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)' }}>
+                                ST
+                            </div>
+                            <span className="font-black text-sm" style={{ color: 'var(--text-primary)' }}>SnapTest</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <ThemeToggle />
                     </div>
                 </header>

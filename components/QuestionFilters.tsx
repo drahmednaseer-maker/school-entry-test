@@ -218,7 +218,7 @@ export default function QuestionFilters() {
                             outline: 'none',
                         }}
                     >
-                        <option value="">All Classes</option>
+                        <option value="">— Class —</option>
                         {classes.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>

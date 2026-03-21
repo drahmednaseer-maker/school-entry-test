@@ -225,8 +225,8 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                                         <div className="flex items-center justify-end gap-1">
                                             <button
                                                 onClick={() => handleEditClick(slc)}
-                                                className="p-1.5 rounded-lg transition-colors"
-                                                style={{ color: 'var(--primary)' }}
+                                                className="p-2.5 rounded-lg transition-colors"
+                                                style={{ color: 'var(--primary)', minWidth: '44px', minHeight: '44px' }}
                                                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-muted)')}
                                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                                 title="Edit SLC"
@@ -235,8 +235,8 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(slc.id)}
-                                                className="p-1.5 rounded-lg transition-colors"
-                                                style={{ color: 'var(--danger)' }}
+                                                className="p-2.5 rounded-lg transition-colors"
+                                                style={{ color: 'var(--danger)', minWidth: '44px', minHeight: '44px' }}
                                                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--danger-bg)')}
                                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                                                 title="Delete SLC"

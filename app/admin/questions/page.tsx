@@ -31,35 +31,40 @@ export default async function QuestionsPage({
         editQuestion = db.prepare('SELECT * FROM questions WHERE id = ?').get(editId);
     }
 
-    // Build dynamic query
-    let query = 'SELECT * FROM questions WHERE 1=1';
-    const queryParams: any[] = [];
+    // Only query when at least one filter is active — avoids loading ALL questions on initial page load
+    const hasAnyFilter = !!(qid || q || subject || difficulty || level);
 
-    // Search by exact ID
-    if (qid) {
-        query += ' AND id = ?';
-        queryParams.push(parseInt(qid));
-    } else {
-        if (q) {
-            query += ' AND question_text LIKE ?';
-            queryParams.push(`%${q}%`);
+    let questions: any[] = [];
+    if (hasAnyFilter) {
+        let query = 'SELECT * FROM questions WHERE 1=1';
+        const queryParams: any[] = [];
+
+        // Search by exact ID
+        if (qid) {
+            query += ' AND id = ?';
+            queryParams.push(parseInt(qid));
+        } else {
+            if (q) {
+                query += ' AND question_text LIKE ?';
+                queryParams.push(`%${q}%`);
+            }
+            if (subject) {
+                query += ' AND subject = ?';
+                queryParams.push(subject);
+            }
+            if (difficulty) {
+                query += ' AND difficulty = ?';
+                queryParams.push(difficulty);
+            }
+            if (level) {
+                query += ' AND class_level = ?';
+                queryParams.push(level);
+            }
         }
-        if (subject) {
-            query += ' AND subject = ?';
-            queryParams.push(subject);
-        }
-        if (difficulty) {
-            query += ' AND difficulty = ?';
-            queryParams.push(difficulty);
-        }
-        if (level) {
-            query += ' AND class_level = ?';
-            queryParams.push(level);
-        }
+
+        query += ' ORDER BY id DESC';
+        questions = db.prepare(query).all(...queryParams) as any[];
     }
-
-    query += ' ORDER BY id DESC';
-    const questions = db.prepare(query).all(...queryParams) as any[];
 
     const subjectColor: Record<string, string> = { English: '#2563eb', Urdu: '#7c3aed', Math: '#059669' };
     const subjectBg: Record<string, string> = { English: '#eff6ff', Urdu: '#f5f3ff', Math: '#ecfdf5' };
@@ -82,7 +87,7 @@ export default async function QuestionsPage({
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-5 py-2.5 rounded-xl backdrop-blur-sm">
                                 <span className="text-sm font-bold text-white">
-                                    {questions.length} Question{questions.length !== 1 ? 's' : ''}
+                                    {hasAnyFilter ? `${questions.length} Question${questions.length !== 1 ? 's' : ''}` : 'Use filters to search'}
                                 </span>
                             </div>
                             <div className="hidden md:block shrink-0"><ThemeToggle isPremium /></div>
@@ -120,10 +125,19 @@ export default async function QuestionsPage({
 
                     <div className="overflow-y-auto" style={{ maxHeight: '1200px' }}>
                         {questions.length === 0 ? (
-                            <div className="py-16 text-center space-y-2">
+                            <div className="py-16 text-center space-y-3">
                                 <Hash size={40} className="mx-auto" style={{ color: 'var(--border)' }} />
-                                <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>No questions found</p>
-                                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Try adjusting your search or filters.</p>
+                                {hasAnyFilter ? (
+                                    <>
+                                        <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>No questions found</p>
+                                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Try adjusting your search or filters.</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>Select a filter to load questions</p>
+                                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Choose a subject, difficulty, class, or search by text above.</p>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>

@@ -165,6 +165,12 @@ export default function Home() {
               }
               .otp-shake { animation: shake 0.5s ease; }
               .otp-box:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px var(--primary-muted) !important; }
+              .otp-grid { display: flex; gap: clamp(4px, 2vw, 12px); justify-content: center; }
+              .otp-box {
+                width: clamp(38px, 12vw, 56px) !important;
+                height: clamp(48px, 14vw, 70px) !important;
+                touch-action: manipulation;
+              }
             `}</style>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -173,7 +179,7 @@ export default function Home() {
                 </label>
                 {/* OTP digit boxes */}
                 <div
-                  className={`flex gap-3 justify-center ${shake ? 'otp-shake' : ''}`}
+                  className={`otp-grid ${shake ? 'otp-shake' : ''}`}
                   onPaste={handlePaste}
                 >
                   {digits.map((d, i) => (
@@ -188,10 +194,8 @@ export default function Home() {
                       autoComplete="off"
                       className="otp-box"
                       style={{
-                        width: '52px',
-                        height: '64px',
                         textAlign: 'center',
-                        fontSize: '28px',
+                        fontSize: 'clamp(18px, 5vw, 28px)',
                         fontWeight: 800,
                         fontFamily: 'monospace',
                         borderRadius: '14px',

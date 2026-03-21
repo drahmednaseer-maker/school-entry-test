@@ -162,8 +162,8 @@ export default function ResultsList({
                                     <td className="px-5 py-3 text-right">
                                         <Link
                                             href={`/admin/results/${result.id}`}
-                                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                                            style={{ background: 'var(--primary-muted)', color: 'var(--primary)' }}
+                                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-lg transition-colors"
+                                            style={{ background: 'var(--primary-muted)', color: 'var(--primary)', minHeight: '44px' }}
                                         >
                                             <Eye size={13} /> View
                                         </Link>
@@ -194,7 +194,8 @@ export default function ResultsList({
                         <button
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
-                            className="st-btn-ghost p-2"
+                            className="st-btn-ghost p-2.5"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
                         >
                             <ChevronLeft size={16} />
                         </button>
@@ -204,7 +205,8 @@ export default function ResultsList({
                         <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            className="st-btn-ghost p-2"
+                            className="st-btn-ghost p-2.5"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
                         >
                             <ChevronRight size={16} />
                         </button>

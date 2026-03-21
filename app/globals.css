@@ -146,6 +146,19 @@ body {
   font-family: var(--font-sans, 'Inter', Arial, Helvetica, sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent horizontal page overflow */
+  overflow-x: hidden;
+}
+
+/* Responsive media */
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Finger-friendly interactive elements */
+button, a, [role="button"] {
+  touch-action: manipulation;
 }
 
 /* Hide number spinners */
@@ -217,6 +230,7 @@ select.st-input {
   font-weight: 600;
   border-radius: 0.5rem;
   padding: 0.65rem 1.25rem;
+  min-height: 44px;
   border: none;
   cursor: pointer;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
@@ -225,6 +239,7 @@ select.st-input {
   justify-content: center;
   gap: 0.4rem;
   letter-spacing: 0.01em;
+  touch-action: manipulation;
 }
 .st-btn-primary:hover {
   background: var(--primary-dark);
@@ -240,12 +255,14 @@ select.st-input {
   font-weight: 500;
   border-radius: 0.5rem;
   padding: 0.6rem 1.1rem;
+  min-height: 44px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  touch-action: manipulation;
 }
 .st-btn-ghost:hover {
   background: var(--bg-surface-hover);

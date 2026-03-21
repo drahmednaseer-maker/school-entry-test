@@ -317,11 +317,12 @@ export default function TestClient({
                                 key={q.id}
                                 onClick={() => setCurrentIdx(i)}
                                 title={`Q${i + 1}${isAnswered ? ' ✓' : ''}`}
-                                className="w-7 h-7 rounded-lg text-xs font-bold transition-all"
+                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-xs font-bold transition-all"
                                 style={{
                                     background: isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success-bg)' : 'var(--bg-surface-2)',
                                     color: isCurrent ? 'white' : isAnswered ? 'var(--success)' : 'var(--text-muted)',
                                     border: `1.5px solid ${isCurrent ? 'var(--primary)' : isAnswered ? 'var(--success-border)' : 'var(--border)'}`,
+                                    touchAction: 'manipulation',
                                 }}
                             >
                                 {i + 1}
@@ -336,6 +337,7 @@ export default function TestClient({
                         onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))}
                         disabled={currentIdx === 0}
                         className="st-btn-ghost text-sm px-5 py-2.5"
+                        style={{ minHeight: '44px' }}
                     >
                         <ChevronLeft size={16} /> Previous
                     </button>
@@ -344,6 +346,7 @@ export default function TestClient({
                         <button
                             onClick={() => setCurrentIdx(prev => Math.min(questions.length - 1, prev + 1))}
                             className="st-btn-primary text-sm px-6 py-2.5"
+                            style={{ minHeight: '44px' }}
                         >
                             Next <ChevronRight size={16} />
                         </button>
@@ -355,6 +358,7 @@ export default function TestClient({
                             style={{
                                 background: isSubmitting ? 'var(--text-muted)' : 'var(--success)',
                                 opacity: isSubmitting ? 0.7 : 1,
+                                minHeight: '44px',
                             }}
                         >
                             {isSubmitting ? 'Submitting...' : '✓ Finish & Submit'}
