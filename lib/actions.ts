@@ -811,15 +811,14 @@ export async function getProgress(sessionId: number) {
 export async function getStudentById(id: number) {
     const db = getDb();
     const student = db.prepare(`
-        SELECT s.*, ts.end_time as system_test_date
-        FROM students s
-        LEFT JOIN (
-            SELECT student_id, end_time 
+        SELECT s.*, (
+            SELECT end_time 
             FROM test_sessions 
-            WHERE end_time IS NOT NULL 
+            WHERE student_id = s.id AND end_time IS NOT NULL 
             ORDER BY end_time DESC 
             LIMIT 1
-        ) ts ON s.id = ts.student_id
+        ) as system_test_date
+        FROM students s
         WHERE s.id = ?
     `).get(id) as any;
     return student;

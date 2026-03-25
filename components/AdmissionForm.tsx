@@ -133,7 +133,11 @@ export default function AdmissionForm({ student }: { student: Student }) {
     const [formData, setFormData] = useState<Student>(() => {
         const initial = { ...student };
         if (student.system_test_date && !initial.date_of_test) {
-            initial.date_of_test = student.system_test_date.split(' ')[0];
+            // Handle both Space and T separators
+            const dateOnly = student.system_test_date.includes('T') 
+                ? student.system_test_date.split('T')[0] 
+                : student.system_test_date.split(' ')[0];
+            initial.date_of_test = dateOnly;
         }
         // Auto-fill seeking class from test level if not already set
         if (!initial.admission_class) {
