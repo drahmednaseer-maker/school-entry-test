@@ -24,7 +24,7 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
     const questions = db.prepare(`SELECT * FROM questions WHERE id IN (${questionIds.join(',')})`).all() as any[];
     const settings = await getSettings();
 
-    const optionsParsedQuestions = questions.map(q => ({
+    const optionsParsedQuestions = questions.map((q: any) => ({
         ...q,
         options: JSON.parse(q.options)
     }));
@@ -35,6 +35,12 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
 
     const startTimeStr = session.start_time;
     const startTimeMillis = new Date(startTimeStr + (startTimeStr.includes('Z') ? '' : 'Z')).getTime();
+
+    // Server-side draft answers — fallback for crash recovery when localStorage is unavailable
+    let savedAnswers: Record<number, number> = {};
+    if (session.answers) {
+        try { savedAnswers = JSON.parse(session.answers); } catch { /* ignore */ }
+    }
 
     return (
         <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
@@ -48,6 +54,7 @@ export default async function TestPage(props: { params: Promise<{ sessionId: str
                 studentPhoto={session.student_photo || undefined}
                 classLevel={session.class_level || ''}
                 gender={session.gender || ''}
+                savedAnswers={savedAnswers}
             />
         </div>
     );

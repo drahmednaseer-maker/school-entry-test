@@ -785,6 +785,27 @@ export async function submitTest(sessionId: number, answers: Record<number, numb
     return { success: true, score };
 }
 
+// Save in-progress answers to server (crash recovery backup)
+export async function saveProgress(sessionId: number, answers: Record<number, number>) {
+    const db = getDb();
+    const session = db.prepare('SELECT id, end_time FROM test_sessions WHERE id = ?').get(sessionId) as any;
+    if (!session || session.end_time) return { success: false };
+    db.prepare('UPDATE test_sessions SET answers = ? WHERE id = ?').run(JSON.stringify(answers), sessionId);
+    return { success: true };
+}
+
+// Read saved draft answers (used when localStorage is unavailable, e.g. different device)
+export async function getProgress(sessionId: number) {
+    const db = getDb();
+    const session = db.prepare('SELECT answers FROM test_sessions WHERE id = ? AND end_time IS NULL').get(sessionId) as any;
+    if (!session?.answers) return { answers: {} };
+    try {
+        return { answers: JSON.parse(session.answers) as Record<number, number> };
+    } catch {
+        return { answers: {} };
+    }
+}
+
 export async function setAdmissionStatus(formData: FormData) {
     const db = getDb();
     const studentId = parseInt(formData.get('student_id') as string);

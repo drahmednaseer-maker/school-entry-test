@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { submitTest } from '@/lib/actions';
+import { submitTest, saveProgress } from '@/lib/actions';
 import { Clock, CheckCircle, ChevronLeft, ChevronRight, Hash } from 'lucide-react';
 import clsx from 'clsx';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -20,13 +20,42 @@ type Question = {
 interface TestClientProps {
     sessionId: number;
     questions: Question[];
-    startTime: number;
+    startTime: number;        // epoch ms when test started (from server)
     schoolName: string;
     studentName: string;
     fatherName: string;
     studentPhoto?: string;
     classLevel?: string;
     gender?: string;
+    savedAnswers?: Record<number, number>; // server-side draft (crash recovery fallback)
+}
+
+const DURATION = 30 * 60; // 30 minutes in seconds
+
+function storageKey(sessionId: number) {
+    return `snaptest_session_${sessionId}`;
+}
+
+function loadLocalState(sessionId: number): { answers: Record<number, number>; currentIdx: number } | null {
+    try {
+        const raw = localStorage.getItem(storageKey(sessionId));
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function saveLocalState(sessionId: number, answers: Record<number, number>, currentIdx: number) {
+    try {
+        localStorage.setItem(storageKey(sessionId), JSON.stringify({ answers, currentIdx }));
+    } catch { /* storage quota exceeded – ignore */ }
+}
+
+function clearLocalState(sessionId: number) {
+    try {
+        localStorage.removeItem(storageKey(sessionId));
+    } catch { /* ignore */ }
 }
 
 export default function TestClient({
@@ -38,25 +67,61 @@ export default function TestClient({
     fatherName,
     studentPhoto,
     classLevel,
-    gender,
+    savedAnswers = {},
 }: TestClientProps) {
     const router = useRouter();
+
     const [currentIdx, setCurrentIdx] = useState(0);
     const [answers, setAnswers] = useState<Record<number, number>>({});
-    const [timeLeft, setTimeLeft] = useState(30 * 60);
+    const [timeLeft, setTimeLeft] = useState(DURATION);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [hydrated, setHydrated] = useState(false);
 
+    // --- Ref always mirrors current answers to avoid stale closures in timer ---
+    const answersRef = useRef<Record<number, number>>({});
+    const isSubmittingRef = useRef(false);
+
+    useEffect(() => {
+        answersRef.current = answers;
+    }); // runs after every render — no deps needed
+
+    // --- Hydrate from localStorage or server draft on first mount ---
+    useEffect(() => {
+        const local = loadLocalState(sessionId);
+
+        if (local && Object.keys(local.answers).length > 0) {
+            // Prefer localStorage (most recent, same device)
+            setAnswers(local.answers);
+            answersRef.current = local.answers;
+            setCurrentIdx(Math.min(local.currentIdx || 0, questions.length - 1));
+        } else if (Object.keys(savedAnswers).length > 0) {
+            // Fallback: server-saved draft (cross-device recovery)
+            setAnswers(savedAnswers);
+            answersRef.current = savedAnswers;
+        }
+
+        setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // --- Timer: compute from server startTime so refresh doesn't reset it ---
     useEffect(() => {
         const now = Date.now();
         const elapsedSeconds = Math.floor((now - startTime) / 1000);
-        const remaining = Math.max(0, (30 * 60) - elapsedSeconds);
+        const remaining = Math.max(0, DURATION - elapsedSeconds);
         setTimeLeft(remaining);
 
+        // If time already expired (e.g., student re-opened tab after time up)
+        if (remaining <= 0) {
+            handleAutoSubmit();
+            return;
+        }
+
         const interval = setInterval(() => {
-            setTimeLeft((prev) => {
+            setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    handleAutoSubmit();
+                    handleAutoSubmit(); // uses ref — always has latest answers
                     return 0;
                 }
                 return prev - 1;
@@ -64,27 +129,70 @@ export default function TestClient({
         }, 1000);
 
         return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // --- Periodic server backup every 30 s ---
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!isSubmittingRef.current && Object.keys(answersRef.current).length > 0) {
+                saveProgress(sessionId, answersRef.current).catch(() => {/* silent */});
+            }
+        }, 30_000);
+        return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // --- Persist to localStorage on every answer change ---
+    useEffect(() => {
+        if (hydrated) {
+            saveLocalState(sessionId, answers, currentIdx);
+        }
+    }, [answers, currentIdx, hydrated, sessionId]);
+
+    // --- Auto-submit: uses ref so it ALWAYS has the latest answers ---
+    const handleAutoSubmit = useCallback(async () => {
+        if (isSubmittingRef.current) return;
+        isSubmittingRef.current = true;
+        setIsSubmitting(true);
+
+        // Final server backup before submitting
+        const currentAnswers = answersRef.current;
+        try {
+            await saveProgress(sessionId, currentAnswers);
+        } catch { /* continue even if backup fails */ }
+
+        const res = await submitTest(sessionId, currentAnswers);
+        if (res.success) {
+            clearLocalState(sessionId);
+            router.push(`/test/${sessionId}/result`);
+        } else {
+            isSubmittingRef.current = false;
+            setIsSubmitting(false);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     function handleAnswer(optionIdx: number) {
-        setAnswers((prev) => ({
+        setAnswers(prev => ({
             ...prev,
-            [questions[currentIdx].id]: optionIdx
+            [questions[currentIdx].id]: optionIdx,
         }));
     }
 
-    async function handleAutoSubmit() {
-        if (isSubmitting) return;
-        await submit();
-    }
-
-    async function submit() {
+    async function handleManualSubmit() {
+        if (isSubmittingRef.current) return;
+        isSubmittingRef.current = true;
         setIsSubmitting(true);
-        const res = await submitTest(sessionId, answers);
+
+        const currentAnswers = answersRef.current;
+        const res = await submitTest(sessionId, currentAnswers);
         if (res.success) {
+            clearLocalState(sessionId);
             router.push(`/test/${sessionId}/result`);
         } else {
             alert('Error submitting test: ' + res.error);
+            isSubmittingRef.current = false;
             setIsSubmitting(false);
         }
     }
@@ -111,7 +219,11 @@ export default function TestClient({
     };
 
     if (timeLeft === 0 && !isSubmitting) {
-        return <div className="text-center p-10 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Time's up! Submitting...</div>;
+        return (
+            <div className="text-center p-10 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                Time&apos;s up! Submitting your answers...
+            </div>
+        );
     }
 
     return (
@@ -139,8 +251,8 @@ export default function TestClient({
                     {/* Center: Timer */}
                     <div
                         className={clsx(
-                            "flex items-center gap-2 px-4 py-2 rounded-xl font-mono font-bold text-lg shrink-0",
-                            timeLeft < 60 ? "animate-pulse" : ""
+                            'flex items-center gap-2 px-4 py-2 rounded-xl font-mono font-bold text-lg shrink-0',
+                            timeLeft < 60 ? 'animate-pulse' : ''
                         )}
                         style={{
                             background: timeLeft < 60 ? 'var(--danger-bg)' : 'var(--primary-muted)',
@@ -207,7 +319,7 @@ export default function TestClient({
                     className="rounded-2xl mb-5 overflow-hidden shadow-sm"
                     style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
                 >
-                    {/* Card header: subject badge + Q-ID chip */}
+                    {/* Card header */}
                     <div
                         className="px-5 py-3 border-b flex items-center justify-between"
                         style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
@@ -221,8 +333,6 @@ export default function TestClient({
                         >
                             {currentQ.subject}
                         </span>
-
-                        {/* Question ID chip */}
                         <span className="q-id-chip">
                             <Hash size={9} />
                             Q-{currentQ.id}
@@ -246,7 +356,7 @@ export default function TestClient({
                         {/* Question text */}
                         <h2
                             className={clsx(
-                                "text-xl md:text-2xl font-semibold leading-relaxed mb-6",
+                                'text-xl md:text-2xl font-semibold leading-relaxed mb-6',
                                 isUrdu ? 'font-urdu text-right' : 'text-left'
                             )}
                             dir={isUrdu ? 'rtl' : 'ltr'}
@@ -271,8 +381,7 @@ export default function TestClient({
                                             boxShadow: isSelected ? `0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent)` : 'none',
                                         }}
                                     >
-                                        <div className={clsx("flex items-center gap-3", isUrdu && "flex-row-reverse")}>
-                                            {/* Letter circle */}
+                                        <div className={clsx('flex items-center gap-3', isUrdu && 'flex-row-reverse')}>
                                             <div
                                                 className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border transition-all"
                                                 style={{
@@ -284,10 +393,7 @@ export default function TestClient({
                                                 {String.fromCharCode(65 + i)}
                                             </div>
                                             <span
-                                                className={clsx(
-                                                    "text-base leading-snug flex-1",
-                                                    isUrdu && 'font-urdu'
-                                                )}
+                                                className={clsx('text-base leading-snug flex-1', isUrdu && 'font-urdu')}
                                                 style={{ color: 'var(--text-primary)' }}
                                             >
                                                 {opt}
@@ -352,7 +458,7 @@ export default function TestClient({
                         </button>
                     ) : (
                         <button
-                            onClick={submit}
+                            onClick={handleManualSubmit}
                             disabled={isSubmitting}
                             className="px-6 py-2.5 rounded-xl font-bold text-sm text-white transition-all"
                             style={{
