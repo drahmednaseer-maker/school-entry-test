@@ -1,6 +1,5 @@
 import { getDb } from '@/lib/db';
-import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
-import Link from 'next/link';
+import { Users, FileText, CheckCircle, Clock, Calendar } from 'lucide-react';
 import ResultsList from '@/components/ResultsList';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -24,6 +23,20 @@ export default function AdminDashboard() {
         ? db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'started' AND session_id = ?").get(sessionId) as { count: number }
         : db.prepare("SELECT COUNT(*) as count FROM students WHERE status = 'started'").get() as { count: number };
 
+    // Grouped stats for today
+    const todayStats = db.prepare(`
+        SELECT 
+            SUM(CASE WHEN s.gender = 'Male' THEN 1 ELSE 0 END) as male,
+            SUM(CASE WHEN s.gender = 'Female' THEN 1 ELSE 0 END) as female
+        FROM test_sessions ts
+        JOIN students s ON ts.student_id = s.id
+        WHERE date(ts.end_time) = date('now', 'localtime')
+    `).get() as { male: number, female: number };
+
+    const maleToday = todayStats?.male || 0;
+    const femaleToday = todayStats?.female || 0;
+    const totalToday = maleToday + femaleToday;
+
     const recentResults = sessionId ? db.prepare(`
         SELECT s.id, s.name, s.father_name, s.class_level, s.score, s.created_at, s.photo, s.admission_status, s.admitted_class, s.is_registered
         FROM students s
@@ -43,6 +56,14 @@ export default function AdminDashboard() {
         { label: 'Total Questions', value: questionCount.count, icon: FileText, color: '#7c3aed', bg: '#f5f3ff' },
         { label: 'Completed Tests', value: completedTests.count, icon: CheckCircle, color: 'var(--success)', bg: 'var(--success-bg)' },
         { label: 'Active Tests', value: activeTests.count, icon: Clock, color: '#d97706', bg: '#fffbeb' },
+        { 
+            label: 'Tests Today', 
+            value: totalToday, 
+            icon: Calendar, 
+            color: '#ec4899', 
+            bg: '#fdf2f8',
+            subLabel: `M: ${maleToday} / F: ${femaleToday}`
+        },
     ];
 
     return (
@@ -72,8 +93,8 @@ export default function AdminDashboard() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 shrink-0">
-                {statCards.map(({ label, value, icon: Icon, color, bg }) => (
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 shrink-0">
+                {statCards.map(({ label, value, icon: Icon, color, bg, subLabel }: any) => (
                     <div
                         key={label}
                         className="rounded-2xl p-6 flex flex-col gap-4 shadow-sm relative overflow-hidden group"
@@ -86,7 +107,10 @@ export default function AdminDashboard() {
                             >
                                 <Icon size={24} style={{ color }} />
                             </div>
-                            <span className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{value}</span>
+                            <div className="text-right">
+                                <span className="text-3xl font-black block" style={{ color: 'var(--text-primary)' }}>{value}</span>
+                                {subLabel && <span className="text-[15px] font-black uppercase text-slate-500 tracking-tighter">{subLabel}</span>}
+                            </div>
                         </div>
                         <p className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
                         <div className="absolute -bottom-6 -right-6 opacity-5 group-hover:scale-110 transition-transform duration-500">

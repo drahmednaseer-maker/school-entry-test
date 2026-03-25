@@ -806,6 +806,53 @@ export async function getProgress(sessionId: number) {
     }
 }
 
+// --- Admission Form ---
+
+export async function getStudentById(id: number) {
+    const db = getDb();
+    const student = db.prepare(`
+        SELECT s.*, ts.end_time as system_test_date
+        FROM students s
+        LEFT JOIN (
+            SELECT student_id, end_time 
+            FROM test_sessions 
+            WHERE end_time IS NOT NULL 
+            ORDER BY end_time DESC 
+            LIMIT 1
+        ) ts ON s.id = ts.student_id
+        WHERE s.id = ?
+    `).get(id) as any;
+    return student;
+}
+
+export async function saveAdmissionForm(studentId: number, data: Record<string, any>) {
+    const db = getDb();
+    const allowed = [
+        'name', 'father_name', 'father_mobile', 'class_level', 'gender',
+        'dob', 'guardian_name', 'father_cnic', 'previous_school', 'previous_class',
+        'slc_no', 'slc_date', 'reason_for_leaving', 'admission_class', 'occupation',
+        'country', 'province', 'district', 'tehsil', 'city', 'street_address',
+        'contact1_name', 'contact1_phone', 'contact1_whatsapp',
+        'contact2_name', 'contact2_phone',
+        'contact3_name', 'contact3_phone',
+        'reg_no', 'date_of_test', 'date_of_admission', 'photo',
+    ];
+    const sets: string[] = [];
+    const vals: any[] = [];
+    for (const key of allowed) {
+        if (key in data) {
+            sets.push(`${key} = ?`);
+            vals.push(data[key]);
+        }
+    }
+    if (sets.length === 0) return { success: false, error: 'No data' };
+    vals.push(studentId);
+    db.prepare(`UPDATE students SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+    revalidatePath('/admin/students');
+    revalidatePath(`/admin/students/${studentId}/admission`);
+    return { success: true };
+}
+
 export async function setAdmissionStatus(formData: FormData) {
     const db = getDb();
     const studentId = parseInt(formData.get('student_id') as string);

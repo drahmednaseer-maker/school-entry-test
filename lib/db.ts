@@ -67,6 +67,40 @@ function initTables(database: any) {
     if (!studentCols.find((c: any) => c.name === 'is_registered')) {
       database.exec('ALTER TABLE students ADD COLUMN is_registered INTEGER NOT NULL DEFAULT 0');
     }
+    // Admission form extended fields
+    const admissionFields: [string, string][] = [
+      ['dob', 'TEXT'],
+      ['guardian_name', 'TEXT'],
+      ['father_cnic', 'TEXT'],
+      ['previous_school', 'TEXT'],
+      ['previous_class', 'TEXT'],
+      ['slc_no', 'TEXT'],
+      ['slc_date', 'TEXT'],
+      ['reason_for_leaving', 'TEXT'],
+      ['admission_class', 'TEXT'],
+      ['occupation', 'TEXT'],
+      ['country', "TEXT DEFAULT 'Pakistan'"],
+      ['province', 'TEXT'],
+      ['district', 'TEXT'],
+      ['tehsil', 'TEXT'],
+      ['city', 'TEXT'],
+      ['street_address', 'TEXT'],
+      ['contact1_name', 'TEXT'],
+      ['contact1_phone', 'TEXT'],
+      ['contact1_whatsapp', 'INTEGER DEFAULT 0'],
+      ['contact2_name', 'TEXT'],
+      ['contact2_phone', 'TEXT'],
+      ['contact3_name', 'TEXT'],
+      ['contact3_phone', 'TEXT'],
+      ['reg_no', 'TEXT'],
+      ['date_of_test', 'TEXT'],
+      ['date_of_admission', 'TEXT'],
+    ];
+    for (const [col, type] of admissionFields) {
+      if (!studentCols.find((c: any) => c.name === col)) {
+        database.exec(`ALTER TABLE students ADD COLUMN ${col} ${type}`);
+      }
+    }
 
     // Ensure sessions and slcs tables exist (for older DBs that didn't get them in CREATE TABLE block)
     database.exec(`CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, is_active INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);`);
