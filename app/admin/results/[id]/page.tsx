@@ -1,26 +1,13 @@
 import { getDb } from '@/lib/db';
 import { notFound } from 'next/navigation';
-import { CheckCircle2, XCircle, User, Calendar, BookOpen, AlertCircle, Hash, ChevronLeft, GraduationCap, ThumbsUp, ThumbsDown, Clock, Timer } from 'lucide-react';
+import { XCircle, User, Calendar, BookOpen, AlertCircle, Hash, ChevronLeft, Clock, Timer, ThumbsUp, ThumbsDown, CheckCircle2 } from 'lucide-react';
 import clsx from 'clsx';
 import Link from 'next/link';
-import { setAdmissionStatus } from '@/lib/actions';
-import { revalidatePath } from 'next/cache';
 import AIAssessment from '@/components/AIAssessment';
 import ThemeToggle from '@/components/ThemeToggle';
+import AdminDecisionManager from '@/components/AdminDecisionManager';
 
 export const dynamic = 'force-dynamic';
-
-async function grantAdmission(fd: FormData) {
-    'use server';
-    await setAdmissionStatus(fd);
-    revalidatePath('/admin/results');
-}
-
-async function declineAdmission(fd: FormData) {
-    'use server';
-    await setAdmissionStatus(fd);
-    revalidatePath('/admin/results');
-}
 
 const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
 
@@ -151,75 +138,14 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
                 </div>
             </div>
 
-            {/* ── Admission Decision Card ──────────────────────── */}
-            <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                <div className="px-6 py-4 border-b flex items-center gap-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
-                    <GraduationCap size={18} style={{ color: 'var(--primary)' }} />
-                    <div>
-                        <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>
-                            {admissionStatus ? 'Change Admission Decision' : 'Admission Decision'}
-                        </h2>
-                        {admissionStatus && (
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Current status can be updated at any time</p>
-                        )}
-                    </div>
-                    {admissionStatus === 'granted' && (
-                        <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>
-                            ✓ Granted — {student.admitted_class}
-                        </span>
-                    )}
-                    {admissionStatus === 'not_granted' && (
-                        <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>
-                            ✗ Not Granted
-                        </span>
-                    )}
-                </div>
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Grant Admission */}
-                        <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
-                            <div className="flex items-center gap-2">
-                                <ThumbsUp size={18} style={{ color: 'var(--success)' }} />
-                                <p className="font-bold text-sm" style={{ color: 'var(--success)' }}>Grant Admission</p>
-                            </div>
-                            <form action={grantAdmission} className="space-y-2">
-                                <input type="hidden" name="student_id" value={studentId} />
-                                <input type="hidden" name="status" value="granted" />
-                                <select
-                                    name="admitted_class"
-                                    defaultValue={student.admitted_class || ''}
-                                    className="st-input text-sm"
-                                    required
-                                >
-                                    <option value="" disabled>Select class to admit into…</option>
-                                    {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <button type="submit" className="w-full py-2 rounded-lg text-sm font-bold transition-all" style={{ background: 'var(--success)', color: 'white' }}>
-                                    ✓ Confirm — Grant Admission
-                                </button>
-                            </form>
-                        </div>
-
-                        {/* Not Granted */}
-                        <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
-                            <div className="flex items-center gap-2">
-                                <ThumbsDown size={18} style={{ color: 'var(--danger)' }} />
-                                <p className="font-bold text-sm" style={{ color: 'var(--danger)' }}>Decline Admission</p>
-                            </div>
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                Marks the student as not granted. This can be changed at any time.
-                            </p>
-                            <form action={declineAdmission}>
-                                <input type="hidden" name="student_id" value={studentId} />
-                                <input type="hidden" name="status" value="not_granted" />
-                                <button type="submit" className="w-full py-2 rounded-lg text-sm font-bold transition-all" style={{ background: 'var(--danger)', color: 'white' }}>
-                                    ✗ Admission Not Granted
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* ── Admin Decision & Notes Manager ────────────────── */}
+            <AdminDecisionManager 
+                studentId={studentId}
+                initialNotes={student.admin_notes || ''}
+                initialStatus={student.admission_status || null}
+                initialAdmittedClass={student.admitted_class || null}
+                classes={CLASSES}
+            />
 
             {/* ── Subject Performance ─────────────────────────── */}
             <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>

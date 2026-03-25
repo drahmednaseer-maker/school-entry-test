@@ -835,6 +835,9 @@ export async function saveAdmissionForm(studentId: number, data: Record<string, 
         'contact2_name', 'contact2_phone',
         'contact3_name', 'contact3_phone',
         'reg_no', 'date_of_test', 'date_of_admission', 'photo',
+        'contact1_whatsapp', 'contact2_whatsapp', 'contact3_whatsapp',
+        'is_intl_wa', 'intl_wa_name', 'intl_wa_phone', 'intl_wa_country', 'intl_wa_verified',
+        'admin_notes',
     ];
     const sets: string[] = [];
     const vals: any[] = [];
@@ -857,17 +860,33 @@ export async function setAdmissionStatus(formData: FormData) {
     const studentId = parseInt(formData.get('student_id') as string);
     const status = formData.get('status') as string; // 'granted' | 'not_granted'
     const admittedClass = formData.get('admitted_class') as string || null;
+    const adminNotes = formData.get('admin_notes') as string || null;
 
     db.prepare(`
         UPDATE students
-        SET admission_status = ?, admitted_class = ?
+        SET admission_status = ?, admitted_class = ?, admin_notes = ?
         WHERE id = ?
-    `).run(status, admittedClass, studentId);
+    `).run(status, admittedClass, adminNotes, studentId);
 
     revalidatePath(`/admin/results/${studentId}`);
     revalidatePath('/admin/results');
     revalidatePath('/admin/reports');
     revalidatePath('/admin');
+    return { success: true };
+}
+
+export async function updateAdminNotes(formData: FormData) {
+    const db = getDb();
+    const studentId = parseInt(formData.get('student_id') as string);
+    const adminNotes = formData.get('admin_notes') as string || null;
+
+    db.prepare(`
+        UPDATE students
+        SET admin_notes = ?
+        WHERE id = ?
+    `).run(adminNotes, studentId);
+
+    revalidatePath(`/admin/results/${studentId}`);
     return { success: true };
 }
 

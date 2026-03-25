@@ -95,6 +95,7 @@ function initTables(database: any) {
       ['reg_no', 'TEXT'],
       ['date_of_test', 'TEXT'],
       ['date_of_admission', 'TEXT'],
+      ['admin_notes', 'TEXT'],
     ];
     for (const [col, type] of admissionFields) {
       if (!studentCols.find((c: any) => c.name === col)) {
