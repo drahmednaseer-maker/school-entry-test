@@ -367,11 +367,12 @@ select.st-input {
   top: -9999px;
 }
 @media print {
-  body * {
-    visibility: hidden !important;
+  body > *:not(.print-only-container) {
+    display: none !important;
   }
   .print-only-container,
   .print-only-container * {
+    display: block !important;
     visibility: visible !important;
   }
   #thermal-receipt-print-form,

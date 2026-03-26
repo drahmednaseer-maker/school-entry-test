@@ -1,7 +1,8 @@
 'use client';
  
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 import { deleteStudent } from '@/lib/actions';
 import { Trash2, Edit2, Search, Filter, User, Printer } from 'lucide-react';
 import MasterPasswordModal from './MasterPasswordModal';
@@ -27,6 +28,11 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
     const [printData, setPrintData] = useState<Student | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     
     const [passwordModal, setPasswordModal] = useState<{
         isOpen: boolean;
@@ -243,52 +249,55 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 onClose={() => setPasswordModal({ ...passwordModal, isOpen: false })}
                 onSuccess={passwordModal.onSuccess}
             />
-            {/* Hidden component for actual printing */}
-            <div id="thermal-receipt-print-list" className="print-only-container">
-                {printData && (
-                    <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
-                        <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
-                            <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
-                            <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
-                        </div>
-                        
-                        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-                            <div style={{ marginBottom: '8px' }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
-                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
+            {/* Portal-based Hidden Template for Printing */}
+            {mounted && typeof document !== 'undefined' && createPortal(
+                <div id="thermal-receipt-print-list" className="print-only-container">
+                    {printData && (
+                        <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
+                            <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
+                                <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
+                                <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
                             </div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
-                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.father_name}</span>
-                            </div>
-                            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                <div>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
-                                    <span style={{ fontWeight: 'bold' }}>{printData.class_level}</span>
+                            
+                            <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
+                                    <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
-                                    <span style={{ fontWeight: 'bold' }}>{printData.gender || 'Not Specified'}</span>
+                                <div style={{ marginBottom: '8px' }}>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
+                                    <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.father_name}</span>
+                                </div>
+                                <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                    <div>
+                                        <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
+                                        <span style={{ fontWeight: 'bold' }}>{printData.class_level}</span>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
+                                        <span style={{ fontWeight: 'bold' }}>{printData.gender || 'Not Specified'}</span>
+                                    </div>
+                                </div>
+                                <div style={{ marginBottom: '15px' }}>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
+                                    <span style={{ fontWeight: 'bold' }}>{printData.father_mobile}</span>
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '15px' }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
-                                <span style={{ fontWeight: 'bold' }}>{printData.father_mobile}</span>
+                            
+                            <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
+                                <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
+                                <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.access_code}</h1>
+                            </div>
+                            
+                            <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                                Please keep this ticket safe.<br/>
+                                {new Date().toLocaleString()}
                             </div>
                         </div>
-                        
-                        <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
-                            <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
-                            <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.access_code}</h1>
-                        </div>
-                        
-                        <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
-                            Please keep this ticket safe.<br/>
-                            {new Date().toLocaleString()}
-                        </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
