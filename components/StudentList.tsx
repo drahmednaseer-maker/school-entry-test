@@ -244,7 +244,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 onSuccess={passwordModal.onSuccess}
             />
             {/* Hidden component for actual printing */}
-            <div id="thermal-receipt-print-list" className="hidden">
+            <div id="thermal-receipt-print-list" className="print-only-container">
                 {printData && (
                     <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
                         <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>

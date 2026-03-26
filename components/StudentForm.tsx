@@ -49,7 +49,7 @@ export default function StudentForm() {
                 code: res.code
             });
             setPhoto(null);
-            formRef.current?.reset();
+            // formRef.current?.reset(); // Removed automatic reset to keep data visible
         } else {
             alert('Error generating code');
         }
@@ -189,8 +189,23 @@ export default function StudentForm() {
                                 disabled={loading}
                                 className="st-btn-primary w-full text-base py-3 font-black shadow-md"
                             >
-                                {loading ? 'Generating...' : 'Generate Access Code'}
+                                {loading ? 'Generating...' : lastCode ? 'Update Access Code' : 'Generate Access Code'}
                             </button>
+                            {lastCode && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setLastCode(null);
+                                        setPrintData(null);
+                                        setPhoto(null);
+                                        formRef.current?.reset();
+                                    }}
+                                    className="w-full mt-2 text-xs font-bold py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                                    style={{ color: 'var(--text-muted)', border: '1px border var(--border)' }}
+                                >
+                                    Clear Form & New Registration
+                                </button>
+                            )}
                         </div>
                     </form>
 
@@ -329,7 +344,7 @@ export default function StudentForm() {
             )}
 
             {/* Hidden component for actual printing */}
-            <div id="thermal-receipt-print-form" className="hidden">
+            <div id="thermal-receipt-print-form" className="print-only-container">
                 {printData && (
                     <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
                         <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>

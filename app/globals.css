@@ -361,15 +361,16 @@ select.st-input {
 /* ========================
    THERMAL PRINTING 
    ======================== */
+.print-only-container {
+  display: none;
+}
 @media print {
   body * {
     visibility: hidden;
   }
-  #thermal-receipt-print-form,
-  #thermal-receipt-print-list,
-  #thermal-receipt-print-form *, 
-  #thermal-receipt-print-list * {
-    visibility: visible;
+  .print-only-container,
+  .print-only-container * {
+    visibility: visible !important;
   }
   #thermal-receipt-print-form,
   #thermal-receipt-print-list {
