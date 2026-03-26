@@ -250,9 +250,9 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 onSuccess={passwordModal.onSuccess}
             />
             {/* Portal-based Hidden Template for Printing */}
-            {mounted && typeof document !== 'undefined' && createPortal(
+            {mounted && typeof document !== 'undefined' && printData && createPortal(
                 <div id="thermal-receipt-print-list" className="print-only-container">
-                    {printData && (
+
                         <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
                             <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
                                 <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
@@ -294,7 +294,6 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                                 {new Date().toLocaleString()}
                             </div>
                         </div>
-                    )}
                 </div>,
                 document.body
             )}

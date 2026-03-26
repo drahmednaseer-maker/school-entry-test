@@ -356,51 +356,49 @@ export default function StudentForm() {
             )}
 
             {/* Hidden component for actual printing - Rendered via Portal at Root level */}
-            {mounted && typeof document !== 'undefined' && createPortal(
+            {mounted && typeof document !== 'undefined' && printData && createPortal(
                 <div id="thermal-receipt-print-form" className="print-only-container">
-                    {printData && (
-                        <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
-                            <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
-                                <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
-                                <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
+                    <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
+                        <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
+                            <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
+                            <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
+                        </div>
+                        
+                        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+                            <div style={{ marginBottom: '8px' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
+                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
                             </div>
-                            
-                            <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-                                <div style={{ marginBottom: '8px' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
-                                    <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
+                            <div style={{ marginBottom: '8px' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
+                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.fatherName}</span>
+                            </div>
+                            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                <div>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
+                                    <span style={{ fontWeight: 'bold' }}>{printData.classLevel}</span>
                                 </div>
-                                <div style={{ marginBottom: '8px' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
-                                    <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.fatherName}</span>
-                                </div>
-                                <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                    <div>
-                                        <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
-                                        <span style={{ fontWeight: 'bold' }}>{printData.classLevel}</span>
-                                    </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
-                                        <span style={{ fontWeight: 'bold' }}>{printData.gender}</span>
-                                    </div>
-                                </div>
-                                <div style={{ marginBottom: '15px' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
-                                    <span style={{ fontWeight: 'bold' }}>{printData.fatherMobile}</span>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
+                                    <span style={{ fontWeight: 'bold' }}>{printData.gender}</span>
                                 </div>
                             </div>
-                            
-                            <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
-                                <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
-                                <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.code}</h1>
-                            </div>
-                            
-                            <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
-                                Please keep this ticket safe.<br/>
-                                {new Date().toLocaleString()}
+                            <div style={{ marginBottom: '15px' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
+                                <span style={{ fontWeight: 'bold' }}>{printData.fatherMobile}</span>
                             </div>
                         </div>
-                    )}
+                        
+                        <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
+                            <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
+                            <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.code}</h1>
+                        </div>
+                        
+                        <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                            Please keep this ticket safe.<br/>
+                            {new Date().toLocaleString()}
+                        </div>
+                    </div>
                 </div>,
                 document.body
             )}
