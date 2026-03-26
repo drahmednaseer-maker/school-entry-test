@@ -65,7 +65,10 @@ export default function StudentForm() {
     }
 
     function handlePrint() {
-        window.print();
+        // Small delay to ensure DOM is ready and updated
+        setTimeout(() => {
+            window.print();
+        }, 100);
     }
 
     return (
