@@ -323,7 +323,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
             />
             {/* Portal-based Hidden Template for Printing */}
             {mounted && typeof document !== 'undefined' && printData && createPortal(
-                    <div className="flex justify-center bg-white text-black font-sans">
+                    <div className="print-only-container flex justify-center bg-white text-black font-sans">
                         <div className="w-[280px]">
                             <div className="text-center border-b-2 border-dashed border-black pb-3 mb-4">
                                 <h5 className="font-black text-sm uppercase tracking-tighter text-black m-0">Mardan Youth Academy</h5>
