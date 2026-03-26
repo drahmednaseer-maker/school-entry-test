@@ -86,7 +86,9 @@ export default async function ResultDetailsPage({ params }: { params: Promise<{ 
                             <div>
                                 <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">{settings.school_name}</p>
                                 <h1 className="text-3xl font-black mb-1">{student.name}</h1>
-                                <p className="text-blue-100/80 font-medium">S/O: {student.father_name}</p>
+                                <p className="text-blue-100/80 font-medium">
+                                    {student.gender === 'Female' ? 'D/O' : 'S/O'}: {student.father_name}
+                                </p>
                                 <div className="flex flex-col gap-2 mt-3 text-sm text-blue-100/90 font-medium">
                                     <div className="flex flex-wrap items-center gap-4">
                                         <span className="flex items-center gap-1"><User size={14} /> {student.class_level}</span>

@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
             if (role === 'staff') {
                 // Staff ONLY allowed /admin/students and /admin/slc
                 const allowed = ['/admin/students', '/admin/slc'];
-                if (!allowed.some(route => pathname === route)) {
+                if (!allowed.some(route => pathname === route || pathname.startsWith(route + '/'))) {
                     return NextResponse.redirect(new URL('/admin/students', request.url));
                 }
             } else if (role === 'exam_coordinator') {
