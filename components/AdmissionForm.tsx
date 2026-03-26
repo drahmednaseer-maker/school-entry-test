@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { saveAdmissionForm } from '@/lib/actions';
+import { saveAdmissionForm, createFullStudent } from '@/lib/actions';
 import { 
-    Save, ArrowLeft, Camera, Upload, Phone, Calendar, User, Printer, CheckCircle2, XCircle, Loader2, MapPin
+    Save, ArrowLeft, Camera, Upload, Phone, Calendar, User, Printer, CheckCircle2, XCircle, Loader2, MapPin, Ticket
 } from 'lucide-react';
 import { PAKISTAN_GEO, COUNTRIES } from '@/lib/pakistan-geo';
 import WebcamCapture from './WebcamCapture';
@@ -145,32 +145,32 @@ function dateToWords(dateStr: string): string {
     }
 }
 
-export default function AdmissionForm({ student }: { student: Student }) {
+export default function AdmissionForm({ student }: { student?: Student }) {
     const router = useRouter();
-    const [formData, setFormData] = useState<Student>(() => {
+    const [formData, setFormData] = useState<Partial<Student>>(() => {
+        if (!student) return { country: 'Pakistan', reg_no: '000000' };
+        
         const initial = { ...student };
         if (student.system_test_date && !initial.date_of_test) {
-            // Handle both Space and T separators
             const dateOnly = student.system_test_date.includes('T') 
                 ? student.system_test_date.split('T')[0] 
                 : student.system_test_date.split(' ')[0];
             initial.date_of_test = dateOnly;
         }
-        // Auto-fill seeking class from test level if not already set
         if (!initial.admission_class) {
             initial.admission_class = student.class_level;
         }
-        // Default reg_no to 6 digits if empty
         if (!initial.reg_no) {
             initial.reg_no = '000000';
         }
-        // admitted_class is already in student record if previously set
         return initial;
     });
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [generatedCode, setGeneratedCode] = useState<string | null>(null);
     const [showWebcam, setShowWebcam] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     // Form Initialization logic
     useEffect(() => {
@@ -224,13 +224,28 @@ export default function AdmissionForm({ student }: { student: Student }) {
     const handleSave = async () => {
         setIsSaving(true);
         setSaveStatus('idle');
+        setGeneratedCode(null);
         try {
-            const res = await saveAdmissionForm(student.id, formData);
-            if (res.success) {
-                setSaveStatus('success');
-                setTimeout(() => router.push('/admin/students'), 1500);
+            if (student?.id) {
+                // Update mode
+                const res = await saveAdmissionForm(student.id, formData);
+                if (res.success) {
+                    setSaveStatus('success');
+                    setTimeout(() => router.push('/admin/students'), 1500);
+                } else {
+                    setSaveStatus('error');
+                }
             } else {
-                setSaveStatus('error');
+                // Create mode
+                const res = await createFullStudent(formData);
+                if (res.success) {
+                    setSaveStatus('success');
+                    setGeneratedCode(res.code || null);
+                    // Stay on page to show code or redirect later
+                    setTimeout(() => router.push('/admin/students'), 3000);
+                } else {
+                    setSaveStatus('error');
+                }
             }
         } catch {
             setSaveStatus('error');
@@ -252,8 +267,12 @@ export default function AdmissionForm({ student }: { student: Student }) {
                         <ArrowLeft size={16} />
                     </button>
                     <div>
-                        <h1 className="text-base font-black text-blue-900 leading-tight">Digital Admission Form</h1>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter leading-none mt-0.5">Student ID: {student.id}</p>
+                        <h1 className="text-base font-black text-blue-900 leading-tight">
+                            {student ? 'Digital Admission Form' : 'New Student Admission'}
+                        </h1>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter leading-none mt-0.5">
+                            {student ? `Student ID: ${student.id}` : 'Registration Process'}
+                        </p>
                     </div>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto print-hidden">
@@ -277,8 +296,23 @@ export default function AdmissionForm({ student }: { student: Student }) {
 
             {/* Success/Error Toast */}
             {saveStatus === 'success' && (
-                <div className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                    <CheckCircle2 size={20} /> Admission form saved successfully! Redirecting...
+                <div className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <CheckCircle2 size={20} /> 
+                        <span>
+                            {generatedCode 
+                                ? `Success! Student registered. Access Code: ${generatedCode}`
+                                : 'Admission form saved successfully! Redirecting...'}
+                        </span>
+                    </div>
+                    {generatedCode && (
+                         <div className="flex items-center gap-2 bg-green-200/50 px-3 py-1 rounded-lg">
+                            <Ticket size={14} className="text-green-800" />
+                            <span className="font-mono font-black text-lg text-green-900 tracking-wider">
+                                {generatedCode}
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
             {saveStatus === 'error' && (
@@ -383,8 +417,8 @@ export default function AdmissionForm({ student }: { student: Student }) {
                                     type="date" 
                                     value={formData.date_of_test || ''}
                                     onChange={e => setFormData(prev => ({ ...prev, date_of_test: e.target.value }))}
-                                    readOnly={!!student.system_test_date}
-                                    className={`w-full st-input !py-1.5 text-xs ${student.system_test_date ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} 
+                                    readOnly={!!student?.system_test_date}
+                                    className={`w-full st-input !py-1.5 text-xs ${student?.system_test_date ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} 
                                 />
                             </div>
                             <div className="space-y-1">
@@ -405,7 +439,7 @@ export default function AdmissionForm({ student }: { student: Student }) {
                                 <div className="leading-tight">
                                     <p className="text-[9px] font-black text-blue-900 uppercase">Test Status</p>
                                     <p className="text-xs font-bold text-blue-700">
-                                        {student.status === 'completed' ? `Score: ${student.score}/30` : 'Pending'}
+                                        {student?.status === 'completed' ? `Score: ${student.score}/30` : student ? 'Pending' : 'N/A (New)'}
                                     </p>
                                 </div>
                             </div>
@@ -561,13 +595,13 @@ export default function AdmissionForm({ student }: { student: Student }) {
                                 <select 
                                     value={formData.admission_class || ''} 
                                     onChange={e => setFormData(prev => ({ ...prev, admission_class: e.target.value }))}
-                                    disabled={!!student.class_level}
-                                    className={`w-full st-input ${student.class_level ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-blue-200 bg-blue-50/20'}`}
+                                    disabled={!!student?.class_level}
+                                    className={`w-full st-input ${student?.class_level ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-blue-200 bg-blue-50/20'}`}
                                 >
                                     <option value="">Select Class</option>
                                     {CLASSES.map(cl => <option key={cl} value={cl}>{cl}</option>)}
                                 </select>
-                                {student.class_level && <p className="text-[9px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic px-1">Calculated from system test record</p>}
+                                {student?.class_level && <p className="text-[9px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic px-1">Calculated from system test record</p>}
                             </div>
                             <div className="space-y-2">
                                 <label className="form-label-premium">Admission allowed to class</label>

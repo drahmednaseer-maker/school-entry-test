@@ -70,29 +70,6 @@ export default function StudentForm() {
 
     return (
         <div className="relative">
-            <style jsx global>{`
-                @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    #thermal-receipt-print, #thermal-receipt-print * {
-                        visibility: visible;
-                    }
-                    #thermal-receipt-print {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 80mm;
-                        padding: 5mm;
-                        background: white;
-                        color: black;
-                    }
-                    @page {
-                        size: 80mm auto;
-                        margin: 0;
-                    }
-                }
-            `}</style>
 
             <div
                 className="rounded-xl overflow-hidden shadow-sm"
