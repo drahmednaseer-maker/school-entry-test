@@ -357,46 +357,46 @@ export default function StudentForm() {
 
             {/* Hidden component for actual printing - Rendered via Portal at Root level */}
             {mounted && typeof document !== 'undefined' && printData && createPortal(
-                <div id="thermal-receipt-print-form" className="print-only-container">
-                    <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
-                        <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
-                            <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
-                            <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
+                <div id="thermal-receipt-print-form" className="print-only-container flex justify-center bg-white text-black font-sans">
+                    <div className="w-[280px]">
+                        <div className="text-center border-b-2 border-dashed border-black pb-3 mb-4">
+                            <h5 className="font-black text-sm uppercase tracking-tighter text-black m-0">Mardan Youth Academy</h5>
+                            <p className="text-[11px] text-black m-0">Student Entry Test Ticket</p>
                         </div>
                         
-                        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-                            <div style={{ marginBottom: '8px' }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
-                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Student Name</p>
+                                <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.name}</p>
                             </div>
-                            <div style={{ marginBottom: '8px' }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
-                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.fatherName}</span>
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Father's Name</p>
+                                <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.fatherName}</p>
                             </div>
-                            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                            <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
-                                    <span style={{ fontWeight: 'bold' }}>{printData.classLevel}</span>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Class</p>
+                                    <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.classLevel}</p>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
-                                    <span style={{ fontWeight: 'bold' }}>{printData.gender}</span>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Gender</p>
+                                    <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.gender}</p>
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '15px' }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
-                                <span style={{ fontWeight: 'bold' }}>{printData.fatherMobile}</span>
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Mobile</p>
+                                <p className="text-[14px] font-black m-0 leading-tight text-black">{printData.fatherMobile}</p>
                             </div>
                         </div>
                         
-                        <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
-                            <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
-                            <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.code}</h1>
+                        <div className="mt-8 pt-4 border-t-2 border-dashed border-black text-center">
+                            <p className="text-[11px] font-bold uppercase tracking-widest mb-1 m-0 text-black">Access Code</p>
+                            <p className="text-5xl font-black tracking-widest m-0 leading-none text-black mt-2">{printData.code}</p>
                         </div>
                         
-                        <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                        <div className="mt-8 text-[9px] text-center text-black leading-tight">
                             Please keep this ticket safe.<br/>
-                            {new Date().toLocaleString()}
+                            System Generated: {new Date().toLocaleString()}
                         </div>
                     </div>
                 </div>,

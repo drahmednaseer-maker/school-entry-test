@@ -67,7 +67,7 @@ export default function AdminDashboard() {
     ];
 
     return (
-        <div className="flex flex-col flex-1 min-h-0 space-y-6 h-full">
+        <div className="flex flex-col flex-1 min-h-0 space-y-6 min-h-full pb-6">
             {/* Premium Header Card */}
             <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 shrink-0">
                 <div className="p-7 text-white" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}>

@@ -370,8 +370,7 @@ select.st-input {
   body > *:not(.print-only-container) {
     display: none !important;
   }
-  .print-only-container,
-  .print-only-container * {
+  .print-only-container {
     display: block !important;
     visibility: visible !important;
   }

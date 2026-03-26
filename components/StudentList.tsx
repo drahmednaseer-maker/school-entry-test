@@ -27,6 +27,9 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
+    const [dateFilter, setDateFilter] = useState('Today');
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
     const [printData, setPrintData] = useState<Student | null>(null);
     const [mounted, setMounted] = useState(false);
 
@@ -59,7 +62,42 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
             (student.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
             (student.father_name?.toLowerCase() || '').includes(searchTerm.toLowerCase());
         const matchesClass = classFilter === 'All' || student.class_level === classFilter;
-        return matchesSearch && matchesClass;
+        
+        let matchesDate = true;
+        if (student.created_at) {
+            const studentDate = new Date(student.created_at);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (dateFilter === 'Today') {
+                matchesDate = studentDate >= today;
+            } else if (dateFilter === 'Yesterday') {
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                matchesDate = studentDate >= yesterday && studentDate < today;
+            } else if (dateFilter === 'Last 7 Days') {
+                const last7 = new Date(today);
+                last7.setDate(last7.getDate() - 7);
+                matchesDate = studentDate >= last7;
+            } else if (dateFilter === 'Last 30 Days') {
+                const last30 = new Date(today);
+                last30.setDate(last30.getDate() - 30);
+                matchesDate = studentDate >= last30;
+            } else if (dateFilter === 'Custom Range') {
+                if (customStartDate) {
+                    const start = new Date(customStartDate);
+                    start.setHours(0, 0, 0, 0);
+                    if (studentDate < start) matchesDate = false;
+                }
+                if (customEndDate) {
+                    const end = new Date(customEndDate);
+                    end.setHours(23, 59, 59, 999);
+                    if (studentDate > end) matchesDate = false;
+                }
+            }
+        }
+        
+        return matchesSearch && matchesClass && matchesDate;
     });
 
     const handleDelete = async (id: number) => {
@@ -101,19 +139,52 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
                     Registered Students <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({filteredStudents.length})</span>
                 </h3>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 flex-wrap items-center">
                     {/* Search */}
                     <div className="relative">
                         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                             type="text"
                             placeholder="Search name..."
-                            className="st-input py-2 text-sm w-full sm:w-52"
+                            className="st-input py-2 text-sm w-full sm:w-48"
                             style={{ paddingLeft: '2.25rem' }}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    {/* Date filter */}
+                    <div className="flex items-center gap-2">
+                        <select
+                            className="st-input py-2 text-sm"
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                        >
+                            <option value="Today">Today</option>
+                            <option value="Yesterday">Yesterday</option>
+                            <option value="Last 7 Days">Last 7 Days</option>
+                            <option value="Last 30 Days">Last 30 Days</option>
+                            <option value="All Time">All Time</option>
+                            <option value="Custom Range">Custom Range</option>
+                        </select>
+                    </div>
+                    {/* Custom Range Inputs */}
+                    {dateFilter === 'Custom Range' && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                className="st-input py-2 text-sm"
+                                value={customStartDate}
+                                onChange={(e) => setCustomStartDate(e.target.value)}
+                            />
+                            <span className="text-xs text-gray-400">to</span>
+                            <input
+                                type="date"
+                                className="st-input py-2 text-sm"
+                                value={customEndDate}
+                                onChange={(e) => setCustomEndDate(e.target.value)}
+                            />
+                        </div>
+                    )}
                     {/* Class filter */}
                     <div className="flex items-center gap-2">
                         <Filter size={15} style={{ color: 'var(--text-muted)' }} />
@@ -251,49 +322,49 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
             />
             {/* Portal-based Hidden Template for Printing */}
             {mounted && typeof document !== 'undefined' && printData && createPortal(
-                <div id="thermal-receipt-print-list" className="print-only-container">
-
-                        <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
-                            <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
-                                <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
-                                <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
+                    <div className="flex justify-center bg-white text-black font-sans">
+                        <div className="w-[280px]">
+                            <div className="text-center border-b-2 border-dashed border-black pb-3 mb-4">
+                                <h5 className="font-black text-sm uppercase tracking-tighter text-black m-0">Mardan Youth Academy</h5>
+                                <p className="text-[11px] text-black m-0">Student Entry Test Ticket</p>
                             </div>
                             
-                            <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
-                                <div style={{ marginBottom: '8px' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
-                                    <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Student Name</p>
+                                    <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.name}</p>
                                 </div>
-                                <div style={{ marginBottom: '8px' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
-                                    <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.father_name}</span>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Father's Name</p>
+                                    <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.father_name}</p>
                                 </div>
-                                <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
-                                        <span style={{ fontWeight: 'bold' }}>{printData.class_level}</span>
+                                        <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Class</p>
+                                        <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.class_level}</p>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
-                                        <span style={{ fontWeight: 'bold' }}>{printData.gender || 'Not Specified'}</span>
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Gender</p>
+                                        <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.gender || 'Not Specified'}</p>
                                     </div>
                                 </div>
-                                <div style={{ marginBottom: '15px' }}>
-                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
-                                    <span style={{ fontWeight: 'bold' }}>{printData.father_mobile}</span>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Mobile</p>
+                                    <p className="text-[14px] font-black m-0 leading-tight text-black">{printData.father_mobile}</p>
                                 </div>
                             </div>
                             
-                            <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
-                                <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
-                                <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.access_code}</h1>
+                            <div className="mt-8 pt-4 border-t-2 border-dashed border-black text-center">
+                                <p className="text-[11px] font-bold uppercase tracking-widest mb-1 m-0 text-black">Access Code</p>
+                                <p className="text-5xl font-black tracking-widest m-0 leading-none text-black mt-2">{printData.access_code}</p>
                             </div>
                             
-                            <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                            <div className="mt-8 text-[9px] text-center text-black leading-tight">
                                 Please keep this ticket safe.<br/>
-                                {new Date().toLocaleString()}
+                                System Generated: {new Date().toLocaleString()}
                             </div>
                         </div>
+
                 </div>,
                 document.body
             )}

@@ -29,6 +29,9 @@ export default function ResultsList({
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
+    const [dateFilter, setDateFilter] = useState('Today');
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 50;
 
@@ -37,7 +40,42 @@ export default function ResultsList({
             result.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             result.father_name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesClass = classFilter === 'All' || result.class_level === classFilter;
-        return matchesSearch && matchesClass;
+        
+        let matchesDate = true;
+        if (result.created_at) {
+            const resultDate = new Date(result.created_at);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (dateFilter === 'Today') {
+                matchesDate = resultDate >= today;
+            } else if (dateFilter === 'Yesterday') {
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                matchesDate = resultDate >= yesterday && resultDate < today;
+            } else if (dateFilter === 'Last 7 Days') {
+                const last7 = new Date(today);
+                last7.setDate(last7.getDate() - 7);
+                matchesDate = resultDate >= last7;
+            } else if (dateFilter === 'Last 30 Days') {
+                const last30 = new Date(today);
+                last30.setDate(last30.getDate() - 30);
+                matchesDate = resultDate >= last30;
+            } else if (dateFilter === 'Custom Range') {
+                if (customStartDate) {
+                    const start = new Date(customStartDate);
+                    start.setHours(0, 0, 0, 0);
+                    if (resultDate < start) matchesDate = false;
+                }
+                if (customEndDate) {
+                    const end = new Date(customEndDate);
+                    end.setHours(23, 59, 59, 999);
+                    if (resultDate > end) matchesDate = false;
+                }
+            }
+        }
+        
+        return matchesSearch && matchesClass && matchesDate;
     });
 
     const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
@@ -74,18 +112,51 @@ export default function ResultsList({
                         </Link>
                     )}
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 mt-3 md:mt-0 w-full md:w-auto justify-end">
+                <div className="flex flex-col sm:flex-row gap-2 mt-3 md:mt-0 w-full md:w-auto justify-end flex-wrap items-center">
                     <div className="relative">
                         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                             type="text"
                             placeholder="Search student or father..."
-                            className="st-input py-2 text-sm w-full sm:w-60"
+                            className="st-input py-2 text-sm w-full sm:w-48"
                             style={{ paddingLeft: '2.25rem' }}
                             value={searchTerm}
                             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         />
                     </div>
+                    {/* Date filter */}
+                    <div className="flex items-center gap-2">
+                        <select
+                            className="st-input py-2 text-sm"
+                            value={dateFilter}
+                            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
+                        >
+                            <option value="Today">Today</option>
+                            <option value="Yesterday">Yesterday</option>
+                            <option value="Last 7 Days">Last 7 Days</option>
+                            <option value="Last 30 Days">Last 30 Days</option>
+                            <option value="All Time">All Time</option>
+                            <option value="Custom Range">Custom Range</option>
+                        </select>
+                    </div>
+                    {/* Custom Range Inputs */}
+                    {dateFilter === 'Custom Range' && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                className="st-input py-2 text-sm"
+                                value={customStartDate}
+                                onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(1); }}
+                            />
+                            <span className="text-xs text-gray-400">to</span>
+                            <input
+                                type="date"
+                                className="st-input py-2 text-sm"
+                                value={customEndDate}
+                                onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(1); }}
+                            />
+                        </div>
+                    )}
                     <div className="flex items-center gap-2">
                         <Filter size={15} style={{ color: 'var(--text-muted)' }} />
                         <select
