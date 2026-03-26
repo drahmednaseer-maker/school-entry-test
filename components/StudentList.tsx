@@ -54,6 +54,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
         // We need a small timeout to let React render the hidden div with correct data before window.print()
         setTimeout(() => {
             window.print();
+            setPrintData(null);
         }, 100);
     };
 

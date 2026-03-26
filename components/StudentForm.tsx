@@ -24,6 +24,7 @@ export default function StudentForm() {
     const [loading, setLoading] = useState(false);
     const [printData, setPrintData] = useState<PrintData | null>(null);
     const [showPreview, setShowPreview] = useState(false);
+    const [isPrinting, setIsPrinting] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -73,8 +74,10 @@ export default function StudentForm() {
 
     function handlePrint() {
         // Small delay to ensure DOM is ready and updated
+        setIsPrinting(true);
         setTimeout(() => {
             window.print();
+            setIsPrinting(false);
         }, 100);
     }
 
@@ -356,7 +359,7 @@ export default function StudentForm() {
             )}
 
             {/* Hidden component for actual printing - Rendered via Portal at Root level */}
-            {mounted && typeof document !== 'undefined' && printData && createPortal(
+            {mounted && typeof document !== 'undefined' && printData && isPrinting && createPortal(
                 <div id="thermal-receipt-print-form" className="print-only-container flex justify-center bg-white text-black font-sans">
                     <div className="w-[280px]">
                         <div className="text-center border-b-2 border-dashed border-black pb-3 mb-4">
