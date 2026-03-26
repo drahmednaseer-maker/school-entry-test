@@ -362,11 +362,13 @@ select.st-input {
    THERMAL PRINTING 
    ======================== */
 .print-only-container {
-  display: none;
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
 }
 @media print {
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
   .print-only-container,
   .print-only-container * {

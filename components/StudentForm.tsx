@@ -90,7 +90,14 @@ export default function StudentForm() {
                 </div>
 
                 <div className="p-5">
-                    <form ref={formRef} action={handleSubmit} className="space-y-6">
+                    <form 
+                        ref={formRef} 
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            handleSubmit(new FormData(e.currentTarget));
+                        }} 
+                        className="space-y-6"
+                    >
                         {/* Inputs */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
@@ -191,21 +198,6 @@ export default function StudentForm() {
                             >
                                 {loading ? 'Generating...' : lastCode ? 'Update Access Code' : 'Generate Access Code'}
                             </button>
-                            {lastCode && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setLastCode(null);
-                                        setPrintData(null);
-                                        setPhoto(null);
-                                        formRef.current?.reset();
-                                    }}
-                                    className="w-full mt-2 text-xs font-bold py-2 rounded-lg hover:bg-gray-100 transition-colors"
-                                    style={{ color: 'var(--text-muted)', border: '1px border var(--border)' }}
-                                >
-                                    Clear Form & New Registration
-                                </button>
-                            )}
                         </div>
                     </form>
 
@@ -255,6 +247,19 @@ export default function StudentForm() {
                                     className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-slate-800 text-white hover:bg-black transition-all shadow-sm"
                                 >
                                     <Printer size={14} /> Print Receipt
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setLastCode(null);
+                                        setPrintData(null);
+                                        setPhoto(null);
+                                        formRef.current?.reset();
+                                    }}
+                                    className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all shadow-sm border border-gray-200"
+                                >
+                                    <X size={14} /> Clear Form
                                 </button>
                             </div>
                         </div>
