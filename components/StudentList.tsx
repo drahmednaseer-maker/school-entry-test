@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteStudent } from '@/lib/actions';
-import { Trash2, Edit2, Search, Filter, User } from 'lucide-react';
+import { Trash2, Edit2, Search, Filter, User, Printer } from 'lucide-react';
 import MasterPasswordModal from './MasterPasswordModal';
  
 interface Student {
@@ -20,12 +20,13 @@ interface Student {
     gender?: string;
 }
  
-const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
  
 export default function StudentList({ initialStudents, userRole }: { initialStudents: Student[], userRole: string }) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
+    const [printData, setPrintData] = useState<Student | null>(null);
     
     const [passwordModal, setPasswordModal] = useState<{
         isOpen: boolean;
@@ -38,6 +39,14 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
         title: '',
         description: ''
     });
+
+    const handlePrint = (student: Student) => {
+        setPrintData(student);
+        // We need a small timeout to let React render the hidden div with correct data before window.print()
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
 
     const filteredStudents = initialStudents.filter(student => {
         const matchesSearch =
@@ -180,6 +189,17 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                                 <td className="px-5 py-3 text-right">
                                     <div className="flex items-center justify-end gap-1">
                                         <button
+                                            onClick={() => handlePrint(student)}
+                                            className="p-2.5 rounded-lg transition-colors flex items-center gap-1.5 px-3"
+                                            style={{ color: 'var(--text-secondary)', minHeight: '44px' }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
+                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                            title="Print Slip"
+                                        >
+                                            <Printer size={16} />
+                                            <span className="text-xs font-bold uppercase tracking-tight">Print</span>
+                                        </button>
+                                        <button
                                             onClick={() => router.push(`/admin/students/${student.id}/admission`)}
                                             className="p-2.5 rounded-lg transition-colors flex items-center gap-1.5 px-3"
                                             style={{ color: 'var(--primary)', minHeight: '44px' }}
@@ -223,6 +243,52 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 onClose={() => setPasswordModal({ ...passwordModal, isOpen: false })}
                 onSuccess={passwordModal.onSuccess}
             />
+            {/* Hidden component for actual printing */}
+            <div id="thermal-receipt-print" className="hidden">
+                {printData && (
+                    <div style={{ fontFamily: 'sans-serif', textAlign: 'left', color: 'black' }}>
+                        <div style={{ textAlign: 'center', borderBottom: '1px dashed black', paddingBottom: '10px', marginBottom: '15px' }}>
+                            <h2 style={{ fontSize: '18px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>Mardan Youth Academy</h2>
+                            <p style={{ fontSize: '12px', margin: '5px 0' }}>Student Entry Test Ticket</p>
+                        </div>
+                        
+                        <div style={{ fontSize: '12px', lineHeight: '1.6' }}>
+                            <div style={{ marginBottom: '8px' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Student:</span><br/>
+                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.name}</span>
+                            </div>
+                            <div style={{ marginBottom: '8px' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Father:</span><br/>
+                                <span style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{printData.father_name}</span>
+                            </div>
+                            <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                <div>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Class:</span><br/>
+                                    <span style={{ fontWeight: 'bold' }}>{printData.class_level}</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Gender:</span><br/>
+                                    <span style={{ fontWeight: 'bold' }}>{printData.gender || 'Not Specified'}</span>
+                                </div>
+                            </div>
+                            <div style={{ marginBottom: '15px' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>Mobile:</span><br/>
+                                <span style={{ fontWeight: 'bold' }}>{printData.father_mobile}</span>
+                            </div>
+                        </div>
+                        
+                        <div style={{ textAlign: 'center', borderTop: '1px dashed black', paddingTop: '15px', marginBottom: '15px' }}>
+                            <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Access Code</p>
+                            <h1 style={{ fontSize: '42px', margin: '0', fontWeight: '900', letterSpacing: '2px' }}>{printData.access_code}</h1>
+                        </div>
+                        
+                        <div style={{ textAlign: 'center', fontSize: '10px', color: '#666' }}>
+                            Please keep this ticket safe.<br/>
+                            {new Date().toLocaleString()}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

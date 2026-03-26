@@ -26,34 +26,10 @@ export default async function StudentsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 gap-8">
                 {/* Form Section - Quick Entry */}
-                <div className="lg:col-span-2">
+                <div>
                     <StudentForm />
-                </div>
-
-                {/* Form Section - Full Entry Action */}
-                <div className="lg:col-span-1">
-                    <div className="h-full rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col p-6 space-y-4" style={{ background: 'var(--bg-surface)' }}>
-                        <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0 border border-amber-100/50">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-black text-blue-900 leading-tight">Full Student Admission</h3>
-                            <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">Enter all academic, personal, and medical details in a single step for formal registration.</p>
-                        </div>
-                        <a 
-                            href="/admin/students/new/admission" 
-                            className="st-btn-ghost w-full flex items-center justify-center gap-2 py-3 border border-gray-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 transition-all font-bold text-sm"
-                        >
-                            Start Full Admission
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </a>
-                    </div>
                 </div>
             </div>
 

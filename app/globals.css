@@ -374,13 +374,14 @@ select.st-input {
     left: 0 !important;
     top: 0 !important;
     width: 80mm !important;
-    padding: 5mm !important;
+    height: 210mm !important;
+    padding: 10mm 5mm !important;
     background: white !important;
     color: black !important;
     display: block !important;
   }
   @page {
-    size: 80mm auto;
+    size: 80mm 210mm;
     margin: 0;
   }
 }
