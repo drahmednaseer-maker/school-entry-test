@@ -90,12 +90,19 @@ function initTables(database: any) {
       ['contact1_whatsapp', 'INTEGER DEFAULT 0'],
       ['contact2_name', 'TEXT'],
       ['contact2_phone', 'TEXT'],
+      ['contact2_whatsapp', 'INTEGER DEFAULT 0'],
       ['contact3_name', 'TEXT'],
       ['contact3_phone', 'TEXT'],
+      ['contact3_whatsapp', 'INTEGER DEFAULT 0'],
       ['reg_no', 'TEXT'],
       ['date_of_test', 'TEXT'],
       ['date_of_admission', 'TEXT'],
       ['admin_notes', 'TEXT'],
+      ['is_intl_wa', 'INTEGER DEFAULT 0'],
+      ['intl_wa_name', 'TEXT'],
+      ['intl_wa_phone', 'TEXT'],
+      ['intl_wa_country', 'TEXT'],
+      ['intl_wa_verified', 'INTEGER DEFAULT 0'],
     ];
     for (const [col, type] of admissionFields) {
       if (!studentCols.find((c: any) => c.name === col)) {
