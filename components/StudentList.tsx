@@ -20,7 +20,7 @@ interface Student {
     gender?: string;
 }
  
-const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
  
 export default function StudentList({ initialStudents, userRole }: { initialStudents: Student[], userRole: string }) {
     const router = useRouter();

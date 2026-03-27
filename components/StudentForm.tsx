@@ -4,6 +4,8 @@ import { generateStudentCode } from '@/lib/actions';
 import { useRef, useState } from 'react';
 import WebcamCapture from './WebcamCapture';
 import { UserPlus, Copy, Check, Printer, Eye, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { useEffect } from 'react';
 
 interface PrintData {
     name: string;
@@ -22,6 +24,12 @@ export default function StudentForm() {
     const [loading, setLoading] = useState(false);
     const [printData, setPrintData] = useState<PrintData | null>(null);
     const [showPreview, setShowPreview] = useState(false);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     async function handleSubmit(formData: FormData) {
         const fatherMobile = formData.get('father_mobile') as string;
@@ -65,79 +73,12 @@ export default function StudentForm() {
     }
 
     function handlePrint() {
-        if (!printData) return;
-        const printWindow = window.open('', '_blank', 'width=500,height=700');
-        if (!printWindow) {
-            alert('Please allow popups for this site to print receipts.');
-            return;
-        }
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Receipt - ${printData.name}</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: sans-serif; padding: 16px; width: 280px; color: #000; }
-                    .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 12px; margin-bottom: 16px; }
-                    .header h2 { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px; }
-                    .header p { font-size: 11px; margin-top: 2px; }
-                    .field { margin-bottom: 14px; }
-                    .field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; line-height: 1; margin-bottom: 2px; }
-                    .field-value { font-size: 14px; font-weight: 900; text-transform: uppercase; line-height: 1.2; }
-                    .field-value.normal { text-transform: none; }
-                    .row { display: flex; gap: 8px; }
-                    .row .field { flex: 1; }
-                    .code-section { margin-top: 24px; padding-top: 16px; border-top: 2px dashed #000; text-align: center; }
-                    .code-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 8px; }
-                    .code-value { font-size: 42px; font-weight: 900; letter-spacing: 4px; line-height: 1; }
-                    .footer { margin-top: 24px; font-size: 9px; text-align: center; line-height: 1.5; }
-                    @media print { body { width: 80mm; } }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h2>Mardan Youth Academy</h2>
-                    <p>Student Entry Test Ticket</p>
-                </div>
-                <div class="field">
-                    <div class="field-label">Student Name</div>
-                    <div class="field-value">${printData.name || ''}</div>
-                </div>
-                <div class="field">
-                    <div class="field-label">Father's Name</div>
-                    <div class="field-value">${printData.fatherName || ''}</div>
-                </div>
-                <div class="row">
-                    <div class="field">
-                        <div class="field-label">Class</div>
-                        <div class="field-value">${printData.classLevel || ''}</div>
-                    </div>
-                    <div class="field">
-                        <div class="field-label">Gender</div>
-                        <div class="field-value">${printData.gender || 'N/A'}</div>
-                    </div>
-                </div>
-                <div class="field">
-                    <div class="field-label">Mobile</div>
-                    <div class="field-value normal">${printData.fatherMobile || ''}</div>
-                </div>
-                <div class="code-section">
-                    <div class="code-label">Access Code</div>
-                    <div class="code-value">${printData.code || ''}</div>
-                </div>
-                <div class="footer">
-                    Please keep this ticket safe.<br>
-                    System Generated: ${new Date().toLocaleString()}
-                </div>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
+        // Small delay to ensure DOM is ready and updated
+        setIsPrinting(true);
+        setTimeout(() => {
+            window.print();
+            setIsPrinting(false);
+        }, 100);
     }
 
     return (
@@ -417,6 +358,53 @@ export default function StudentForm() {
                 </div>
             )}
 
+            {/* Hidden component for actual printing - Rendered via Portal at Root level */}
+            {mounted && typeof document !== 'undefined' && printData && isPrinting && createPortal(
+                <div id="thermal-receipt-print-form" className="print-only-container flex justify-center bg-white text-black font-sans">
+                    <div className="w-[280px]">
+                        <div className="text-center border-b-2 border-dashed border-black pb-3 mb-4">
+                            <h5 className="font-black text-sm uppercase tracking-tighter text-black m-0">Mardan Youth Academy</h5>
+                            <p className="text-[11px] text-black m-0">Student Entry Test Ticket</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Student Name</p>
+                                <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.name}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Father's Name</p>
+                                <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.fatherName}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Class</p>
+                                    <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.classLevel}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Gender</p>
+                                    <p className="text-[14px] font-black uppercase m-0 leading-tight text-black">{printData.gender}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-bold text-black m-0 leading-tight">Mobile</p>
+                                <p className="text-[14px] font-black m-0 leading-tight text-black">{printData.fatherMobile}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-8 pt-4 border-t-2 border-dashed border-black text-center">
+                            <p className="text-[11px] font-bold uppercase tracking-widest mb-1 m-0 text-black">Access Code</p>
+                            <p className="text-5xl font-black tracking-widest m-0 leading-none text-black mt-2">{printData.code}</p>
+                        </div>
+                        
+                        <div className="mt-8 text-[9px] text-center text-black leading-tight">
+                            Please keep this ticket safe.<br/>
+                            System Generated: {new Date().toLocaleString()}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
