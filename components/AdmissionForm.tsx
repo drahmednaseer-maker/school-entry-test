@@ -167,6 +167,7 @@ export default function AdmissionForm({ student }: { student?: Student }) {
     });
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [saveError, setSaveError] = useState<string>('');
     const [generatedCode, setGeneratedCode] = useState<string | null>(null);
     const [showWebcam, setShowWebcam] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,6 +225,7 @@ export default function AdmissionForm({ student }: { student?: Student }) {
     const handleSave = async () => {
         setIsSaving(true);
         setSaveStatus('idle');
+        setSaveError('');
         setGeneratedCode(null);
         try {
             if (student?.id) {
@@ -234,6 +236,7 @@ export default function AdmissionForm({ student }: { student?: Student }) {
                     setTimeout(() => router.push('/admin/students'), 1500);
                 } else {
                     setSaveStatus('error');
+                    setSaveError(res.error || 'Unknown error');
                 }
             } else {
                 // Create mode
@@ -245,10 +248,12 @@ export default function AdmissionForm({ student }: { student?: Student }) {
                     setTimeout(() => router.push('/admin/students'), 3000);
                 } else {
                     setSaveStatus('error');
+                    setSaveError(res.error || 'Unknown error');
                 }
             }
-        } catch {
+        } catch (e: any) {
             setSaveStatus('error');
+            setSaveError(e?.message || 'Network or server error');
         } finally {
             setIsSaving(false);
         }
@@ -317,7 +322,11 @@ export default function AdmissionForm({ student }: { student?: Student }) {
             )}
             {saveStatus === 'error' && (
                 <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                    <XCircle size={20} /> Error saving form. Please check your connection.
+                    <XCircle size={20} />
+                    <div>
+                        <p className="font-bold text-sm">Error saving form.</p>
+                        {saveError && <p className="text-xs mt-0.5 font-mono opacity-80">{saveError}</p>}
+                    </div>
                 </div>
             )}
 

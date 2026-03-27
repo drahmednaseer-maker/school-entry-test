@@ -832,10 +832,9 @@ export async function saveAdmissionForm(studentId: number, data: Record<string, 
         'slc_no', 'slc_date', 'reason_for_leaving', 'admission_class', 'occupation',
         'country', 'province', 'district', 'tehsil', 'city', 'street_address',
         'contact1_name', 'contact1_phone', 'contact1_whatsapp',
-        'contact2_name', 'contact2_phone',
-        'contact3_name', 'contact3_phone',
+        'contact2_name', 'contact2_phone', 'contact2_whatsapp',
+        'contact3_name', 'contact3_phone', 'contact3_whatsapp',
         'reg_no', 'date_of_test', 'date_of_admission', 'photo',
-        'contact1_whatsapp', 'contact2_whatsapp', 'contact3_whatsapp',
         'is_intl_wa', 'intl_wa_name', 'intl_wa_phone', 'intl_wa_country', 'intl_wa_verified',
         'admin_notes',
     ];
@@ -849,10 +848,15 @@ export async function saveAdmissionForm(studentId: number, data: Record<string, 
     }
     if (sets.length === 0) return { success: false, error: 'No data' };
     vals.push(studentId);
-    db.prepare(`UPDATE students SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
-    revalidatePath('/admin/students');
-    revalidatePath(`/admin/students/${studentId}/admission`);
-    return { success: true };
+    try {
+        db.prepare(`UPDATE students SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+        revalidatePath('/admin/students');
+        revalidatePath(`/admin/students/${studentId}/admission`);
+        return { success: true };
+    } catch (error: any) {
+        console.error('[saveAdmissionForm] Error:', error);
+        return { success: false, error: error.message || 'Database update failed' };
+    }
 }
 
 export async function createFullStudent(data: Record<string, any>) {
