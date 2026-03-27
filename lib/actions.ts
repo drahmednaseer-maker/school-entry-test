@@ -826,6 +826,12 @@ export async function getStudentById(id: number) {
 
 export async function saveAdmissionForm(studentId: number, data: Record<string, any>) {
     const db = getDb();
+    // SQLite cannot bind booleans or undefined — convert them
+    const sanitize = (v: any) => {
+        if (v === undefined || v === '') return null;
+        if (typeof v === 'boolean') return v ? 1 : 0;
+        return v;
+    };
     const allowed = [
         'name', 'father_name', 'father_mobile', 'class_level', 'gender',
         'dob', 'guardian_name', 'father_cnic', 'previous_school', 'previous_class',
@@ -843,7 +849,7 @@ export async function saveAdmissionForm(studentId: number, data: Record<string, 
     for (const key of allowed) {
         if (key in data) {
             sets.push(`${key} = ?`);
-            vals.push(data[key]);
+            vals.push(sanitize(data[key]));
         }
     }
     if (sets.length === 0) return { success: false, error: 'No data' };
@@ -862,7 +868,12 @@ export async function saveAdmissionForm(studentId: number, data: Record<string, 
 export async function createFullStudent(data: Record<string, any>) {
     const db = getDb();
     const accessCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
+    // SQLite cannot bind booleans or undefined — convert them
+    const sanitize = (v: any) => {
+        if (v === undefined || v === '') return null;
+        if (typeof v === 'boolean') return v ? 1 : 0;
+        return v;
+    };
     // Get active session
     const activeSession = db.prepare('SELECT id FROM sessions WHERE is_active = 1 LIMIT 1').get() as any;
     const sessionId = activeSession?.id || null;
@@ -873,10 +884,9 @@ export async function createFullStudent(data: Record<string, any>) {
         'slc_no', 'slc_date', 'reason_for_leaving', 'admission_class', 'occupation',
         'country', 'province', 'district', 'tehsil', 'city', 'street_address',
         'contact1_name', 'contact1_phone', 'contact1_whatsapp',
-        'contact2_name', 'contact2_phone',
-        'contact3_name', 'contact3_phone',
+        'contact2_name', 'contact2_phone', 'contact2_whatsapp',
+        'contact3_name', 'contact3_phone', 'contact3_whatsapp',
         'reg_no', 'date_of_test', 'date_of_admission', 'photo',
-        'contact1_whatsapp', 'contact2_whatsapp', 'contact3_whatsapp',
         'is_intl_wa', 'intl_wa_name', 'intl_wa_phone', 'intl_wa_country', 'intl_wa_verified',
         'admin_notes',
     ];
@@ -889,7 +899,7 @@ export async function createFullStudent(data: Record<string, any>) {
         if (key in data) {
             keys.push(key);
             placeholders.push('?');
-            vals.push(data[key]);
+            vals.push(sanitize(data[key]));
         }
     }
 
