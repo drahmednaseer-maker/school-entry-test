@@ -172,85 +172,171 @@ export default function ResultsList({
 
             {/* Table */}
             <div className="overflow-x-auto overflow-y-auto flex-1 min-h-0">
-                <table className="w-full text-sm st-table min-w-[1000px]">
+                <table className="w-full text-sm st-table min-w-[1000px] border-collapse">
                     <thead className="sticky top-0 z-10" style={{ background: 'var(--bg-surface-2)' }}>
-                        <tr>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Student</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Father's Name</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Class</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Score</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Admission</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Admitted In</th>
-                            <th className="px-5 py-3 text-center text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Registered</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>Date</th>
-                            <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Action</th>
+                        <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Student Participant</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Guardian / Contact</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Class</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Score Analytics</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Admission Status</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Admitted Group</th>
+                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Reg</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden lg:table-cell" style={{ color: 'var(--text-muted)' }}>Date</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Access</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                         {paginatedResults.length > 0 ? (
                             paginatedResults.map((result) => (
-                                <tr key={result.id}>
-                                    <td className="px-5 py-3">
-                                        <div className="flex items-center gap-2.5">
-                                            {result.photo ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
-                                                <img
-                                                    src={result.photo}
-                                                    alt={result.name}
-                                                    className="w-8 h-8 rounded-full object-cover border shrink-0"
-                                                    style={{ borderColor: 'var(--border)' }}
-                                                />
-                                            ) : (
-                                                <div
-                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                                                    style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}
-                                                >
-                                                    {result.name?.charAt(0)?.toUpperCase()}
-                                                </div>
-                                            )}
-                                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{result.name}</span>
+                                <tr 
+                                    key={result.id}
+                                    className="group transition-all duration-200 hover:bg-[#f8fafc] dark:hover:bg-white/5"
+                                >
+                                    {/* Student Participant */}
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative shrink-0">
+                                                {result.photo ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img
+                                                        src={result.photo}
+                                                        alt={result.name}
+                                                        className="w-10 h-10 rounded-xl object-cover border-2 shadow-sm transition-transform group-hover:scale-105"
+                                                        style={{ borderColor: 'var(--bg-surface)' }}
+                                                    />
+                                                ) : (
+                                                    <div
+                                                        className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black border-2 shadow-sm transition-transform group-hover:scale-105"
+                                                        style={{ background: 'var(--primary-muted)', color: 'var(--primary)', borderColor: 'var(--bg-surface)' }}
+                                                    >
+                                                        {result.name?.charAt(0)?.toUpperCase()}
+                                                    </div>
+                                                )}
+                                                {/* Hidden Gender Logic - result doesn't have gender from dashboard query, keeping it simple */}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="font-bold truncate text-sm" style={{ color: 'var(--text-primary)' }}>{result.name}</span>
+                                                <span className="text-[10px] font-bold tracking-wider opacity-40 uppercase">UID: #{result.id.toString().padStart(4, '0')}</span>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td className="px-5 py-3 text-sm hidden md:table-cell font-urdu" style={{ color: 'var(--text-secondary)' }}>{result.father_name}</td>
-                                    <td className="px-5 py-3 text-xs hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>{result.class_level}</td>
-                                    <td className="px-5 py-3 font-bold text-sm" style={{ color: 'var(--success)' }}>{result.score} / 30</td>
-                                    <td className="px-5 py-3 hidden sm:table-cell">
-                                        {result.admission_status === 'granted' ? (
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>Granted</span>
-                                        ) : result.admission_status === 'not_granted' ? (
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>Not Granted</span>
+
+                                    {/* Guardian */}
+                                    <td className="px-6 py-4 hidden md:table-cell">
+                                        <div className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>{result.father_name}</div>
+                                    </td>
+
+                                    {/* Class */}
+                                    <td className="px-6 py-4 hidden sm:table-cell">
+                                        <span className="text-xs font-bold px-2 py-1 rounded bg-slate-100 dark:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+                                            {result.class_level}
+                                        </span>
+                                    </td>
+
+                                    {/* Score Analytics */}
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex justify-between items-center w-28">
+                                                <span className="font-black text-sm" style={{ color: 'var(--success)' }}>{result.score}</span>
+                                                <span className="text-[10px] opacity-40">/ 30</span>
+                                            </div>
+                                            <div className="w-28 h-1.5 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
+                                                <div 
+                                                    className="h-full rounded-full transition-all duration-500"
+                                                    style={{ 
+                                                        width: `${((result.score || 0) / 30) * 100}%`,
+                                                        background: 'var(--success)'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {/* Admission Status */}
+                                    <td className="px-6 py-4 hidden sm:table-cell">
+                                        <div className="flex">
+                                            {result.admission_status === 'granted' ? (
+                                                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all" 
+                                                      style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>
+                                                    ✅ Granted
+                                                </span>
+                                            ) : result.admission_status === 'not_granted' ? (
+                                                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all" 
+                                                      style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>
+                                                    ❌ Denied
+                                                </span>
+                                            ) : (
+                                                <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all" 
+                                                      style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                                    ⏳ Pending
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    {/* Admitted Class */}
+                                    <td className="px-6 py-4 hidden md:table-cell">
+                                        {result.admitted_class ? (
+                                            <span className="text-[11px] font-black uppercase tracking-tight py-1 px-2 bg-blue-50 dark:bg-blue-500/10 rounded-md" style={{ color: 'var(--primary)' }}>
+                                                {result.admitted_class}
+                                            </span>
                                         ) : (
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Pending</span>
+                                            <span className="text-xs font-bold opacity-30 italic">Not Assigned</span>
                                         )}
                                     </td>
-                                    <td className="px-5 py-3 text-sm font-semibold hidden md:table-cell" style={{ color: 'var(--text-primary)' }}>
-                                        {result.admitted_class || <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>—</span>}
+
+                                    {/* Registered */}
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="flex justify-center">
+                                            <RegisterCheckbox 
+                                                studentId={result.id} 
+                                                isRegistered={result.is_registered} 
+                                                admittedClass={result.admitted_class}
+                                            />
+                                        </div>
                                     </td>
-                                    <td className="px-5 py-3">
-                                        <RegisterCheckbox studentId={result.id} isRegistered={result.is_registered} />
+
+                                    {/* Date */}
+                                    <td className="px-6 py-4 hidden lg:table-cell">
+                                        <div className="text-[11px] font-bold opacity-50 uppercase tracking-tight">
+                                            {new Date(result.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </div>
                                     </td>
-                                    <td className="px-5 py-3 text-xs hidden lg:table-cell" style={{ color: 'var(--text-muted)' }}>{new Date(result.created_at).toLocaleDateString()}</td>
-                                    <td className="px-5 py-3 text-right">
+
+                                    {/* Action */}
+                                    <td className="px-6 py-4 text-right">
                                         <Link
                                             href={`/admin/results/${result.id}`}
-                                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-lg transition-colors"
-                                            style={{ background: 'var(--primary-muted)', color: 'var(--primary)', minHeight: '44px' }}
+                                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl transition-all hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:shadow-sm"
+                                            style={{ color: 'var(--primary)', border: '1px solid transparent' }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-muted)')}
+                                            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
                                         >
-                                            <Eye size={13} /> View
+                                            <Eye size={18} strokeWidth={2.5} />
                                         </Link>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={9} className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                                    {searchTerm || classFilter !== 'All' ? 'No matching results found.' : 'No tests completed yet.'}
+                                <td colSpan={9} className="px-6 py-20 text-center">
+                                    <div className="flex flex-col items-center gap-3 opacity-40">
+                                        <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                                            <Search size={32} />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm">No Result Records Found</p>
+                                            <p className="text-xs">Initial tests have not been registered yet</p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
 
             {/* Pagination */}
             {totalPages > 1 && (

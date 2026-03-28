@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteStudent } from '@/lib/actions';
-import { Trash2, Edit2, Search, Filter, User, Printer } from 'lucide-react';
+import { Trash2, Edit2, Search, Filter, Printer } from 'lucide-react';
 import MasterPasswordModal from './MasterPasswordModal';
+import RegisterCheckbox from './RegisterCheckbox';
 
 interface Student {
     id: number;
@@ -18,9 +19,11 @@ interface Student {
     created_at: string;
     photo?: string;
     gender?: string;
+    is_registered: number;
+    admitted_class?: string | null;
 }
  
-const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+const CLASSES = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
  
 export default function StudentList({ initialStudents, userRole }: { initialStudents: Student[], userRole: string }) {
     const router = useRouter();
@@ -262,101 +265,161 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
 
             {/* Table */}
             <div className="overflow-x-auto">
-                <table className="w-full text-sm st-table min-w-[1000px]">
+                <table className="w-full text-sm st-table min-w-[1000px] border-collapse">
                     <thead>
-                        <tr>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Student</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Code</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>Father / Mobile</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Class</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Status</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>Score</th>
-                            <th className="px-5 py-3 text-right" style={{ color: 'var(--text-secondary)' }}>Actions</th>
+                        <tr className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Student Participant</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Token / Code</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Guardian / Contact</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Grade</th>
+                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Exam Status</th>
+                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Reg</th>
+                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Score</th>
+                            <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                         {filteredStudents.map((student) => (
-                            <tr key={student.id}>
+                            <tr 
+                                key={student.id} 
+                                className="group transition-all duration-200 hover:bg-[#f8fafc] dark:hover:bg-white/5"
+                            >
                                 {/* Student name + photo */}
-                                <td className="px-5 py-3">
-                                    <div className="flex items-center gap-2.5">
-                                        {student.photo ? (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img
-                                                src={student.photo}
-                                                alt={student.name}
-                                                className="w-8 h-8 rounded-full object-cover border shrink-0"
-                                                style={{ borderColor: 'var(--border)' }}
-                                            />
-                                        ) : (
-                                            <div
-                                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                                                style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}
-                                            >
-                                                {student.name?.charAt(0)?.toUpperCase() || <User size={14} />}
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative shrink-0">
+                                            {student.photo ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img
+                                                    src={student.photo}
+                                                    alt={student.name}
+                                                    className="w-10 h-10 rounded-xl object-cover border-2 shadow-sm transition-transform group-hover:scale-105"
+                                                    style={{ borderColor: 'var(--bg-surface)' }}
+                                                />
+                                            ) : (
+                                                <div
+                                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black border-2 shadow-sm transition-transform group-hover:scale-105"
+                                                    style={{ 
+                                                        background: 'var(--primary-muted)', 
+                                                        color: 'var(--primary)',
+                                                        borderColor: 'var(--bg-surface)'
+                                                    }}
+                                                >
+                                                    {student.name?.charAt(0)?.toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 flex items-center justify-center text-[8px] font-bold shadow-sm"
+                                                style={{ 
+                                                    background: student.gender?.toLowerCase() === 'female' ? '#ec4899' : '#0ea5e9',
+                                                    color: 'white',
+                                                    borderColor: 'var(--bg-surface)'
+                                                }}>
+                                                {student.gender?.charAt(0).toUpperCase() || '?'}
                                             </div>
-                                        )}
-                                        <div className="flex flex-col">
-                                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{student.name}</span>
-                                            <span className="text-[10px] uppercase font-bold tracking-tight opacity-50">{student.gender || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="font-bold truncate text-sm" style={{ color: 'var(--text-primary)' }}>{student.name}</span>
+                                            <span className="text-[10px] font-bold tracking-wider opacity-40 uppercase">ID: #{student.id.toString().padStart(4, '0')}</span>
                                         </div>
                                     </div>
                                 </td>
-                                {/* Code */}
-                                <td className="px-5 py-3 font-mono font-bold text-sm" style={{ color: 'var(--primary)' }}>
-                                    {student.access_code}
+
+                                {/* Code / Token */}
+                                <td className="px-6 py-4">
+                                    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border bg-surface-2 font-mono text-sm font-black tracking-widest shadow-sm"
+                                        style={{ borderColor: 'var(--border)', color: 'var(--primary)' }}>
+                                        {student.access_code}
+                                    </div>
                                 </td>
+
                                 {/* Father */}
-                                <td className="px-5 py-3 hidden md:table-cell">
-                                    <div className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>{student.father_name}</div>
-                                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{student.father_mobile}</div>
+                                <td className="px-6 py-4 hidden md:table-cell">
+                                    <div className="flex flex-col">
+                                        <div className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>{student.father_name}</div>
+                                        <div className="text-[11px] font-medium opacity-60 mt-0.5">{student.father_mobile}</div>
+                                    </div>
                                 </td>
+
                                 {/* Class */}
-                                <td className="px-5 py-3 text-xs hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>{student.class_level}</td>
-                                {/* Status */}
-                                <td className="px-5 py-3">
-                                    <span className={`st-badge ${student.status === 'completed' ? 'st-badge-green' : student.status === 'started' ? 'st-badge-blue' : 'st-badge-gray'}`}>
-                                        {(student.status || 'pending').charAt(0).toUpperCase() + (student.status || 'pending').slice(1)}
+                                <td className="px-6 py-4 hidden sm:table-cell">
+                                    <span className="text-xs font-bold px-2 py-1 rounded bg-slate-100 dark:bg-white/5" style={{ color: 'var(--text-secondary)' }}>
+                                        {student.class_level}
                                     </span>
                                 </td>
-                                {/* Score */}
-                                <td className="px-5 py-3 font-bold text-sm hidden sm:table-cell" style={{ color: student.score !== null ? 'var(--success)' : 'var(--text-muted)' }}>
-                                    {student.score !== null ? `${student.score} / 30` : '—'}
+
+                                {/* Status */}
+                                <td className="px-6 py-4 text-center">
+                                    <div className="inline-flex items-center">
+                                        <span className={`st-badge ${
+                                            student.status === 'completed' ? 'st-badge-green' : 
+                                            student.status === 'started' ? 'st-badge-blue' : 
+                                            'st-badge-gray'
+                                        } px-3 py-1 text-[10px] font-bold uppercase tracking-widest shadow-xs`}>
+                                            {student.status || 'pending'}
+                                        </span>
+                                    </div>
                                 </td>
+
+                                {/* Registered */}
+                                <td className="px-6 py-4 text-center">
+                                    <div className="flex justify-center">
+                                        <RegisterCheckbox 
+                                            studentId={student.id} 
+                                            isRegistered={student.is_registered} 
+                                            admittedClass={student.admitted_class}
+                                        />
+                                    </div>
+                                </td>
+
+                                {/* Score */}
+                                <td className="px-6 py-4 hidden sm:table-cell">
+                                    {student.score !== null ? (
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex justify-between items-center w-24">
+                                                <span className="font-black text-sm" style={{ color: 'var(--success)' }}>{student.score}</span>
+                                                <span className="text-[10px] opacity-40">/ 30</span>
+                                            </div>
+                                            <div className="w-24 h-1.5 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
+                                                <div 
+                                                    className="h-full rounded-full transition-all duration-500"
+                                                    style={{ 
+                                                        width: `${(student.score / 30) * 100}%`,
+                                                        background: 'var(--success)'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span className="text-xs font-bold opacity-30 italic">Not available</span>
+                                    )}
+                                </td>
+
                                 {/* Actions */}
-                                <td className="px-5 py-3 text-right">
-                                    <div className="flex items-center justify-end gap-1">
+                                <td className="px-6 py-4 text-right">
+                                    <div className="flex items-center justify-end gap-2">
                                         <button
                                             onClick={() => handlePrint(student)}
-                                            className="p-2.5 rounded-lg transition-colors flex items-center gap-1.5 px-3"
-                                            style={{ color: 'var(--text-secondary)', minHeight: '44px' }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-hover)')}
-                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                                            title="Print Slip"
+                                            className="p-2 rounded-lg transition-all hover:bg-slate-100 dark:hover:bg-white/10 hover:shadow-sm"
+                                            style={{ color: 'var(--text-secondary)' }}
+                                            title="Print Ticket"
                                         >
-                                            <Printer size={16} />
-                                            <span className="text-xs font-bold uppercase tracking-tight">Print</span>
+                                            <Printer size={16} strokeWidth={2.5} />
                                         </button>
                                         <button
                                             onClick={() => router.push(`/admin/students/${student.id}/admission`)}
-                                            className="p-2.5 rounded-lg transition-colors flex items-center gap-1.5 px-3"
-                                            style={{ color: 'var(--primary)', minHeight: '44px' }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-muted)')}
-                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                            className="p-2 rounded-lg transition-all hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:shadow-sm"
+                                            style={{ color: 'var(--primary)' }}
                                             title="Digital Admission Form"
                                         >
-                                            <Edit2 size={16} />
-                                            <span className="text-xs font-bold uppercase tracking-tight">Form</span>
+                                            <Edit2 size={16} strokeWidth={2.5} />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(student.id)}
-                                            className="p-2.5 rounded-lg transition-colors"
-                                            style={{ color: 'var(--danger)', minWidth: '44px', minHeight: '44px' }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--danger-bg)')}
-                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                                            title="Delete Student"
+                                            className="p-2 rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-500/10 hover:shadow-sm"
+                                            style={{ color: 'var(--danger)' }}
+                                            title="Permanently Delete"
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={16} strokeWidth={2.5} />
                                         </button>
                                     </div>
                                 </td>
@@ -364,14 +427,23 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                         ))}
                         {filteredStudents.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="px-6 py-10 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                                    {searchTerm || classFilter !== 'All' ? 'No matching students found.' : 'No students registered yet.'}
+                                <td colSpan={8} className="px-6 py-20 text-center">
+                                    <div className="flex flex-col items-center gap-3 opacity-40">
+                                        <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                                            <Search size={32} />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm">No Student Records Found</p>
+                                            <p className="text-xs">Adjust filters or search parameters</p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
  
             {/* Master Password Prompt */}
             <MasterPasswordModal
