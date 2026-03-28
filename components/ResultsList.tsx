@@ -38,7 +38,14 @@ export default function ResultsList({
     const filteredResults = initialResults.filter(result => {
         const matchesSearch =
             result.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            result.father_name.toLowerCase().includes(searchTerm.toLowerCase());
+            result.father_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            result.id.toString().includes(searchTerm);
+
+        // If searching, ignore date and class filters for "smart" discovery
+        if (searchTerm.trim() !== '') {
+            return matchesSearch;
+        }
+
         const matchesClass = classFilter === 'All' || result.class_level === classFilter;
         
         let matchesDate = true;
@@ -291,6 +298,7 @@ export default function ResultsList({
                                         <div className="flex justify-center">
                                             <RegisterCheckbox 
                                                 studentId={result.id} 
+                                                studentName={result.name}
                                                 isRegistered={result.is_registered} 
                                                 admittedClass={result.admitted_class}
                                             />

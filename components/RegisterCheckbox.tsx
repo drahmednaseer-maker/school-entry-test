@@ -2,23 +2,34 @@
 
 import { useTransition } from 'react';
 import { toggleRegistration } from '@/lib/actions';
+import { useToast } from './Toast';
 
 export default function RegisterCheckbox({ 
     studentId, 
+    studentName,
     isRegistered, 
     admittedClass 
 }: { 
     studentId: number; 
+    studentName: string;
     isRegistered: number;
     admittedClass?: string | null;
 }) {
     const [isPending, startTransition] = useTransition();
+    const { showToast } = useToast();
 
     function handleChange() {
         startTransition(async () => {
             const fd = new FormData();
             fd.set('student_id', String(studentId));
             await toggleRegistration(fd);
+            
+            // Show toast message
+            if (!isRegistered) {
+                showToast(`Registered: ${studentName}`, 'success');
+            } else {
+                showToast(`Removed: ${studentName}`, 'info');
+            }
         });
     }
 
@@ -39,20 +50,23 @@ export default function RegisterCheckbox({
                 className="sr-only"
             />
             <div
-                className="w-5 h-5 rounded-md flex items-center justify-center border-2 transition-all duration-200"
+                className="w-6 h-6 rounded-md flex items-center justify-center border-[2.5px] transition-all duration-200"
                 style={{
                     background: isRegistered 
                         ? (isIncomplete ? 'rgba(245, 158, 11, 0.15)' : 'var(--primary)') 
-                        : 'transparent',
+                        : 'var(--bg-surface-2)',
+                    // High-contrast dark blue outline for both states, but more intense for registered
                     borderColor: isRegistered 
-                        ? (isIncomplete ? '#f59e0b' : 'var(--primary)') 
-                        : 'var(--border)',
+                        ? (isIncomplete ? '#f59e0b' : '#1e3a8a') 
+                        : '#64748b', // Darker gray-blue for better visibility in empty state
                     opacity: isPending ? 0.5 : 1,
-                    boxShadow: isRegistered && !isIncomplete ? '0 0 10px rgba(37, 99, 235, 0.2)' : 'none'
+                    boxShadow: isRegistered && !isIncomplete 
+                        ? '0 0 12px rgba(30, 58, 138, 0.2)' 
+                        : 'none'
                 }}
             >
                 {isRegistered ? (
-                    <svg width="10" height="8" viewBox="0 0 11 9" fill="none" className="transform scale-110">
+                    <svg width="12" height="10" viewBox="0 0 11 9" fill="none" className="transform scale-110">
                         <path 
                             d="M1 4L4 7.5L10 1" 
                             stroke={isIncomplete ? '#f59e0b' : 'white'} 
@@ -64,9 +78,8 @@ export default function RegisterCheckbox({
                 ) : null}
             </div>
             {isIncomplete && (
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white shadow-sm ring-1 ring-amber-500/20" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-500 border-2 border-white shadow-sm ring-2 ring-amber-500/20" />
             )}
         </label>
     );
 }
-

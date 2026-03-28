@@ -124,7 +124,14 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
     const filteredStudents = initialStudents.filter(student => {
         const matchesSearch =
             (student.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (student.father_name?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+            (student.father_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+            (student.id.toString().includes(searchTerm));
+            
+        // If searching, ignore date and class filters for "smart" discovery
+        if (searchTerm.trim() !== '') {
+            return matchesSearch;
+        }
+
         const matchesClass = classFilter === 'All' || student.class_level === classFilter;
         
         let matchesDate = true;
@@ -365,6 +372,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                                     <div className="flex justify-center">
                                         <RegisterCheckbox 
                                             studentId={student.id} 
+                                            studentName={student.name}
                                             isRegistered={student.is_registered} 
                                             admittedClass={student.admitted_class}
                                         />
