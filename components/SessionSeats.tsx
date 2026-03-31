@@ -73,12 +73,22 @@ interface SeatStat {
     total_seats: number;
     male_seats: number;
     female_seats: number;
+    
     registered_total: number;
     registered_male: number;
     registered_female: number;
+    
+    granted_total: number;
+    granted_male: number;
+    granted_female: number;
+
     balance_total: number;
     balance_male: number;
     balance_female: number;
+    
+    balance_granted_total: number;
+    balance_granted_male: number;
+    balance_granted_female: number;
 }
 
 export default function SessionSeats({ sessions }: { sessions: Session[] }) {
@@ -92,7 +102,7 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
         if (!selectedSessionId) return;
         setIsLoading(true);
         getSessionSeatsStats(selectedSessionId).then(data => {
-            setStats(data);
+            setStats(data as SeatStat[]);
             setIsLoading(false);
         });
     }, [selectedSessionId]);
@@ -102,13 +112,16 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
         const newStats = [...stats];
         newStats[index][field] = num;
         
-        // Recalculate balance
+        // Recalculate balances
         if (field === 'total_seats') {
             newStats[index].balance_total = num - newStats[index].registered_total;
+            newStats[index].balance_granted_total = num - newStats[index].granted_total;
         } else if (field === 'male_seats') {
             newStats[index].balance_male = num - newStats[index].registered_male;
+            newStats[index].balance_granted_male = num - newStats[index].granted_male;
         } else if (field === 'female_seats') {
             newStats[index].balance_female = num - newStats[index].registered_female;
+            newStats[index].balance_granted_female = num - newStats[index].granted_female;
         }
         
         setStats(newStats);
@@ -155,15 +168,21 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
                         <tr style={{ background: 'var(--bg-surface-2)' }}>
                             <th className="px-5 py-3 text-left font-semibold uppercase text-xs" rowSpan={2} style={{ color: 'var(--text-secondary)' }}>Class Name</th>
                             <th className="px-5 py-2 text-center font-semibold uppercase text-xs border-b border-l" colSpan={2} style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Available Seats</th>
+                            <th className="px-5 py-2 text-center font-semibold uppercase text-xs border-b border-l" colSpan={2} style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Granted</th>
                             <th className="px-5 py-2 text-center font-semibold uppercase text-xs border-b border-l" colSpan={2} style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Registered</th>
-                            <th className="px-5 py-2 text-center font-semibold uppercase text-xs border-b border-l" colSpan={2} style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Balance</th>
+                            <th className="px-5 py-2 text-center font-semibold uppercase text-xs border-b border-l" colSpan={2} style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Dual Balance</th>
                         </tr>
                         <tr style={{ background: 'var(--bg-surface-2)' }}>
                             <th className="px-3 py-2 text-center font-semibold text-xs border-l" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Male</th>
-                            <th className="px-3 py-2 text-center font-semibold text-xs" style={{ color: '#db2777' }}>Female</th>
-                            <th className="px-3 py-2 text-center font-semibold text-xs border-l" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Male</th>
-                            <th className="px-3 py-2 text-center font-semibold text-xs" style={{ color: '#db2777' }}>Female</th>
-                            <th className="px-3 py-2 text-center font-semibold text-xs border-l" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>Male</th>
+                            <th className="px-3 py-2 text-center font-semibold text-xs border-r" style={{ color: '#db2777', borderColor: 'var(--border)' }}>Female</th>
+                            
+                            <th className="px-3 py-2 text-center font-semibold text-xs transition-colors" style={{ color: 'indigo' }}>Male</th>
+                            <th className="px-3 py-2 text-center font-semibold text-xs border-r" style={{ color: '#9333ea', borderColor: 'var(--border)' }}>Female</th>
+                            
+                            <th className="px-3 py-2 text-center font-semibold text-xs" style={{ color: 'var(--text-secondary)' }}>Male</th>
+                            <th className="px-3 py-2 text-center font-semibold text-xs border-r" style={{ color: '#db2777', borderColor: 'var(--border)' }}>Female</th>
+                            
+                            <th className="px-3 py-2 text-center font-semibold text-xs" style={{ color: 'var(--text-secondary)' }}>Male</th>
                             <th className="px-3 py-2 text-center font-semibold text-xs" style={{ color: '#db2777' }}>Female</th>
                         </tr>
                     </thead>
@@ -176,6 +195,7 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
                                     
                                     {isSplit ? (
                                         <>
+                                            {/* Available Seats */}
                                             <td className="px-3 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
                                                 <NumberControl 
                                                     value={stat.male_seats} 
@@ -184,7 +204,7 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
                                                     disabled={isPending || isLoading}
                                                 />
                                             </td>
-                                            <td className="px-3 py-3 text-center">
+                                            <td className="px-3 py-3 text-center border-r" style={{ borderColor: 'var(--border)' }}>
                                                 <NumberControl 
                                                     value={stat.female_seats} 
                                                     onChange={(val) => handleSeatsChange(i, 'female_seats', String(val))}
@@ -193,23 +213,47 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
                                                 />
                                             </td>
 
-                                            <td className="px-3 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
+                                            {/* Granted Counts */}
+                                            <td className="px-3 py-3 text-center">
+                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs transition-colors" style={{ background: stat.granted_male > 0 ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-surface-2)', color: stat.granted_male > 0 ? 'indigo' : 'var(--text-muted)' }}>{stat.granted_male}</span>
+                                            </td>
+                                            <td className="px-3 py-3 text-center border-r" style={{ borderColor: 'var(--border)' }}>
+                                                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs transition-colors" style={{ background: stat.granted_female > 0 ? 'rgba(147, 51, 234, 0.1)' : 'var(--bg-surface-2)', color: stat.granted_female > 0 ? '#9333ea' : 'var(--text-muted)' }}>{stat.granted_female}</span>
+                                            </td>
+
+                                            {/* Registered Counts */}
+                                            <td className="px-3 py-3 text-center">
                                                 <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs transition-colors" style={{ background: stat.registered_male > 0 ? 'var(--primary-muted)' : 'var(--bg-surface-2)', color: stat.registered_male > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>{stat.registered_male}</span>
                                             </td>
-                                            <td className="px-3 py-3 text-center">
+                                            <td className="px-3 py-3 text-center border-r" style={{ borderColor: 'var(--border)' }}>
                                                 <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-xs transition-colors" style={{ background: stat.registered_female > 0 ? 'rgba(219, 39, 119, 0.1)' : 'var(--bg-surface-2)', color: stat.registered_female > 0 ? '#db2777' : 'var(--text-muted)' }}>{stat.registered_female}</span>
                                             </td>
 
-                                            <td className="px-3 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
-                                                <span className="font-black text-sm" style={{ color: stat.balance_male < 0 ? 'var(--danger)' : stat.balance_male === 0 ? 'var(--text-muted)' : 'var(--success)' }}>{stat.balance_male > 0 ? `+${stat.balance_male}` : stat.balance_male}</span>
+                                            {/* Dual Balance */}
+                                            <td className="px-3 py-3 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="font-black text-sm" title="Registered Balance" style={{ color: stat.balance_male < 0 ? 'var(--danger)' : stat.balance_male === 0 ? 'var(--text-muted)' : 'var(--success)' }}>
+                                                        {stat.balance_male >= 0 ? `+${stat.balance_male}` : stat.balance_male}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold opacity-60" title="Granted Balance" style={{ color: stat.balance_granted_male < 0 ? 'var(--danger)' : 'indigo' }}>
+                                                        G: {stat.balance_granted_male >= 0 ? `+${stat.balance_granted_male}` : stat.balance_granted_male}
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="px-3 py-3 text-center">
-                                                <span className="font-black text-sm" style={{ color: stat.balance_female < 0 ? 'var(--danger)' : stat.balance_female === 0 ? 'var(--text-muted)' : 'var(--success)' }}>{stat.balance_female > 0 ? `+${stat.balance_female}` : stat.balance_female}</span>
+                                                <div className="flex flex-col items-center">
+                                                    <span className="font-black text-sm" title="Registered Balance" style={{ color: stat.balance_female < 0 ? 'var(--danger)' : stat.balance_female === 0 ? 'var(--text-muted)' : 'var(--success)' }}>
+                                                        {stat.balance_female >= 0 ? `+${stat.balance_female}` : stat.balance_female}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold opacity-60" title="Granted Balance" style={{ color: stat.balance_granted_female < 0 ? 'var(--danger)' : '#db2777' }}>
+                                                        G: {stat.balance_granted_female >= 0 ? `+${stat.balance_granted_female}` : stat.balance_granted_female}
+                                                    </span>
+                                                </div>
                                             </td>
                                         </>
                                     ) : (
                                         <>
-                                            <td colSpan={2} className="px-5 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
+                                            <td colSpan={2} className="px-5 py-3 text-center border-l border-r" style={{ borderColor: 'var(--border)' }}>
                                                 <NumberControl 
                                                     value={stat.total_seats} 
                                                     onChange={(val) => handleSeatsChange(i, 'total_seats', String(val))}
@@ -217,11 +261,24 @@ export default function SessionSeats({ sessions }: { sessions: Session[] }) {
                                                     disabled={isPending || isLoading}
                                                 />
                                             </td>
-                                            <td colSpan={2} className="px-5 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
+                                            {/* Granted Total */}
+                                            <td colSpan={2} className="px-5 py-3 text-center border-r" style={{ borderColor: 'var(--border)' }}>
+                                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs" style={{ background: stat.granted_total > 0 ? 'rgba(99, 102, 241, 0.1)' : 'var(--bg-surface-2)', color: stat.granted_total > 0 ? 'indigo' : 'var(--text-muted)' }}>{stat.granted_total}</span>
+                                            </td>
+                                            {/* Registered Total */}
+                                            <td colSpan={2} className="px-5 py-3 text-center border-r" style={{ borderColor: 'var(--border)' }}>
                                                 <span className="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs" style={{ background: stat.registered_total > 0 ? 'var(--primary-muted)' : 'var(--bg-surface-2)', color: stat.registered_total > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>{stat.registered_total}</span>
                                             </td>
-                                            <td colSpan={2} className="px-5 py-3 text-center border-l" style={{ borderColor: 'var(--border)' }}>
-                                                <span className="font-black text-sm" style={{ color: stat.balance_total < 0 ? 'var(--danger)' : stat.balance_total === 0 ? 'var(--text-muted)' : 'var(--success)' }}>{stat.balance_total > 0 ? `+${stat.balance_total}` : stat.balance_total}</span>
+                                            {/* Dual Balance Total */}
+                                            <td colSpan={2} className="px-5 py-3 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="font-black text-sm" style={{ color: stat.balance_total < 0 ? 'var(--danger)' : stat.balance_total === 0 ? 'var(--text-muted)' : 'var(--success)' }}>
+                                                        {stat.balance_total >= 0 ? `+${stat.balance_total}` : stat.balance_total}
+                                                    </span>
+                                                    <span className="text-xs font-bold opacity-60" style={{ color: stat.balance_granted_total < 0 ? 'var(--danger)' : 'indigo' }}>
+                                                        Granted Balance: {stat.balance_granted_total >= 0 ? `+${stat.balance_granted_total}` : stat.balance_granted_total}
+                                                    </span>
+                                                </div>
                                             </td>
                                         </>
                                     )}

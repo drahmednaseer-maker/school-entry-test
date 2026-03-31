@@ -1,9 +1,9 @@
 import { getDb } from '@/lib/db';
-import { Users, CheckCircle, XCircle, TrendingUp, FileText } from 'lucide-react';
+import { Users, CheckCircle, XCircle, TrendingUp, FileText, School } from 'lucide-react';
 import ReportCharts from '@/components/ReportCharts';
 import SessionManager from '@/components/SessionManager';
 import SessionSeats from '@/components/SessionSeats';
-import { getSessions, getSlcStats } from '@/lib/actions';
+import { getSlcStats, getSchoolStats } from '@/lib/actions';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,7 @@ export default async function ReportsPage() {
     const totalNotGranted = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE admission_status='not_granted' ${sessionFilter}`).get(...sessionArgs) as any).c;
     const pendingDecision = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE status='completed' AND (admission_status IS NULL OR admission_status='') ${sessionFilter}`).get(...sessionArgs) as any).c;
 
+
     const seatsQuery = db.prepare(`
         SELECT SUM(
             CASE WHEN class_level LIKE 'Grade%' THEN male_seats + female_seats
@@ -37,7 +38,10 @@ export default async function ReportsPage() {
         FROM session_seats
         WHERE session_id = ?
     `).get(sid) as any;
-    const totalAvailableSeats = seatsQuery?.total || 0;
+    const totalCapacity = seatsQuery?.total || 0;
+    const totalRegistered = (db.prepare(`SELECT COUNT(*) as c FROM students WHERE is_registered=1 ${sessionFilter}`).get(...sessionArgs) as any).c;
+    const totalAvailableReg = totalCapacity - totalRegistered;
+    const totalAvailableGranted = totalCapacity - totalGranted;
 
     const settingsRow = (db.prepare('SELECT english_questions, urdu_questions, math_questions FROM settings WHERE id=1').get() as any);
     const totalQuestions = settingsRow ? (settingsRow.english_questions + settingsRow.urdu_questions + settingsRow.math_questions) : 30;
@@ -75,13 +79,22 @@ export default async function ReportsPage() {
     const timeData = timeRows.map(r => ({ date: r.date?.slice(5), count: r.count }));
 
     const slcStats = await getSlcStats(sid || 0);
+    const schoolStats = await getSchoolStats(sid || 0, totalQuestions);
 
     const statCards = [
         { label: 'Total Tests Taken', value: totalCompleted, icon: Users, color: 'var(--primary)', bg: 'var(--primary-muted)' },
         { label: 'Admission Granted', value: totalGranted, icon: CheckCircle, color: 'var(--success)', bg: 'var(--success-bg)' },
         { label: 'Not Granted', value: totalNotGranted, icon: XCircle, color: 'var(--danger)', bg: 'var(--danger-bg)' },
         { label: 'Total SLCs Issued', value: slcStats.total, icon: FileText, color: '#ec4899', bg: '#fdf2f8' },
-        { label: 'Available Admission Seats', value: totalAvailableSeats, icon: TrendingUp, color: '#7c3aed', bg: '#f5f3ff' },
+        { 
+            label: 'Available Admission Seats', 
+            value: totalAvailableReg, 
+            subValue: totalAvailableGranted,
+            icon: TrendingUp, 
+            color: '#7c3aed', 
+            bg: '#f5f3ff',
+            isDual: true
+        },
     ];
 
     return (
@@ -106,21 +119,30 @@ export default async function ReportsPage() {
 
             {/* Summary stat cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {statCards.map(({ label, value, icon: Icon, color, bg }) => (
+                {statCards.map((card) => (
                     <div
-                        key={label}
+                        key={card.label}
                         className="rounded-2xl p-5 flex flex-col gap-3 shadow-sm relative overflow-hidden group"
                         style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
                     >
                         <div className="flex items-center justify-between z-10">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>
-                                <Icon size={20} style={{ color }} />
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: card.bg }}>
+                                <card.icon size={20} style={{ color: card.color }} />
                             </div>
-                            <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{value}</span>
+                            <div className="text-right">
+                                <span className="text-2xl font-black block" style={{ color: 'var(--text-primary)' }}>
+                                    {card.value}
+                                </span>
+                                {card.isDual && (
+                                    <span className="text-[10px] font-bold block opacity-70" style={{ color: card.color }}>
+                                        G: {card.subValue}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                        <p className="text-xs font-bold uppercase tracking-wide z-10" style={{ color: 'var(--text-muted)' }}>{label}</p>
+                        <p className="text-xs font-bold uppercase tracking-wide z-10" style={{ color: 'var(--text-muted)' }}>{card.label}</p>
                         <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:scale-110 transition-transform duration-500">
-                             <Icon size={80} style={{ color }} />
+                             <card.icon size={80} style={{ color: card.color }} />
                         </div>
                     </div>
                 ))}
@@ -183,42 +205,98 @@ export default async function ReportsPage() {
                 )}
             </div>
 
-            {/* SLC Breakdown */}
-            <div className="rounded-2xl overflow-hidden mt-8" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
-                    <div className="flex items-center gap-2">
-                        <FileText size={16} style={{ color: '#ec4899' }} />
-                        <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>SLC Distribution (Class-wise)</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                {/* SLC Breakdown */}
+                <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                    <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
+                        <div className="flex items-center gap-2">
+                            <FileText size={16} style={{ color: '#ec4899' }} />
+                            <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>SLC Distribution (Class-wise)</h2>
+                        </div>
                     </div>
-                </div>
-                {slcStats.classDistribution.length === 0 ? (
-                    <div className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No SLCs recorded for this session.</div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm st-table">
-                            <thead>
-                                <tr style={{ background: 'var(--bg-surface-2)' }}>
-                                    <th className="px-6 py-3 text-left font-bold uppercase text-xs" style={{ color: 'var(--text-secondary)' }}>Class Level</th>
-                                    <th className="px-6 py-3 text-center font-bold uppercase text-xs" style={{ color: 'var(--text-secondary)' }}>Total SLCs Issued</th>
-                                    <th className="px-6 py-3 text-right font-bold uppercase text-xs" style={{ color: 'var(--text-secondary)' }}>Contribution</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                                {slcStats.classDistribution.map((row) => (
-                                    <tr key={row.class_level} className="hover:bg-slate-50 transition-colors [&:nth-child(even)]:bg-[#fcf8ff]">
-                                        <td className="px-6 py-4 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.class_level}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className="px-3 py-1 rounded-full font-black text-sm" style={{ background: '#fdf2f8', color: '#ec4899' }}>{row.count}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-medium" style={{ color: 'var(--text-muted)' }}>
-                                            {slcStats.total > 0 ? ((row.count / slcStats.total) * 100).toFixed(1) : 0}%
-                                        </td>
+                    {slcStats.classDistribution.length === 0 ? (
+                        <div className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No SLCs recorded.</div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm st-table">
+                                <thead>
+                                    <tr style={{ background: 'var(--bg-surface-2)' }}>
+                                        <th className="px-6 py-3 text-left font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>Class Level</th>
+                                        <th className="px-6 py-3 text-center font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total SLCs</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                                    {slcStats.classDistribution.map((row) => (
+                                        <tr key={row.class_level} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-4 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.class_level}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="px-3 py-1 rounded-full font-black text-xs" style={{ background: '#fdf2f8', color: '#ec4899' }}>{row.count}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* Previous School Analytics */}
+                <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                    <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
+                        <div className="flex items-center gap-2">
+                            <School size={16} style={{ color: 'var(--primary)' }} />
+                            <h2 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Previous School Distribution</h2>
+                        </div>
                     </div>
-                )}
+                    {schoolStats.length === 0 ? (
+                        <div className="px-6 py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>No academic history data found.</div>
+                    ) : (
+                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                            <table className="w-full text-sm st-table">
+                                <thead className="sticky top-0 z-10">
+                                    <tr style={{ background: 'var(--bg-surface-2)' }}>
+                                        <th className="px-6 py-3 text-left font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>School Name</th>
+                                        <th className="px-6 py-3 text-center font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>Total</th>
+                                        <th className="px-6 py-3 text-center font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>Granted</th>
+                                        <th className="px-6 py-3 text-center font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>Avg Score</th>
+                                        <th className="px-6 py-3 text-right font-bold uppercase text-[10px] tracking-wider" style={{ color: 'var(--text-secondary)' }}>Conv.%</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                                    {schoolStats.map((row) => {
+                                        const pct = ((row.granted_count / row.total_count) * 100).toFixed(0);
+                                        const avgPct = Math.round(row.avg_score_pct || 0);
+                                        return (
+                                            <tr key={row.previous_school} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-4 font-semibold text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>{row.previous_school}</td>
+                                                <td className="px-6 py-4 text-center font-black" style={{ color: 'var(--text-secondary)' }}>{row.total_count}</td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="font-bold text-xs" style={{ color: 'var(--success)' }}>{row.granted_count}</span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        <div className="w-12 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                                                            <div className="h-full" style={{ width: `${avgPct}%`, background: avgPct >= 70 ? 'var(--success)' : avgPct >= 40 ? '#f59e0b' : 'var(--danger)' }} />
+                                                        </div>
+                                                        <span className="text-[10px] font-bold" style={{ color: avgPct >= 70 ? 'var(--success)' : avgPct >= 40 ? '#d97706' : 'var(--danger)' }}>{avgPct}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md" style={{ 
+                                                        background: parseInt(pct) >= 70 ? 'var(--success-bg)' : parseInt(pct) >= 40 ? '#fef3c7' : 'var(--danger-bg)', 
+                                                        color: parseInt(pct) >= 70 ? 'var(--success)' : parseInt(pct) >= 40 ? '#d97706' : 'var(--danger)'
+                                                    }}>
+                                                        {pct}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

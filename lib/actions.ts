@@ -1069,21 +1069,45 @@ export async function getSessionSeatsStats(sessionId: number) {
         GROUP BY admitted_class
     `).all(sessionId) as any[];
     const registeredMap = new Map(registeredRows.map((r: any) => [r.admitted_class, r]));
+
+    // Granted means: admission_status = 'granted' AND admitted_class IS NOT NULL
+    const grantedRows = db.prepare(`
+        SELECT admitted_class, 
+               SUM(CASE WHEN gender = 'Male' THEN 1 ELSE 0 END) as male_count,
+               SUM(CASE WHEN gender = 'Female' THEN 1 ELSE 0 END) as female_count,
+               COUNT(*) as total_count 
+        FROM students 
+        WHERE session_id = ? AND admission_status = 'granted' AND admitted_class IS NOT NULL
+        GROUP BY admitted_class
+    `).all(sessionId) as any[];
+    const grantedMap = new Map(grantedRows.map((r: any) => [r.admitted_class, r]));
     
     return classLevels.map(c => {
         const conf = seatsMap.get(c) || { total_seats: 0, male_seats: 0, female_seats: 0 };
         const reg = registeredMap.get(c) || { male_count: 0, female_count: 0, total_count: 0 };
+        const gtd = grantedMap.get(c) || { male_count: 0, female_count: 0, total_count: 0 };
+        
         return {
             class_level: c,
             total_seats: conf.total_seats,
             male_seats: conf.male_seats,
             female_seats: conf.female_seats,
+            
             registered_total: reg.total_count,
             registered_male: reg.male_count,
             registered_female: reg.female_count,
+            
+            granted_total: gtd.total_count,
+            granted_male: gtd.male_count,
+            granted_female: gtd.female_count,
+            
             balance_total: conf.total_seats - reg.total_count,
             balance_male: conf.male_seats - reg.male_count,
-            balance_female: conf.female_seats - reg.female_count
+            balance_female: conf.female_seats - reg.female_count,
+            
+            balance_granted_total: conf.total_seats - gtd.total_count,
+            balance_granted_male: conf.male_seats - gtd.male_count,
+            balance_granted_female: conf.female_seats - gtd.female_count
         };
     });
 }
@@ -1284,4 +1308,21 @@ export async function updateSlc(id: number, formData: FormData) {
         console.error('Error updating SLC:', error);
         return { success: false, error: 'Failed to update SLC record' };
     }
+}
+
+export async function getSchoolStats(sessionId: number, totalQuestions: number) {
+    const db = getDb();
+    const filter = sessionId ? 'WHERE (previous_school IS NOT NULL AND previous_school != \'\') AND session_id = ?' : 'WHERE (previous_school IS NOT NULL AND previous_school != \'\')';
+    const args = sessionId ? [sessionId] : [];
+    
+    return db.prepare(`
+        SELECT previous_school, 
+               COUNT(*) as total_count,
+               SUM(CASE WHEN admission_status = 'granted' THEN 1 ELSE 0 END) as granted_count,
+               AVG(CASE WHEN status='completed' AND score IS NOT NULL THEN CAST(score AS REAL) / ? * 100 ELSE NULL END) as avg_score_pct
+        FROM students 
+        ${filter}
+        GROUP BY previous_school 
+        ORDER BY total_count DESC
+    `).all(totalQuestions, ...args) as any[];
 }
