@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Filter, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Eye, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import RegisterCheckbox from '@/components/RegisterCheckbox';
 
 interface Result {
@@ -33,6 +33,8 @@ export default function ResultsList({
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortField, setSortField] = useState<'none' | 'admission_status' | 'is_registered'>('none');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const itemsPerPage = 50;
 
     const filteredResults = initialResults.filter(result => {
@@ -85,9 +87,44 @@ export default function ResultsList({
         return matchesSearch && matchesClass && matchesDate;
     });
 
-    const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+    const sortedResults = [...filteredResults].sort((a, b) => {
+        if (sortField === 'none') return 0;
+
+        let valA: any = a[sortField];
+        let valB: any = b[sortField];
+
+        // Handle null/undefined for admission_status
+        if (valA === null || valA === undefined) valA = '';
+        if (valB === null || valB === undefined) valB = '';
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const handleSort = (field: 'admission_status' | 'is_registered') => {
+        if (sortField === field) {
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+            } else {
+                setSortField('none');
+                setSortDirection('asc');
+            }
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+        setCurrentPage(1);
+    };
+
+    const SortIcon = ({ field }: { field: 'admission_status' | 'is_registered' }) => {
+        if (sortField !== field) return <ArrowUpDown size={12} className="ml-1 opacity-50" />;
+        return sortDirection === 'asc' ? <ChevronUp size={12} className="ml-1 text-primary" /> : <ChevronDown size={12} className="ml-1 text-primary" />;
+    };
+
+    const totalPages = Math.ceil(sortedResults.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedResults = filteredResults.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedResults = sortedResults.slice(startIndex, startIndex + itemsPerPage);
 
     const classes = ['All', 'PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
 
@@ -107,7 +144,7 @@ export default function ResultsList({
             >
                 <div className="flex items-center gap-3">
                     <h3 className="font-bold text-sm shrink-0" style={{ color: 'var(--text-primary)' }}>
-                        {title} <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({filteredResults.length})</span>
+                        {title} <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({sortedResults.length})</span>
                     </h3>
                     {showViewAll && (
                         <Link
@@ -186,9 +223,25 @@ export default function ResultsList({
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Guardian / Contact</th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Class</th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Score Analytics</th>
-                            <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Admission Status</th>
+                            <th 
+                                className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors" 
+                                style={{ color: 'var(--text-muted)' }}
+                                onClick={() => handleSort('admission_status')}
+                            >
+                                <div className="flex items-center">
+                                    Admission Status <SortIcon field="admission_status" />
+                                </div>
+                            </th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Admitted Group</th>
-                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Reg</th>
+                            <th 
+                                className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em] cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors" 
+                                style={{ color: 'var(--text-muted)' }}
+                                onClick={() => handleSort('is_registered')}
+                            >
+                                <div className="flex items-center justify-center">
+                                    Reg <SortIcon field="is_registered" />
+                                </div>
+                            </th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden lg:table-cell" style={{ color: 'var(--text-muted)' }}>Date</th>
                             <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Access</th>
                         </tr>
@@ -353,7 +406,7 @@ export default function ResultsList({
                     style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
                 >
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                        Showing <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{startIndex + 1}–{Math.min(startIndex + itemsPerPage, filteredResults.length)}</span> of {filteredResults.length}
+                        Showing <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedResults.length)}</span> of {sortedResults.length}
                     </p>
                     <div className="flex items-center gap-2">
                         <button

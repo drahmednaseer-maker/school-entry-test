@@ -42,13 +42,11 @@ export default function AdminDashboard() {
         FROM students s
         WHERE status = 'completed' AND session_id = ?
         ORDER BY created_at DESC
-        LIMIT 50
     `).all(sessionId) as any[] : db.prepare(`
         SELECT s.id, s.name, s.father_name, s.class_level, s.score, s.created_at, s.photo, s.admission_status, s.admitted_class, s.is_registered
         FROM students s
         WHERE status = 'completed'
         ORDER BY created_at DESC
-        LIMIT 50
     `).all() as any[];
 
     const statCards = [

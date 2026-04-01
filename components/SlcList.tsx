@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Trash2, Edit2, Search, Filter, User, X, Check, Loader2, Calendar, BookOpen, GraduationCap } from 'lucide-react';
+import { Trash2, Edit2, Search, Filter, User, X, Check, Loader2, Calendar, BookOpen, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import MasterPasswordModal from './MasterPasswordModal';
 import { deleteSlc, updateSlc } from '@/lib/actions';
 
@@ -25,6 +25,8 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
     const [classFilter, setClassFilter] = useState('All');
     const [sectionFilter, setSectionFilter] = useState('All');
     const [isPending, startTransition] = useTransition();
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 50;
 
     // Edit state
     const [editingSlc, setEditingSlc] = useState<SlcRecord | null>(null);
@@ -50,6 +52,14 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
         const matchesSection = sectionFilter === 'All' || slc.section === sectionFilter;
         return matchesSearch && matchesClass && matchesSection;
     });
+
+    const totalPages = Math.ceil(filteredSlcs.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedSlcs = filteredSlcs.slice(startIndex, startIndex + itemsPerPage);
+
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) setCurrentPage(page);
+    };
 
     const classes = ['All', 'PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
 
@@ -140,7 +150,7 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                             className="st-input py-2 text-sm w-full sm:w-60 relative z-0"
                             style={inputStyle}
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         />
                     </div>
 
@@ -152,7 +162,7 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                                 className="st-input py-2 text-sm min-w-[120px] relative z-0"
                                 style={inputStyle}
                                 value={classFilter}
-                                onChange={(e) => setClassFilter(e.target.value)}
+                                onChange={(e) => { setClassFilter(e.target.value); setCurrentPage(1); }}
                             >
                                 {classes.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -167,7 +177,7 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                                 className="st-input py-2 text-sm min-w-[120px] relative z-0"
                                 style={inputStyle}
                                 value={sectionFilter}
-                                onChange={(e) => setSectionFilter(e.target.value)}
+                                onChange={(e) => { setSectionFilter(e.target.value); setCurrentPage(1); }}
                             >
                                 {['All', ...SECTIONS].map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
@@ -191,8 +201,8 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                         </tr>
                     </thead>
                     <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                        {filteredSlcs.length > 0 ? (
-                            filteredSlcs.map((slc) => (
+                        {paginatedSlcs.length > 0 ? (
+                            paginatedSlcs.map((slc) => (
                                 <tr key={slc.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-3">
@@ -249,14 +259,55 @@ export default function SlcList({ initialSlcs, userRole }: { initialSlcs: SlcRec
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                                    No SLC records found matching your criteria.
+                                <td colSpan={7} className="px-6 py-20 text-center">
+                                    <div className="flex flex-col items-center gap-3 opacity-40">
+                                        <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                                            <Search size={32} />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm">No SLC Records Found</p>
+                                            <p className="text-xs">Try adjusting your search or filters</p>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div
+                    className="p-4 border-t flex items-center justify-between font-sans"
+                    style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
+                >
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Showing <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{startIndex + 1}–{Math.min(startIndex + itemsPerPage, filteredSlcs.length)}</span> of {filteredSlcs.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="st-btn-ghost p-2.5"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                            {currentPage} / {totalPages}
+                        </span>
+                        <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="st-btn-ghost p-2.5"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Edit Modal */}
             {editingSlc && (

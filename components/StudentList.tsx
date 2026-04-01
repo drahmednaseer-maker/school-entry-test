@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { deleteStudent } from '@/lib/actions';
-import { Trash2, Edit2, Search, Filter, Printer } from 'lucide-react';
+import { Trash2, Edit2, Search, Filter, Printer, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import MasterPasswordModal from './MasterPasswordModal';
 import RegisterCheckbox from './RegisterCheckbox';
 
@@ -32,6 +32,10 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
     const [dateFilter, setDateFilter] = useState('Today');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
+    const [sortField, setSortField] = useState<'none' | 'status' | 'is_registered'>('none');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 50;
     
     const [passwordModal, setPasswordModal] = useState<{
         isOpen: boolean;
@@ -171,6 +175,49 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
         return matchesSearch && matchesClass && matchesDate;
     });
 
+    const sortedStudents = [...filteredStudents].sort((a, b) => {
+        if (sortField === 'none') return 0;
+
+        let valA: any = a[sortField];
+        let valB: any = b[sortField];
+
+        // Handle null/undefined
+        if (valA === null || valA === undefined) valA = '';
+        if (valB === null || valB === undefined) valB = '';
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const totalPages = Math.ceil(sortedStudents.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedStudents = sortedStudents.slice(startIndex, startIndex + itemsPerPage);
+
+    const handleSort = (field: 'status' | 'is_registered') => {
+        if (sortField === field) {
+            if (sortDirection === 'asc') {
+                setSortDirection('desc');
+            } else {
+                setSortField('none');
+                setSortDirection('asc');
+            }
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) setCurrentPage(page);
+    };
+
+    const SortIcon = ({ field }: { field: 'status' | 'is_registered' }) => {
+        if (sortField !== field) return <ArrowUpDown size={12} className="ml-1 opacity-50" />;
+        return sortDirection === 'asc' ? <ChevronUp size={12} className="ml-1 text-primary" /> : <ChevronDown size={12} className="ml-1 text-primary" />;
+    };
+
     const handleDelete = async (id: number) => {
         const performDelete = async () => {
             if (confirm('Delete this student record? This will also delete their test sessions.')) {
@@ -208,7 +255,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
             >
                 <h3 className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                    Registered Students <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({filteredStudents.length})</span>
+                    Registered Students <span className="font-normal text-xs ml-1" style={{ color: 'var(--text-muted)' }}>({sortedStudents.length})</span>
                 </h3>
                 <div className="flex flex-col sm:flex-row gap-2 flex-wrap items-center">
                     {/* Search */}
@@ -220,7 +267,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                             className="st-input py-2 text-sm w-full sm:w-48"
                             style={{ paddingLeft: '2.25rem' }}
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         />
                     </div>
                     {/* Date filter */}
@@ -228,7 +275,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                         <select
                             className="st-input py-2 text-sm"
                             value={dateFilter}
-                            onChange={(e) => setDateFilter(e.target.value)}
+                            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
                         >
                             <option value="Today">Today</option>
                             <option value="Yesterday">Yesterday</option>
@@ -245,14 +292,14 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                                 type="date"
                                 className="st-input py-2 text-sm"
                                 value={customStartDate}
-                                onChange={(e) => setCustomStartDate(e.target.value)}
+                                onChange={(e) => { setCustomStartDate(e.target.value); setCurrentPage(1); }}
                             />
                             <span className="text-xs text-gray-400">to</span>
                             <input
                                 type="date"
                                 className="st-input py-2 text-sm"
                                 value={customEndDate}
-                                onChange={(e) => setCustomEndDate(e.target.value)}
+                                onChange={(e) => { setCustomEndDate(e.target.value); setCurrentPage(1); }}
                             />
                         </div>
                     )}
@@ -262,7 +309,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                         <select
                             className="st-input py-2 text-sm"
                             value={classFilter}
-                            onChange={(e) => setClassFilter(e.target.value)}
+                            onChange={(e) => { setClassFilter(e.target.value); setCurrentPage(1); }}
                         >
                             {classes.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -279,14 +326,30 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Token / Code</th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden md:table-cell" style={{ color: 'var(--text-muted)' }}>Guardian / Contact</th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Grade</th>
-                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Exam Status</th>
-                            <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Reg</th>
+                            <th 
+                                className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em] cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors" 
+                                style={{ color: 'var(--text-muted)' }}
+                                onClick={() => handleSort('status')}
+                            >
+                                <div className="flex items-center justify-center">
+                                    Exam Status <SortIcon field="status" />
+                                </div>
+                            </th>
+                            <th 
+                                className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.1em] cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors" 
+                                style={{ color: 'var(--text-muted)' }}
+                                onClick={() => handleSort('is_registered')}
+                            >
+                                <div className="flex items-center justify-center">
+                                    Reg <SortIcon field="is_registered" />
+                                </div>
+                            </th>
                             <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-[0.1em] hidden sm:table-cell" style={{ color: 'var(--text-muted)' }}>Score</th>
                             <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.1em]" style={{ color: 'var(--text-muted)' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                        {filteredStudents.map((student) => (
+                        {paginatedStudents.map((student) => (
                             <tr 
                                 key={student.id} 
                                 className="group transition-all duration-200 hover:bg-[#f8fafc] dark:hover:bg-white/5"
@@ -433,7 +496,7 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                                 </td>
                             </tr>
                         ))}
-                        {filteredStudents.length === 0 && (
+                        {paginatedStudents.length === 0 && (
                             <tr>
                                 <td colSpan={8} className="px-6 py-20 text-center">
                                     <div className="flex flex-col items-center gap-3 opacity-40">
@@ -452,7 +515,39 @@ export default function StudentList({ initialStudents, userRole }: { initialStud
                 </table>
             </div>
 
- 
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div
+                    className="p-4 border-t flex items-center justify-between"
+                    style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}
+                >
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Showing <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{startIndex + 1}–{Math.min(startIndex + itemsPerPage, sortedStudents.length)}</span> of {sortedStudents.length}
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="st-btn-ghost p-2.5"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                            {currentPage} / {totalPages}
+                        </span>
+                        <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="st-btn-ghost p-2.5"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Master Password Prompt */}
             <MasterPasswordModal
                 isOpen={passwordModal.isOpen}
