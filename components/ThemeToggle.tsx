@@ -2,6 +2,7 @@
 
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
+import clsx from 'clsx';
 
 interface ThemeToggleProps {
     className?: string;
@@ -16,7 +17,7 @@ export default function ThemeToggle({ className = '', isPremium = false }: Theme
             onClick={toggle}
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme"
-            className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${className}`}
+            className={clsx("relative rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95", className)}
             style={isPremium ? {
                 background: 'rgba(255, 255, 255, 0.15)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',

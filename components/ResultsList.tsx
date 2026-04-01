@@ -21,11 +21,13 @@ interface Result {
 export default function ResultsList({ 
     initialResults,
     title = 'Attempted Papers',
-    showViewAll = false
+    showViewAll = false,
+    pagination = true
 }: { 
     initialResults: Result[],
     title?: string,
-    showViewAll?: boolean
+    showViewAll?: boolean,
+    pagination?: boolean
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [classFilter, setClassFilter] = useState('All');
@@ -124,7 +126,9 @@ export default function ResultsList({
 
     const totalPages = Math.ceil(sortedResults.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedResults = sortedResults.slice(startIndex, startIndex + itemsPerPage);
+    const paginatedResults = pagination 
+        ? sortedResults.slice(startIndex, startIndex + itemsPerPage)
+        : sortedResults;
 
     const classes = ['All', 'PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
 
@@ -400,7 +404,7 @@ export default function ResultsList({
 
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {pagination && totalPages > 1 && (
                 <div
                     className="p-4 border-t flex items-center justify-between"
                     style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}

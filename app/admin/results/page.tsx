@@ -43,7 +43,7 @@ export default function ResultsPage() {
                 </div>
             </div>
 
-            <ResultsList initialResults={results} />
+            <ResultsList initialResults={results} pagination={false} />
         </div>
     );
 }

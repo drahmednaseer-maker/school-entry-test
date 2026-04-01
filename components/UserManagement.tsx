@@ -2,7 +2,7 @@
 
 import { updatePassword } from '@/lib/actions';
 import { useRef, useState, useEffect } from 'react';
-import { Users, Lock, ShieldAlert, CheckCircle2, Save } from 'lucide-react';
+import { Users, Lock, ShieldAlert, CheckCircle2, Save, UserCheck, KeyRound } from 'lucide-react';
 import clsx from 'clsx';
 
 interface User {
@@ -43,21 +43,26 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
     }
 
     return (
-        <div className="st-surface rounded-2xl shadow-sm overflow-hidden">
-            <div className="st-surface-2 p-7 border-b st-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-800 text-white shadow-lg shadow-slate-100/10 dark:shadow-none"><Users size={22} /></div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase">User Password Management</h2>
+        <div className="st-surface rounded-[2.5rem] shadow-sm overflow-hidden border-none ring-1 ring-slate-200 dark:ring-white/10">
+            <div className="st-surface-2 p-8 border-b st-border flex items-center justify-between bg-slate-50/50 dark:bg-white/5">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-200 dark:shadow-none"><Users size={22} /></div>
+                    <div>
+                        <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase leading-none">Access Control</h2>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Credential Orchestration</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="p-8 space-y-8">
+            <div className="p-10 space-y-10">
                 {/* User Selector */}
-                <div>
-                    <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Target Administrative Account</label>
+                <div className="max-w-md">
+                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <UserCheck size={14} className="text-blue-500" /> Target Administrative Account
+                    </label>
                     <div className="relative group">
                         <select
-                            className="st-input !rounded-2xl !p-4 !text-sm font-black"
+                            className="st-input !rounded-2xl !p-5 !text-sm font-black !bg-slate-50 dark:!bg-slate-900/40 !border-transparent hover:!border-blue-500/50 focus:!border-blue-500 transition-all cursor-pointer appearance-none"
                             value={selectedUsername}
                             onChange={(e) => setSelectedUsername(e.target.value)}
                         >
@@ -67,61 +72,61 @@ export default function UserManagement({ users, currentUsername }: UserManagemen
                                 </option>
                             ))}
                         </select>
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 group-hover:text-blue-500 transition-colors">
-                            <Users size={18} />
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300 group-focus-within:text-blue-500 transition-colors">
+                            <Users size={20} />
                         </div>
                     </div>
                 </div>
 
-                <form ref={formRef} action={handleSubmit} className="space-y-6">
+                <form ref={formRef} action={handleSubmit} className="space-y-8">
                     <input type="hidden" name="username" value={selectedUsername} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-500 uppercase flex items-center gap-2 mb-2">
-                                <Lock size={12} className="text-blue-500" /> New Password
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest ml-1">
+                                <KeyRound size={12} className="text-blue-500" /> New Access Credential
                             </label>
                             <input
                                 name="new_password"
                                 type="password"
                                 required
-                                placeholder="••••••••"
-                                className="st-input !rounded-xl !p-3 font-mono !text-sm"
+                                placeholder="••••••••••••"
+                                className="st-input !rounded-2xl !p-4 font-mono !text-sm !bg-slate-50 dark:!bg-slate-900/40 !border-transparent focus:!border-blue-500 hover:shadow-md transition-all"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2 mb-2">
-                                <ShieldAlert size={12} className="text-blue-500" /> Re-Enter New Password
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2 tracking-widest ml-1">
+                                <ShieldAlert size={12} className="text-blue-500" /> Confirm Security Key
                             </label>
                             <input
                                 name="confirm_password"
                                 type="password"
                                 required
-                                placeholder="••••••••"
-                                className="w-full rounded-xl border-gray-200 dark:border-slate-700 p-4 border focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-sm dark:bg-slate-800 dark:text-white"
+                                placeholder="••••••••••••"
+                                className="st-input !rounded-2xl !p-4 font-mono !text-sm !bg-slate-50 dark:!bg-slate-900/40 !border-transparent focus:!border-blue-500 hover:shadow-md transition-all"
                             />
                         </div>
                     </div>
 
-                    <div className="pt-6 border-t st-border flex items-center justify-between">
-                        <div className="min-h-[20px]">
+                    <div className="pt-8 border-t st-border flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="min-h-[40px]">
                             {message && (
                                 <div className={clsx(
-                                    "px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-left-2",
-                                    message.type === 'success' ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                                    "px-5 py-3 rounded-2xl text-sm font-black flex items-center gap-3 animate-in fade-in slide-in-from-left-4 shadow-sm",
+                                    message.type === 'success' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-700 border border-red-100"
                                 )}>
-                                    {message.type === 'success' ? <CheckCircle2 size={14} /> : <ShieldAlert size={14} />}
+                                    {message.type === 'success' ? <CheckCircle2 size={18} /> : <ShieldAlert size={18} />}
                                     {message.text}
                                 </div>
                             )}
                         </div>
                         <button
                             type="submit"
-                            className="st-btn-primary !px-8 !py-4 !rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl"
+                            className="st-btn-primary !px-10 !py-4 !rounded-2xl !text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-300 dark:shadow-none active:scale-95 transition-all w-full md:w-auto"
                         >
-                            <Save size={18} />
-                            Update Credentials
+                            <Save size={20} />
+                            Commit Credentials
                         </button>
                     </div>
                 </form>
