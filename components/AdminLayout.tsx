@@ -90,16 +90,11 @@ export default function AdminLayout({ children, settings, userRole, username }: 
                 <div className="flex flex-col flex-1 w-full" style={{ background: 'linear-gradient(180deg, #1e3a8b 0%, #172554 100%)' }}>
                     {/* Brand */}
                     <div className="p-6 border-b border-white/10">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-[1.25rem] bg-white/10 border border-white/20 flex items-center justify-center text-white font-black text-lg shadow-inner">
-                                ST
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-white font-black tracking-widest text-sm leading-none truncate mb-1">SNAPTEST</p>
-                                <p className="text-[10px] text-blue-200/60 font-bold uppercase tracking-tighter truncate">
-                                    {settings.school_name}
-                                </p>
-                            </div>
+                        <div className="min-w-0">
+                            <h2 className="text-white font-black tracking-[0.25em] text-lg leading-none mb-2">SNAPTEST</h2>
+                            <p className="text-[10px] text-blue-200/60 font-bold uppercase tracking-widest truncate">
+                                {settings.school_name}
+                            </p>
                         </div>
                     </div>
 
@@ -143,16 +138,11 @@ export default function AdminLayout({ children, settings, userRole, username }: 
                         <div className="flex flex-col flex-1 w-full" style={{ background: 'linear-gradient(180deg, #1e3a8b 0%, #172554 100%)' }}>
                             {/* Brand */}
                             <div className="p-6 border-b border-white/10">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-[1.25rem] bg-white/10 border border-white/20 flex items-center justify-center text-white font-black text-lg shadow-inner">
-                                        ST
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-white font-black tracking-widest text-sm leading-none truncate mb-1">SNAPTEST</p>
-                                        <p className="text-[10px] text-blue-200/60 font-bold uppercase tracking-tighter truncate">
-                                            {settings.school_name}
-                                        </p>
-                                    </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-white font-black tracking-[0.25em] text-lg leading-none mb-2">SNAPTEST</h2>
+                                    <p className="text-[10px] text-blue-200/60 font-bold uppercase tracking-widest truncate">
+                                        {settings.school_name}
+                                    </p>
                                 </div>
                             </div>
 
@@ -203,10 +193,7 @@ export default function AdminLayout({ children, settings, userRole, username }: 
                             <Menu size={22} />
                         </button>
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-black text-xs" style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)' }}>
-                                ST
-                            </div>
-                            <span className="font-black text-sm" style={{ color: 'var(--text-primary)' }}>SnapTest</span>
+                            <span className="font-black text-sm tracking-[0.15em] uppercase" style={{ color: 'var(--text-primary)' }}>SnapTest</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">

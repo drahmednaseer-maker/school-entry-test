@@ -178,27 +178,97 @@ export default async function ReportsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {classRows.map(row => (
-                                    <tr key={row.class_level}>
-                                        <td className="px-5 py-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.class_level}</td>
-                                        <td className="px-5 py-3 font-bold" style={{ color: 'var(--primary)' }}>{row.count}</td>
-                                        <td className="px-5 py-3">
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>{row.granted}</span>
-                                        </td>
-                                        <td className="px-5 py-3">
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>{row.not_granted}</span>
-                                        </td>
-                                        <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{row.count - row.granted - row.not_granted}</td>
-                                        <td className="px-5 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-                                                    <div className="h-full rounded-full" style={{ width: `${Math.round(row.avg_pct || 0)}%`, background: (row.avg_pct || 0) >= 70 ? 'var(--success)' : (row.avg_pct || 0) >= 40 ? '#f59e0b' : 'var(--danger)' }} />
-                                                </div>
-                                                <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{Math.round(row.avg_pct || 0)}%</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {(() => {
+                                    const classOrder = ['PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+                                    const sortedRows = [...classRows].sort((a, b) => {
+                                        const idxA = classOrder.indexOf(a.class_level);
+                                        const idxB = classOrder.indexOf(b.class_level);
+                                        if (idxA === -1 && idxB === -1) return a.class_level.localeCompare(b.class_level);
+                                        if (idxA === -1) return 1;
+                                        if (idxB === -1) return -1;
+                                        return idxA - idxB;
+                                    });
+
+                                    const totals = {
+                                        count: 0,
+                                        granted: 0,
+                                        not_granted: 0,
+                                        pending: 0,
+                                        sum_avg: 0,
+                                        rows_with_avg: 0
+                                    };
+
+                                    return (
+                                        <>
+                                            {sortedRows.map(row => {
+                                                const pending = row.count - row.granted - row.not_granted;
+                                                totals.count += row.count;
+                                                totals.granted += row.granted;
+                                                totals.not_granted += row.not_granted;
+                                                totals.pending += pending;
+                                                if (row.avg_pct !== null) {
+                                                    totals.sum_avg += row.avg_pct;
+                                                    totals.rows_with_avg++;
+                                                }
+
+                                                return (
+                                                    <tr key={row.class_level}>
+                                                        <td className="px-5 py-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.class_level}</td>
+                                                        <td className="px-5 py-3 font-bold" style={{ color: 'var(--primary)' }}>{row.count}</td>
+                                                        <td className="px-5 py-3">
+                                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)' }}>{row.granted}</span>
+                                                        </td>
+                                                        <td className="px-5 py-3">
+                                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>{row.not_granted}</span>
+                                                        </td>
+                                                        <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{pending}</td>
+                                                        <td className="px-5 py-3">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                                                                    <div className="h-full rounded-full" style={{ width: `${Math.round(row.avg_pct || 0)}%`, background: (row.avg_pct || 0) >= 70 ? 'var(--success)' : (row.avg_pct || 0) >= 40 ? '#f59e0b' : 'var(--danger)' }} />
+                                                                </div>
+                                                                <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{Math.round(row.avg_pct || 0)}%</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {/* Total Row */}
+                                            <tr className="border-t-2" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>
+                                                <td className="px-5 py-4 font-black uppercase text-xs" style={{ color: 'var(--text-primary)' }}>Total Summary</td>
+                                                <td className="px-5 py-4 font-black text-sm" style={{ color: 'var(--primary)' }}>{totals.count}</td>
+                                                <td className="px-5 py-4">
+                                                    <span className="px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-black shadow-lg shadow-green-900/10 transition-transform active:scale-95 cursor-default">
+                                                        {totals.granted}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-black shadow-lg shadow-red-900/10 transition-transform active:scale-95 cursor-default">
+                                                        {totals.not_granted}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4 font-black rotate-0 transition-transform cursor-default" style={{ color: 'var(--text-muted)' }}>
+                                                    {totals.pending}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        {(() => {
+                                                            const overallAvg = totals.rows_with_avg > 0 ? totals.sum_avg / totals.rows_with_avg : 0;
+                                                            return (
+                                                                <>
+                                                                    <div className="w-20 h-2 rounded-full overflow-hidden shadow-inner" style={{ background: 'var(--border)' }}>
+                                                                        <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.round(overallAvg)}%`, background: overallAvg >= 70 ? 'var(--success)' : overallAvg >= 40 ? '#f59e0b' : 'var(--danger)' }} />
+                                                                    </div>
+                                                                    <span className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>{Math.round(overallAvg)}%</span>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </>
+                                    );
+                                })()}
                             </tbody>
                         </table>
                     </div>
