@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // 1. Protect /admin routes
-    if (pathname.startsWith('/admin')) {
+    if (pathname.startsWith('/admin') || pathname.startsWith('/admin-print')) {
         // Allow access to login page
         if (pathname === '/admin/login') {
             // If already logged in, redirect to dashboard?
@@ -68,5 +68,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: '/admin/:path*',
+    matcher: ['/admin/:path*', '/admin-print/:path*'],
 };

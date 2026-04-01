@@ -160,6 +160,65 @@ export default async function ReportsPage() {
                 timeData={timeData}
             />
 
+            {/* ── Detailed Backup & Archiving Control ──────────────── */}
+            <div className="rounded-2xl overflow-hidden shadow-md" style={{ background: 'var(--bg-surface)', border: '2px solid var(--primary-muted)' }}>
+                <div className="px-6 py-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)', background: 'linear-gradient(to right, var(--bg-surface-2), var(--bg-surface))' }}>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-900/20">
+                            <FileText size={20} />
+                        </div>
+                        <div>
+                            <h2 className="font-black text-sm uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Detailed Backup & Archiving</h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Generate comprehensive student test records for official filing</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <form action="/admin-print/reports" method="GET" target="_blank" className="flex flex-col md:flex-row items-end gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Archive From</label>
+                                <input 
+                                    type="date" 
+                                    name="from" 
+                                    required 
+                                    defaultValue={new Date().toISOString().split('T')[0]}
+                                    className="st-input w-full font-bold text-sm" 
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Archive Through</label>
+                                <input 
+                                    type="date" 
+                                    name="to" 
+                                    required 
+                                    defaultValue={new Date().toISOString().split('T')[0]}
+                                    className="st-input w-full font-bold text-sm" 
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Filter by Class</label>
+                                <select name="class" className="st-input w-full font-bold text-sm">
+                                    {['All', 'PlayGroup', 'KG 1', 'KG 2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'].map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <button 
+                            type="submit" 
+                            className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-[0.15em] flex items-center gap-3 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 active:scale-95 shrink-0"
+                        >
+                            <FileText size={16} /> Generate Record Backup
+                        </button>
+                    </form>
+                    <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                        <p className="text-[10px] font-bold text-blue-600/80 uppercase">Page breaks are automatically added after each student record for clean hard-copy output.</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Class-wise textual breakdown */}
             <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
                 <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-surface-2)' }}>

@@ -359,35 +359,41 @@ select.st-input {
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* ========================
-   THERMAL PRINTING 
+   PRINTING SYSTEM
    ======================== */
-.print-only-container {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
+.no-print {
+  display: block; /* Default visible in browser */
 }
+
 @media print {
-  body > *:not(.print-only-container) {
+  /* ── General Print Resets ── */
+  .no-print {
     display: none !important;
   }
-  .print-only-container {
-    display: block !important;
-    visibility: visible !important;
+  
+  html, body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
+  /* ── Thermal Receipt Compatibility ── */
   #thermal-receipt-print-form,
   #thermal-receipt-print-list {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 80mm !important;
-    height: 210mm !important;
-    padding: 10mm 5mm !important;
     background: white !important;
     color: black !important;
     display: block !important;
+    z-index: 9999 !important;
   }
+
+  /* ── Default Print Size ── */
   @page {
-    size: 80mm 210mm;
-    margin: 0;
+    size: auto;
+    margin: 10mm;
   }
 }
