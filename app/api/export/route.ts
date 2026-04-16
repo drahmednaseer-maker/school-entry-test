@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import JSZip from 'jszip';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'super-secret-key-change-this-in-prod');
 
 async function verifyAdmin(req: NextRequest) {
   const cookieStore = await cookies();
