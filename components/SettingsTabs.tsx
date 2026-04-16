@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { AISettingsForm, SystemSettingsForm, Settings } from './GeneralSettingsForm';
 import UserManagement from './UserManagement';
-import { LayoutGrid, Cpu, UserCog } from 'lucide-react';
+import DataExportPanel from './DataExportPanel';
+import { LayoutGrid, Cpu, UserCog, Download } from 'lucide-react';
 import clsx from 'clsx';
 
 interface SettingsTabsProps {
@@ -13,12 +14,13 @@ interface SettingsTabsProps {
 }
 
 export default function SettingsTabs({ settings, users, currentUser }: SettingsTabsProps) {
-    const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'users'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'ai' | 'users' | 'export'>('general');
 
     const tabs = [
         { id: 'general', label: 'General Configuration', icon: LayoutGrid, description: 'School identity & test parameters' },
         { id: 'ai', label: 'AI Intelligence', icon: Cpu, description: 'Model selection & API orchestration' },
         { id: 'users', label: 'Security & Access', icon: UserCog, description: 'Administrative account management' },
+        { id: 'export', label: 'Data Export', icon: Download, description: 'Backup & migrate all system data' },
     ];
 
     return (
@@ -60,6 +62,7 @@ export default function SettingsTabs({ settings, users, currentUser }: SettingsT
                     {activeTab === 'general' && <SystemSettingsForm initialSettings={settings} />}
                     {activeTab === 'ai' && <AISettingsForm initialSettings={settings} />}
                     {activeTab === 'users' && <UserManagement users={users} currentUsername={currentUser?.username || null} />}
+                    {activeTab === 'export' && <DataExportPanel />}
                 </div>
             </div>
         </div>
