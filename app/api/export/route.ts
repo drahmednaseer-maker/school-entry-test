@@ -60,13 +60,15 @@ export async function GET(req: NextRequest) {
     };
     zip.file('manifest.json', JSON.stringify(manifest, null, 2));
 
-    // ── 3. Export uploaded files (photos, question images, etc.) ─────────────
-    // Files are stored in the same folder as the DB (e.g. data/uploads/), NOT public/uploads/
+    // ── 3a. Export question image files from disk (data/uploads/) ────────────
+    // Question images are saved as files in the same folder as the DB
     const dbPath = process.env.DATABASE_URL || 'data/school.db';
     const dbBaseDir = path.dirname(path.resolve(process.cwd(), dbPath));
     const uploadsDir = path.join(dbBaseDir, 'uploads');
+    const uploadsFolder = zip.folder('uploads')!;
+    const questionImagesFolder = uploadsFolder.folder('questions')!;
+
     if (fs.existsSync(uploadsDir)) {
-      const uploadsFolder = zip.folder('uploads')!;
       const walkDir = (dir: string, zipFolder: JSZip) => {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const entry of entries) {
@@ -79,7 +81,31 @@ export async function GET(req: NextRequest) {
           }
         }
       };
-      walkDir(uploadsDir, uploadsFolder);
+      walkDir(uploadsDir, questionImagesFolder);
+    }
+
+    // ── 3b. Extract student photos from DB (stored as base64 strings) ────────
+    // Photos are NOT files on disk — they are base64 data URIs in the students.photo column
+    const studentPhotosFolder = uploadsFolder.folder('students')!;
+    try {
+      const studentsWithPhotos = db.prepare(
+        "SELECT id, name, access_code, photo FROM students WHERE photo IS NOT NULL AND photo != ''"
+      ).all() as any[];
+
+      for (const student of studentsWithPhotos) {
+        const photo: string = student.photo;
+        // photo is a data URI like "data:image/jpeg;base64,/9j/4AAQ..."
+        const match = photo.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (match) {
+          const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+          const base64Data = match[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          const safeCode = (student.access_code || student.id).toString();
+          studentPhotosFolder.file(`student-${safeCode}.${ext}`, buffer);
+        }
+      }
+    } catch (e: any) {
+      console.warn('[Export] Could not extract student photos:', e.message);
     }
 
     // ── 4. Generate ZIP buffer ────────────────────────────────────────────────
